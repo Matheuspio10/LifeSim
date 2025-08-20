@@ -1,13 +1,6 @@
-
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { Character, LifeStage, GameEvent, RelationshipType, MemoryItemType, Trait, EconomicClimate, Choice, MiniGameType, Mood, HobbyType } from '../types';
 
-if (!process.env.API_KEY) {
-    throw new Error("API_KEY environment variable not set");
-}
-
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const getBossBattlePrompt = (lifeStage: LifeStage): string => {
     const bosses = {
@@ -360,8 +353,9 @@ const responseSchema = {
     required: ['isEpic', 'eventText', 'choices', 'type']
 };
 
-export const generateGameEvent = async (character: Character, lifeStage: LifeStage, eventYear: number, economicClimate: EconomicClimate, lineageTitle: string | null, focusContext: string | null, behaviorTracker: Record<string, number>, isTurboMode: boolean): Promise<GameEvent> => {
+export const generateGameEvent = async (character: Character, lifeStage: LifeStage, eventYear: number, economicClimate: EconomicClimate, lineageTitle: string | null, focusContext: string | null, behaviorTracker: Record<string, number>, isTurboMode: boolean, apiKey: string): Promise<GameEvent> => {
     
+    const ai = new GoogleGenAI({ apiKey });
     const randomRoll = Math.random();
     const isWorldEvent = randomRoll < 0.15; // 15% de chance de um evento mundial
     const isEpicEvent = !isWorldEvent && randomRoll < 0.25; // 10% de chance
@@ -520,7 +514,8 @@ export const generateGameEvent = async (character: Character, lifeStage: LifeSta
 };
 
 
-export const evaluatePlayerResponse = async (character: Character, eventText: string, playerResponse: string): Promise<Choice> => {
+export const evaluatePlayerResponse = async (character: Character, eventText: string, playerResponse: string, apiKey: string): Promise<Choice> => {
+    const ai = new GoogleGenAI({ apiKey });
     const prompt = `
         Você é o mestre de um jogo de simulação de vida roguelite. Um personagem está na seguinte situação e respondeu com um texto livre.
         **Personagem:**

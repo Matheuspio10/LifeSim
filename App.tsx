@@ -13,12 +13,15 @@ import EconomicUpdateNotice from './components/EconomicUpdateNotice';
 import RoutineScreen from './components/RoutineScreen';
 import MiniGameHost from './components/MiniGameHost';
 import JournalScreen from './components/JournalScreen';
+import ApiKeyModal from './components/ApiKeyModal';
 import { BookOpenIcon } from './components/Icons';
 import DowntimeActivities, { MicroActionResult } from './components/DowntimeActivities';
 
 const getRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const ROUTINE_PLANNING_INTERVAL = 4; // Player plans their routine every 4 years.
 const SAVE_GAME_KEY = 'lifeSimMMORGSaveData';
+const API_KEY_KEY = 'geminiApiKey';
+
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(GameState.NOT_STARTED);
@@ -37,6 +40,7 @@ const App: React.FC = () => {
   const [isJournalOpen, setIsJournalOpen] = useState<boolean>(false);
   const [hasSaveData, setHasSaveData] = useState<boolean>(false);
   const [isTurboMode, setIsTurboMode] = useState<boolean>(false);
+  const [apiKey, setApiKey] = useState<string | null>(null);
 
 
   // Legacy State
@@ -44,6 +48,13 @@ const App: React.FC = () => {
   const [legacyPoints, setLegacyPoints] = useState<number>(0);
   const [legacyBonuses, setLegacyBonuses] = useState<LegacyBonuses | null>(null);
   const [completedChallenges, setCompletedChallenges] = useState<{ name: string; reward: number }[]>([]);
+  
+  useEffect(() => {
+    const storedKey = localStorage.getItem(API_KEY_KEY);
+    if (storedKey) {
+        setApiKey(storedKey);
+    }
+  }, []);
 
   // --- Save/Load Logic ---
   const loadGame = useCallback(() => {
@@ -141,12 +152,16 @@ const App: React.FC = () => {
   };
   
   const fetchNextEvent = useCallback(async (char: Character, eventYear: number, focusContext: string | null = null, newBehaviorTracker?: Record<string, number>) => {
+    if (!apiKey) {
+        setError("Chave de API do Gemini não configurada.");
+        return;
+    }
     setIsLoading(true);
     setError(null);
     try {
       const lifeStage = getCurrentLifeStage(char.age);
       const lineageTitle = lineage ? lineage.title : null;
-      const event = await generateGameEvent(char, lifeStage, eventYear, economicClimate, lineageTitle, focusContext || currentFocusContext, newBehaviorTracker ?? behaviorTracker, isTurboMode);
+      const event = await generateGameEvent(char, lifeStage, eventYear, economicClimate, lineageTitle, focusContext || currentFocusContext, newBehaviorTracker ?? behaviorTracker, isTurboMode, apiKey);
       setCurrentEvent(event);
       setGameState(GameState.IN_PROGRESS);
     } catch (err)      {
@@ -159,7 +174,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [economicClimate, lineage, currentFocusContext, behaviorTracker, isTurboMode]);
+  }, [economicClimate, lineage, currentFocusContext, behaviorTracker, isTurboMode, apiKey]);
 
   const startGame = (newCharacter: Character, isMultiplayer: boolean) => {
     const startYear = newCharacter.birthYear;
@@ -411,11 +426,11 @@ const App: React.FC = () => {
   };
   
   const handleOpenResponseSubmit = async (responseText: string) => {
-     if (!character || !currentEvent) return;
+     if (!character || !currentEvent || !apiKey) return;
      setIsLoading(true);
      setError(null);
      try {
-        const choice = await evaluatePlayerResponse(character, currentEvent.eventText, responseText);
+        const choice = await evaluatePlayerResponse(character, currentEvent.eventText, responseText, apiKey);
         handleChoice(choice);
      } catch (err) {
         console.error(err);
@@ -464,6 +479,11 @@ const App: React.FC = () => {
   const handleToggleTurboMode = () => {
     setIsTurboMode(prev => !prev);
   };
+  
+  const handleApiKeySave = (key: string) => {
+    localStorage.setItem(API_KEY_KEY, key);
+    setApiKey(key);
+  };
 
   const renderMainContent = () => {
     if (isLoading) {
@@ -497,6 +517,14 @@ const App: React.FC = () => {
         return <div>Estado de Jogo Desconhecido</div>;
     }
   };
+  
+  if (!apiKey) {
+    return (
+        <main className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-900">
+            <ApiKeyModal onSave={handleApiKeySave} />
+        </main>
+    )
+  }
 
   return (
     <main className="min-h-screen flex flex-col md:flex-row items-start justify-center gap-8 p-4 md:p-8 bg-slate-900 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]">
