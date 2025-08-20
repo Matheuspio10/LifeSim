@@ -143,6 +143,14 @@ const App: React.FC = () => {
     }
   };
 
+  const handleChangeApiKeyAndReset = () => {
+    if (window.confirm('Tem certeza de que deseja alterar sua chave de API? Todo o progresso do jogo atual e salvo será perdido.')) {
+        localStorage.removeItem(API_KEY_KEY);
+        setApiKey(null);
+        resetGameAndClearSave();
+    }
+  };
+
   const getCurrentLifeStage = (age: number): LifeStage => {
     if (age <= 12) return LifeStage.CHILDHOOD;
     if (age <= 19) return LifeStage.ADOLESCENCE;
@@ -156,6 +164,7 @@ const App: React.FC = () => {
         setError("Chave de API do Gemini não configurada.");
         return;
     }
+    setEconomicUpdateNotice(null);
     setIsLoading(true);
     setError(null);
     try {
@@ -351,6 +360,7 @@ const App: React.FC = () => {
       return;
     }
 
+    let wasEconomicUpdate = false;
     // Economic Phase
     if (Math.random() < 0.25) { // 25% chance of economic shift per year
         const newEconomicClimate = getRandom([EconomicClimate.BOOM, EconomicClimate.RECESSION, EconomicClimate.STABLE]);
@@ -359,6 +369,9 @@ const App: React.FC = () => {
             const { updatedCharacter, updateInfo } = applyEconomicPhase(updatedChar, newEconomicClimate);
             updatedChar = updatedCharacter;
             setEconomicUpdateNotice(updateInfo);
+            wasEconomicUpdate = true;
+        } else {
+            setEconomicUpdateNotice(null);
         }
     } else {
         setEconomicUpdateNotice(null);
@@ -374,7 +387,7 @@ const App: React.FC = () => {
     if (newYearsSinceRoutine >= ROUTINE_PLANNING_INTERVAL) {
         setGameState(GameState.ROUTINE_PLANNING);
     } else {
-       setTimeout(() => fetchNextEvent(updatedChar, currentYear + 1), economicUpdateNotice ? 2500 : 500);
+       setTimeout(() => fetchNextEvent(updatedChar, currentYear + 1), wasEconomicUpdate ? 2500 : 500);
     }
 
   }, [character, currentYear, economicClimate, fetchNextEvent, yearsSinceLastRoutine]);
@@ -528,7 +541,7 @@ const App: React.FC = () => {
 
   return (
     <main className="min-h-screen flex flex-col md:flex-row items-start justify-center gap-8 p-4 md:p-8 bg-slate-900 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]">
-        {character && <CharacterSheet character={character} lifeStage={getCurrentLifeStage(character.age)} lineage={lineage} isTurboMode={isTurboMode} onToggleTurboMode={handleToggleTurboMode} />}
+        {character && <CharacterSheet character={character} lifeStage={getCurrentLifeStage(character.age)} lineage={lineage} isTurboMode={isTurboMode} onToggleTurboMode={handleToggleTurboMode} onChangeApiKeyAndReset={handleChangeApiKeyAndReset} />}
         <div className="flex-grow flex items-center justify-center w-full">
             {renderMainContent()}
         </div>

@@ -1,9 +1,9 @@
 
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Character, LifeStage, Lineage, Mood, HobbyType } from '../types';
 import StatDisplay from './StatDisplay';
-import { HeartIcon, BrainIcon, UserGroupIcon, CurrencyDollarIcon, LightBulbIcon, ShieldCheckIcon, PlusCircleIcon, MinusCircleIcon, GlobeAltIcon, HomeIcon, StarIcon, UsersIcon, BriefcaseIcon, ScaleIcon, BookOpenIcon, ExclamationTriangleIcon, ClipboardDocumentListIcon, SparklesIcon, CheckCircleIcon, ChartBarIcon, SpeakerWaveIcon, PixelArtPortraitIcon, FaceSmileIcon, FaceFrownIcon, FireIcon, HandThumbUpIcon, CloudIcon, PencilSquareIcon, MusicalNoteIcon, PaintBrushIcon, BeakerIcon, TrophyIcon } from './Icons';
+import { HeartIcon, BrainIcon, UserGroupIcon, CurrencyDollarIcon, LightBulbIcon, ShieldCheckIcon, PlusCircleIcon, MinusCircleIcon, GlobeAltIcon, HomeIcon, StarIcon, UsersIcon, BriefcaseIcon, ScaleIcon, BookOpenIcon, ExclamationTriangleIcon, ClipboardDocumentListIcon, SparklesIcon, CheckCircleIcon, ChartBarIcon, SpeakerWaveIcon, PixelArtPortraitIcon, FaceSmileIcon, FaceFrownIcon, FireIcon, HandThumbUpIcon, CloudIcon, PencilSquareIcon, MusicalNoteIcon, PaintBrushIcon, BeakerIcon, TrophyIcon, Cog6ToothIcon } from './Icons';
 import SpectrumDisplay from './SpectrumDisplay';
 import LineageCrestDisplay from './LineageCrestDisplay';
 
@@ -13,6 +13,7 @@ interface CharacterSheetProps {
   lineage: Lineage | null;
   isTurboMode: boolean;
   onToggleTurboMode: () => void;
+  onChangeApiKeyAndReset: () => void;
 }
 
 const RelationshipBar: React.FC<{ intimacy: number }> = ({ intimacy }) => {
@@ -81,7 +82,9 @@ const HobbyBar: React.FC<{ level: number, color: string }> = ({ level, color }) 
 }
 
 
-const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, lineage, isTurboMode, onToggleTurboMode }) => {
+const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, lineage, isTurboMode, onToggleTurboMode, onChangeApiKeyAndReset }) => {
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
   const displayName = lineage?.title ? `${lineage.title} dos ${character.lastName}` : `${character.name} ${character.lastName}`;
   
   const hobbyConfig = {
@@ -91,9 +94,45 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
       [HobbyType.SPORTS]: { icon: <TrophyIcon />, color: 'bg-green-500' },
       [HobbyType.GAMBLING]: { icon: <CurrencyDollarIcon />, color: 'bg-red-600' },
   }
+  
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+        if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+            setIsSettingsOpen(false);
+        }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [settingsRef]);
+
 
   return (
-    <aside className="w-full md:w-80 bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl p-6 shadow-2xl flex-shrink-0 self-start">
+    <aside className="relative w-full md:w-80 bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl p-6 shadow-2xl flex-shrink-0 self-start">
+      <div className="absolute top-4 right-4" ref={settingsRef}>
+          <button
+            onClick={() => setIsSettingsOpen(prev => !prev)}
+            className="w-8 h-8 p-1 text-slate-400 hover:text-white transition-colors"
+            aria-label="Abrir configurações"
+          >
+            <Cog6ToothIcon />
+          </button>
+          {isSettingsOpen && (
+            <div className="absolute top-full right-0 mt-2 w-56 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-20 animate-fade-in-fast">
+              <button
+                onClick={() => {
+                  onChangeApiKeyAndReset();
+                  setIsSettingsOpen(false);
+                }}
+                className="w-full text-left px-4 py-3 text-sm text-slate-200 hover:bg-slate-800 rounded-lg"
+              >
+                Mudar Chave de API e Reiniciar
+              </button>
+            </div>
+          )}
+        </div>
       <div className="text-center mb-6 relative">
         {lineage && (
             <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/3">
@@ -372,5 +411,18 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
     </aside>
   );
 };
+
+const style = `
+@keyframes fade-in-fast {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-fade-in-fast {
+  animation: fade-in-fast 0.1s ease-out forwards;
+}
+`;
+const styleSheet = document.createElement("style");
+styleSheet.innerText = style;
+document.head.appendChild(styleSheet);
 
 export default CharacterSheet;
