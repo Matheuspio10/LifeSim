@@ -21,7 +21,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ onShowDebug, onRollback
         </button>
         {onRollback && canRollback && (
            <button onClick={onRollback} className="mt-4 px-4 py-2 text-xs bg-yellow-800 text-yellow-200 rounded-md hover:bg-yellow-700 transition-colors">
-                Reverter Ação
+                Restaurar Jogo
             </button>
         )}
       </div>

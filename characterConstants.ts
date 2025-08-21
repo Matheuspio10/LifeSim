@@ -46,6 +46,10 @@ export const NEGATIVE_TRAITS: Trait[] = [
     { name: 'Coração Solitário', description: 'Sua infância te ensinou que o dinheiro é mais confiável que as pessoas, dificultando a criação de laços genuínos.', type: 'negative' },
     { name: 'Fardo das Expectativas', description: 'Sua família espera nada menos que a perfeição, e cada falha parece o fim do mundo.', type: 'negative' },
     { name: 'Solitário', description: 'Você se sente desconectado dos outros e prefere a própria companhia, mesmo que isso traga tristeza.', type: 'negative' },
+    { name: 'Difícil de Levar a Sério', description: 'Seu humor constante, embora cativante, faz com que as pessoas duvidem de sua seriedade em momentos cruciais.', type: 'negative' },
+    { name: 'Sob os Holofotes', description: 'Devido às suas conexões, a imprensa e os rivais políticos acompanham cada passo seu, prontos para explorar qualquer erro.', type: 'negative' },
+    { name: 'Nostálgico', description: 'Você viveu em muitos lugares e, embora isso tenha enriquecido você, muitas vezes se sente um estranho, com saudades de um lar que não existe mais.', type: 'negative' },
+    { name: 'Dívida de Gratidão', description: 'Você deve um grande favor a alguém poderoso. Um dia, a cobrança virá.', type: 'negative' },
 ];
 
 export const PORTRAIT_COLORS = {

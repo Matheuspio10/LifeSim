@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Hobby, HobbyType } from './types';
+import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Hobby, HobbyType, FamilyBackground, Checkpoint } from './types';
 import { generateGameEvent, evaluatePlayerResponse } from './services/gameService';
 import { applyChoiceToCharacter } from './services/characterService';
 import { WEEKLY_CHALLENGES, LAST_NAMES, PORTRAIT_COLORS, HEALTH_CONDITIONS, LINEAGE_TITLES, TOTAL_MONTHS_PER_YEAR } from './constants';
@@ -18,6 +18,7 @@ import ApiKeyModal from './components/ApiKeyModal';
 import QuotaErrorModal from './components/QuotaErrorModal';
 import { BookOpenIcon } from './components/Icons';
 import DowntimeActivities, { MicroActionResult } from './components/DowntimeActivities';
+import EmergencyRollbackModal from './components/EmergencyRollbackModal';
 
 const getRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const SAVE_GAME_KEY = 'lifeSimMMORGSaveData';
@@ -43,7 +44,8 @@ const App: React.FC = () => {
   const [isQuotaModalOpen, setIsQuotaModalOpen] = useState<boolean>(false);
   const [lastError, setLastError] = useState<string | null>(null);
   const [showDebug, setShowDebug] = useState<boolean>(false);
-  const [previousState, setPreviousState] = useState<any | null>(null);
+  const [history, setHistory] = useState<Checkpoint[]>([]);
+  const [isRollbackModalOpen, setIsRollbackModalOpen] = useState(false);
 
 
   // Legacy State
@@ -61,21 +63,31 @@ const App: React.FC = () => {
 
   const saveForRollback = useCallback(() => {
     const stateToSave = {
-        gameState,
-        character,
-        currentEvent,
-        lifeSummary,
-        currentYear,
-        economicClimate,
-        isMultiplayerCycle,
-        monthsRemainingInYear,
-        currentFocusContext,
-        behaviorTracker,
-        lineage,
-        legacyPoints,
-        isTurboMode,
+        gameState, character, currentEvent, lifeSummary, currentYear,
+        economicClimate, isMultiplayerCycle, monthsRemainingInYear,
+        currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode,
     };
-    setPreviousState(stateToSave);
+
+    let name = `Ponto de Restauração`;
+    if (gameState === GameState.ROUTINE_PLANNING) {
+        name = `Início do Ano ${currentYear}`;
+    } else if (currentEvent) {
+        name = `Antes do evento: "${currentEvent.eventText.substring(0, 30)}..."`;
+    } else if (gameState === GameState.GAME_OVER) {
+        name = `Fim da vida de ${character?.name}`;
+    } else if (gameState === GameState.LEGACY) {
+        name = `Antes de gastar Legado`;
+    }
+
+    const newCheckpoint: Checkpoint = {
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: new Date().toISOString(),
+        name,
+        keyActions: lifeSummary.slice(-1).map(l => l.text),
+        stateSnapshot: stateToSave,
+    };
+
+    setHistory(prev => [newCheckpoint, ...prev].slice(0, 10));
   }, [gameState, character, currentEvent, lifeSummary, currentYear, economicClimate, isMultiplayerCycle, monthsRemainingInYear, currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode]);
 
   // --- Save/Load Logic ---
@@ -97,6 +109,7 @@ const App: React.FC = () => {
             setLineage(parsedData.lineage ?? null);
             setLegacyPoints(parsedData.legacyPoints ?? 0);
             setIsTurboMode(parsedData.isTurboMode ?? true);
+            setHistory(parsedData.history ?? []);
         } catch (e) {
             console.error("Falha ao carregar o jogo salvo", e);
             localStorage.removeItem(SAVE_GAME_KEY);
@@ -118,22 +131,12 @@ const App: React.FC = () => {
     }
     
     const gameToSave = {
-        gameState,
-        character,
-        currentEvent,
-        lifeSummary,
-        currentYear,
-        economicClimate,
-        isMultiplayerCycle,
-        monthsRemainingInYear,
-        currentFocusContext,
-        behaviorTracker,
-        lineage,
-        legacyPoints,
-        isTurboMode,
+        gameState, character, currentEvent, lifeSummary, currentYear,
+        economicClimate, isMultiplayerCycle, monthsRemainingInYear,
+        currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode, history,
     };
     localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameToSave));
-  }, [gameState, character, currentEvent, lifeSummary, currentYear, economicClimate, isMultiplayerCycle, monthsRemainingInYear, currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode]);
+  }, [gameState, character, currentEvent, lifeSummary, currentYear, economicClimate, isMultiplayerCycle, monthsRemainingInYear, currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode, history]);
 
   const resetGameAndClearSave = () => {
     localStorage.removeItem(SAVE_GAME_KEY);
@@ -156,6 +159,7 @@ const App: React.FC = () => {
     setLegacyBonuses(null);
     setCompletedChallenges([]);
     setIsTurboMode(true);
+    setHistory([]);
   };
 
   const handleStartNewGameFromScratch = () => {
@@ -179,28 +183,39 @@ const App: React.FC = () => {
     }
   };
 
-  const handleRollback = () => {
-    if (previousState) {
-        if (window.confirm('Isso irá reverter o jogo para o estado anterior à sua última ação. Deseja continuar?')) {
-            setGameState(previousState.gameState);
-            setCharacter(previousState.character);
-            setCurrentEvent(previousState.currentEvent);
-            setLifeSummary(previousState.lifeSummary);
-            setCurrentYear(previousState.currentYear);
-            setEconomicClimate(previousState.economicClimate);
-            setIsMultiplayerCycle(previousState.isMultiplayerCycle);
-            setMonthsRemainingInYear(previousState.monthsRemainingInYear);
-            setCurrentFocusContext(previousState.currentFocusContext);
-            setBehaviorTracker(previousState.behaviorTracker);
-            setLineage(previousState.lineage);
-            setLegacyPoints(previousState.legacyPoints);
-            setIsTurboMode(previousState.isTurboMode);
-
-            setIsLoading(false);
-            setError(null);
-        }
+  const handleOpenRollbackModal = () => {
+    if (history.length > 0) {
+        setIsRollbackModalOpen(true);
     } else {
-        alert("Nenhum estado anterior para reverter. Esta opção fica disponível após sua primeira ação.");
+        alert("Nenhum ponto de restauração disponível. Esta opção fica disponível após sua primeira ação.");
+    }
+  };
+
+  const handleRestore = (checkpoint: Checkpoint) => {
+    if (window.confirm('Tem certeza de que deseja restaurar para este ponto? Todo o progresso subsequente será perdido.')) {
+        const { stateSnapshot } = checkpoint;
+        setGameState(stateSnapshot.gameState);
+        setCharacter(stateSnapshot.character);
+        setCurrentEvent(stateSnapshot.currentEvent);
+        setLifeSummary(stateSnapshot.lifeSummary);
+        setCurrentYear(stateSnapshot.currentYear);
+        setEconomicClimate(stateSnapshot.economicClimate);
+        setIsMultiplayerCycle(stateSnapshot.isMultiplayerCycle);
+        setMonthsRemainingInYear(stateSnapshot.monthsRemainingInYear);
+        setCurrentFocusContext(stateSnapshot.currentFocusContext);
+        setBehaviorTracker(stateSnapshot.behaviorTracker);
+        setLineage(stateSnapshot.lineage);
+        setLegacyPoints(stateSnapshot.legacyPoints);
+        setIsTurboMode(stateSnapshot.isTurboMode);
+
+        const checkpointIndex = history.findIndex(h => h.id === checkpoint.id);
+        if (checkpointIndex > -1) {
+            setHistory(prev => prev.slice(checkpointIndex));
+        }
+
+        setIsLoading(false);
+        setError(null);
+        setIsRollbackModalOpen(false);
     }
   };
 
@@ -302,18 +317,32 @@ const App: React.FC = () => {
   
   const calculateLegacyPoints = (char: Character): number => {
     let points = 0;
-    points += Math.floor(char.wealth / 20000);
-    points += Math.floor(char.investments / 30000);
-    points += Math.floor((char.intelligence + char.charisma + char.creativity + char.discipline) / 60);
+    // Use logarithmic scale for wealth and investments to prevent runaway points
+    points += Math.floor(25 * Math.log10(Math.max(1, char.wealth)));
+    points += Math.floor(25 * Math.log10(Math.max(1, char.investments)));
+
+    // Increased weight for stats
+    points += Math.floor((char.intelligence + char.charisma + char.creativity + char.discipline) / 20);
+    
+    // Age bonus remains the same
     points += char.age > 95 ? (char.age - 95) * 2 : 0;
+    
+    // Assets and memories are fine
     points += char.assets.length;
     points += Math.floor(char.memories.length / 2);
-    points += char.lifeGoals.filter(g => g.completed).length * 15;
-    points += Math.floor(char.careerLevel / 25);
-    points += Math.floor(char.fame / 30);
-    points += Math.max(0, Math.floor(char.influence / 25));
-    points += char.relationships.filter(r => r.intimacy > 80).length * 2;
-    return Math.max(0, points);
+    
+    // Life goals are a significant part of legacy
+    points += char.lifeGoals.filter(g => g.completed).length * 25;
+    
+    // Increased weight for career, fame, and influence
+    points += Math.floor(char.careerLevel / 10);
+    points += Math.floor(Math.abs(char.fame) / 10); // Infamy is also a form of legacy
+    points += Math.floor(Math.abs(char.influence) / 10); // Being a public enemy is also a legacy
+    
+    // Relationships are fine
+    points += char.relationships.filter(r => r.intimacy > 80).length * 3;
+    
+    return Math.max(0, Math.floor(points));
   };
 
   const startNewLineage = () => {
@@ -362,8 +391,18 @@ const App: React.FC = () => {
     
     if (lineage) {
         const newTitle = updateLineageTitle(char, lineage);
-        // This is a crucial update. We need to create a new object to trigger re-render.
-        setLineage(prevLineage => prevLineage ? { ...prevLineage, title: newTitle } : null);
+        const finalWealth = char.wealth + char.investments;
+        let wealthTier: FamilyBackground;
+        if (finalWealth < 10000) wealthTier = FamilyBackground.POOR;
+        else if (finalWealth < 500000) wealthTier = FamilyBackground.MIDDLE_CLASS;
+        else wealthTier = FamilyBackground.WEALTHY;
+
+        setLineage(prevLineage => prevLineage ? { 
+            ...prevLineage, 
+            title: newTitle, 
+            lastKnownLocation: char.birthplace, 
+            lastKnownWealthTier: wealthTier 
+        } : null);
     }
 
     setLegacyPoints(basePoints + challengePoints);
@@ -592,9 +631,9 @@ const App: React.FC = () => {
   const renderMainContent = () => {
     if (isLoading) {
         if (character) {
-            return <DowntimeActivities character={character} onMicroAction={handleMicroAction} onShowDebug={() => setShowDebug(true)} onRollback={handleRollback} canRollback={!!previousState} />;
+            return <DowntimeActivities character={character} onMicroAction={handleMicroAction} onShowDebug={() => setShowDebug(true)} onRollback={handleOpenRollbackModal} canRollback={history.length > 0} />;
         }
-        return <LoadingSpinner onShowDebug={() => setShowDebug(true)} onRollback={handleRollback} canRollback={!!previousState} />;
+        return <LoadingSpinner onShowDebug={() => setShowDebug(true)} onRollback={handleOpenRollbackModal} canRollback={history.length > 0} />;
     }
     if (error) {
         return (
@@ -620,9 +659,9 @@ const App: React.FC = () => {
         if (currentEvent?.type === 'MINI_GAME') {
             return character && <MiniGameHost event={currentEvent} character={character} onComplete={handleChoice} />;
         }
-        return currentEvent ? <EventCard event={currentEvent} onChoice={handleChoice} onOpenResponseSubmit={handleOpenResponseSubmit} /> : <LoadingSpinner onShowDebug={() => setShowDebug(true)} onRollback={handleRollback} canRollback={!!previousState} />;
+        return currentEvent ? <EventCard event={currentEvent} onChoice={handleChoice} onOpenResponseSubmit={handleOpenResponseSubmit} /> : <LoadingSpinner onShowDebug={() => setShowDebug(true)} onRollback={handleOpenRollbackModal} canRollback={history.length > 0} />;
       case GameState.GAME_OVER:
-        return character ? <GameOverScreen finalCharacter={character} lifeSummary={lifeSummary} legacyPoints={legacyPoints} completedChallenges={completedChallenges} isMultiplayerCycle={isMultiplayerCycle} onContinueLineage={continueLineage} onStartNewLineage={startNewLineage} lineage={lineage} /> : <LoadingSpinner onShowDebug={() => setShowDebug(true)} onRollback={handleRollback} canRollback={!!previousState} />;
+        return character ? <GameOverScreen finalCharacter={character} lifeSummary={lifeSummary} legacyPoints={legacyPoints} completedChallenges={completedChallenges} isMultiplayerCycle={isMultiplayerCycle} onContinueLineage={continueLineage} onStartNewLineage={startNewLineage} lineage={lineage} /> : <LoadingSpinner onShowDebug={() => setShowDebug(true)} onRollback={handleOpenRollbackModal} canRollback={history.length > 0} />;
       case GameState.LEGACY:
         return <LegacyScreen points={legacyPoints} onStart={startNextGeneration} finalCharacter={character} lineage={lineage} />;
       default:
@@ -651,6 +690,14 @@ const App: React.FC = () => {
         )}
         {isJournalOpen && character && <JournalScreen character={character} lifeSummary={lifeSummary} onClose={() => setIsJournalOpen(false)} />}
         {isQuotaModalOpen && <QuotaErrorModal onClose={() => setIsQuotaModalOpen(false)} />}
+        {isRollbackModalOpen && (
+            <EmergencyRollbackModal
+                isOpen={isRollbackModalOpen}
+                onClose={() => setIsRollbackModalOpen(false)}
+                onRestore={handleRestore}
+                checkpoints={history}
+            />
+        )}
         {showDebug && (
             <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
                 <div className="w-full max-w-2xl bg-slate-800 border border-slate-600 rounded-lg p-6 text-left">

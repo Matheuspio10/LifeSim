@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
-import { Character, FamilyBackground, RelationshipType, LegacyBonuses, Trait, Lineage, Mood } from '../types';
+import { Character, FamilyBackground, RelationshipType, LegacyBonuses, Trait, Lineage, Mood, Relationship, Hobby } from '../types';
 import { BIRTHPLACES, POSITIVE_TRAITS, NEGATIVE_TRAITS, LIFE_GOALS, LAST_NAMES, WEEKLY_CHALLENGES, FIRST_NAMES, PORTRAIT_COLORS, LINEAGE_TITLES } from '../constants';
 import LoadingSpinner from './LoadingSpinner';
 import { GlobeAltIcon, HomeIcon, PlusCircleIcon, MinusCircleIcon, StarIcon, ClipboardDocumentListIcon, TrophyIcon, UsersIcon } from './Icons';
@@ -45,7 +44,8 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, lineage, legacyBonus
     const [selectedEra, setSelectedEra] = useState<Era | null>(null);
 
     const generateCharacter = useCallback((birthYear: number) => {
-        const family = getRandom([FamilyBackground.POOR, FamilyBackground.MIDDLE_CLASS, FamilyBackground.WEALTHY]);
+        const family = lineage?.lastKnownWealthTier ? lineage.lastKnownWealthTier : getRandom([FamilyBackground.POOR, FamilyBackground.MIDDLE_CLASS, FamilyBackground.WEALTHY]);
+        
         let startingWealth = 0;
         if (family === FamilyBackground.MIDDLE_CLASS) startingWealth = 500;
         if (family === FamilyBackground.WEALTHY) startingWealth = 5000;
@@ -53,9 +53,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, lineage, legacyBonus
         const lineageBonus: LegacyBonuses = lineage?.title ? LINEAGE_TITLES.find(t => t.name === lineage.title)?.bonus || {} : {};
         const purchasedBonuses: LegacyBonuses = legacyBonuses || {};
 
-        const allBonuses = {
-            ...lineageBonus,
-            ...purchasedBonuses,
+        const allBonuses: Required<LegacyBonuses> = {
             wealth: (lineageBonus.wealth || 0) + (purchasedBonuses.wealth || 0),
             intelligence: (lineageBonus.intelligence || 0) + (purchasedBonuses.intelligence || 0),
             charisma: (lineageBonus.charisma || 0) + (purchasedBonuses.charisma || 0),
@@ -64,14 +62,20 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, lineage, legacyBonus
             health: (lineageBonus.health || 0) + (purchasedBonuses.health || 0),
             fame: (lineageBonus.fame || 0) + (purchasedBonuses.fame || 0),
             influence: (lineageBonus.influence || 0) + (purchasedBonuses.influence || 0),
+            favors: (lineageBonus.favors || 0) + (purchasedBonuses.favors || 0),
             addTraits: [...(lineageBonus.addTraits || []), ...(purchasedBonuses.addTraits || [])],
+            addHobbies: [...(lineageBonus.addHobbies || []), ...(purchasedBonuses.addHobbies || [])],
+            addAssets: [...(lineageBonus.addAssets || []), ...(purchasedBonuses.addAssets || [])],
+            addRelationships: [...(lineageBonus.addRelationships || []), ...(purchasedBonuses.addRelationships || [])],
+            inheritedSecret: purchasedBonuses.inheritedSecret || lineageBonus.inheritedSecret || ''
         };
+
 
         const initialTraits: Trait[] = [
             getRandom(POSITIVE_TRAITS),
             getRandom(NEGATIVE_TRAITS),
             ...allBonuses.addTraits,
-        ];
+        ].filter((trait, index, self) => trait && index === self.findIndex(t => t.name === trait.name)); // Remove duplicates
         
         const founderTraits = lineage 
             ? lineage.founderTraits
@@ -93,41 +97,44 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, lineage, legacyBonus
         const baseStat = 10;
         const distributedPoints = distributePoints(pointPool, 4);
 
+        const baseRelationships: Relationship[] = [
+            { name: 'Mãe', type: RelationshipType.FAMILY, intimacy: getRandomInt(50, 70), history: [] },
+            { name: 'Pai', type: RelationshipType.FAMILY, intimacy: getRandomInt(50, 70), history: [] }
+        ];
+
         const newChar: Character = {
             name: getRandom(FIRST_NAMES),
             lastName: lineage ? lineage.lastName : getRandom(LAST_NAMES),
             generation: lineage ? lineage.generation + 1 : 1,
             birthYear: birthYear,
             age: 5,
-            health: getRandomInt(65, 85) + (allBonuses.health || 0),
-            intelligence: baseStat + distributedPoints[0] + (allBonuses.intelligence || 0),
-            charisma: baseStat + distributedPoints[1] + (allBonuses.charisma || 0),
-            creativity: baseStat + distributedPoints[2] + (allBonuses.creativity || 0),
-            discipline: baseStat + distributedPoints[3] + (allBonuses.discipline || 0),
-            wealth: startingWealth + (allBonuses.wealth || 0),
+            health: getRandomInt(65, 85) + allBonuses.health,
+            intelligence: baseStat + distributedPoints[0] + allBonuses.intelligence,
+            charisma: baseStat + distributedPoints[1] + allBonuses.charisma,
+            creativity: baseStat + distributedPoints[2] + allBonuses.creativity,
+            discipline: baseStat + distributedPoints[3] + allBonuses.discipline,
+            wealth: startingWealth + allBonuses.wealth,
             investments: 0,
             morality: 0,
-            fame: (allBonuses.fame || 0),
-            influence: (allBonuses.influence || 0),
+            fame: allBonuses.fame,
+            influence: allBonuses.influence,
             mood: Mood.CONTENT,
-            birthplace: getRandom(BIRTHPLACES),
+            birthplace: lineage?.lastKnownLocation ? lineage.lastKnownLocation : getRandom(BIRTHPLACES),
             familyBackground: family,
             traits: initialTraits,
-            assets: [],
-            relationships: [
-                { name: 'Mãe', type: RelationshipType.FAMILY, intimacy: getRandomInt(50, 70), history: [] },
-                { name: 'Pai', type: RelationshipType.FAMILY, intimacy: getRandomInt(50, 70), history: [] }
-            ],
+            assets: [...allBonuses.addAssets],
+            relationships: [...baseRelationships, ...allBonuses.addRelationships],
             memories: [],
             craftedItems: [],
             lifeGoals: [{ description: getRandom(LIFE_GOALS), completed: false }],
-            hobbies: [],
+            hobbies: [...allBonuses.addHobbies],
             healthCondition: null,
             profession: null,
             jobTitle: null,
             careerLevel: 0,
             founderTraits,
-            inheritedSecret: purchasedBonuses.inheritedSecret || null,
+            favors: allBonuses.favors,
+            inheritedSecret: allBonuses.inheritedSecret || null,
         };
 
         // Clamp stats

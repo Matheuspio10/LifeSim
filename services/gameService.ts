@@ -265,7 +265,7 @@ const choiceSchema = {
         moodChange: moodTypeSchema,
         specialEnding: {
             type: Type.STRING,
-            description: "Se a escolha levar a um final de vida imediato e único (bom ou ruim), descreva-o aqui. Isso encerrará o jogo."
+            description: "CRÍTICO: Use este campo SOMENTE se a escolha resultar na MORTE IMEDIATA do personagem ou em um evento que encerre sua vida ativa de forma definitiva (ex: prisão perpétua). A descrição deve ser o resumo final da vida. NÃO use para grandes conquistas que não terminem a vida."
         },
         timeCostInUnits: { type: Type.INTEGER, description: "Custo em meses (1-12). Padrão é 1 se não especificado." },
     },
@@ -332,6 +332,7 @@ const getBaseSystemPrompt = (isTurbo: boolean): string => {
 7.  **Progressão de Vida**: Crie eventos que permitam o crescimento. O personagem deve ter oportunidades de mudar de carreira, formar relacionamentos, desenvolver hobbies e perseguir objetivos de vida.
 8.  **Consistência**: Mantenha a consistência com os detalhes do personagem. Um personagem com baixa inteligência não deve, de repente, resolver uma equação complexa.
 9.  **Formato JSON**: RESPONDA APENAS com um objeto JSON VÁLIDO que corresponda ao schema fornecido. SEM TEXTO EXTRA, SEM EXPLICAÇÕES, APENAS O JSON.
+10. **Memórias e Conquistas**: Para eventos impactantes (especialmente os 'isEpic') ou resultados que mudam a vida, você DEVE gerar uma 'memoryGained'. Se a ação cumprir um dos 'lifeGoals', use 'goalChanges' para marcá-lo como completo.
 `;
 
     if (isTurbo) {

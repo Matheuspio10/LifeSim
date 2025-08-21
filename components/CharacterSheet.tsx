@@ -1,8 +1,7 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Character, LifeStage, Lineage, Mood, HobbyType } from '../types';
 import StatDisplay from './StatDisplay';
-import { HeartIcon, BrainIcon, UserGroupIcon, CurrencyDollarIcon, LightBulbIcon, ShieldCheckIcon, PlusCircleIcon, MinusCircleIcon, GlobeAltIcon, HomeIcon, StarIcon, UsersIcon, BriefcaseIcon, ScaleIcon, BookOpenIcon, ExclamationTriangleIcon, ClipboardDocumentListIcon, SparklesIcon, CheckCircleIcon, ChartBarIcon, SpeakerWaveIcon, PixelArtPortraitIcon, FaceSmileIcon, FaceFrownIcon, FireIcon, HandThumbUpIcon, CloudIcon, PencilSquareIcon, MusicalNoteIcon, PaintBrushIcon, BeakerIcon, TrophyIcon, Cog6ToothIcon } from './Icons';
+import { HeartIcon, BrainIcon, UserGroupIcon, CurrencyDollarIcon, LightBulbIcon, ShieldCheckIcon, PlusCircleIcon, MinusCircleIcon, GlobeAltIcon, HomeIcon, StarIcon, UsersIcon, BriefcaseIcon, ScaleIcon, BookOpenIcon, ExclamationTriangleIcon, ClipboardDocumentListIcon, SparklesIcon, CheckCircleIcon, ChartBarIcon, SpeakerWaveIcon, PixelArtPortraitIcon, FaceSmileIcon, FaceFrownIcon, FireIcon, HandThumbUpIcon, CloudIcon, PencilSquareIcon, MusicalNoteIcon, PaintBrushIcon, BeakerIcon, TrophyIcon, Cog6ToothIcon, PuzzlePieceIcon } from './Icons';
 import SpectrumDisplay from './SpectrumDisplay';
 import LineageCrestDisplay from './LineageCrestDisplay';
 import { TOTAL_MONTHS_PER_YEAR } from '../constants';
@@ -173,6 +172,15 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
         {character.investments > 0 && 
             <StatDisplay label="Investimentos" value={character.investments} icon={<ChartBarIcon />} isCurrency={true} />
         }
+        {character.favors > 0 &&
+            <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-700/50">
+                <div className="flex items-center gap-2">
+                    <span className="text-purple-400 w-5 h-5"><PuzzlePieceIcon /></span>
+                    <span className="font-semibold text-slate-300">Favores da Família</span>
+                </div>
+                <span className="font-bold text-lg text-white">{character.favors}</span>
+            </div>
+        }
       </div>
 
       {character.healthCondition && (
@@ -292,7 +300,7 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
               <span className={`w-5 h-5 flex-shrink-0 ${trait.type === 'positive' ? 'text-green-400' : 'text-red-400'}`}>
                 {trait.type === 'positive' ? <PlusCircleIcon /> : <MinusCircleIcon />}
               </span>
-              <p className="text-sm font-medium text-slate-200">{trait.name}</p>
+              <p className="text-sm font-medium text-slate-200">{trait.name}{trait.level ? ` Nv. ${trait.level}`: ''}</p>
             </div>
           ))}
         </div>

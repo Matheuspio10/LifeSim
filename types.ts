@@ -3,6 +3,7 @@ export interface Trait {
     name: string;
     description: string;
     type: 'positive' | 'negative';
+    level?: number;
 }
 
 export enum GameState {
@@ -157,6 +158,7 @@ export interface Character {
   specialEnding?: string;
   founderTraits: FounderTraits;
   causeOfDeath?: string;
+  favors: number;
   inheritedSecret?: string | null;
   // Career
   profession: string | null;
@@ -259,8 +261,12 @@ export interface LegacyBonuses {
     health?: number;
     influence?: number;
     fame?: number;
+    favors?: number;
     addTraits?: Trait[];
     inheritedSecret?: string;
+    addHobbies?: Hobby[];
+    addAssets?: string[];
+    addRelationships?: Relationship[];
 }
 
 
@@ -292,6 +298,8 @@ export interface Lineage {
     crest: LineageCrest;
     title: string | null;
     founderTraits: FounderTraits;
+    lastKnownLocation?: string;
+    lastKnownWealthTier?: FamilyBackground;
 }
 
 export interface WeeklyFocus {
@@ -301,4 +309,12 @@ export interface WeeklyFocus {
     iconName: string;
     statChanges: StatChanges;
     hobbyType?: HobbyType;
+}
+
+export interface Checkpoint {
+  id: string;
+  timestamp: string;
+  name: string;
+  keyActions: string[];
+  stateSnapshot: any;
 }
