@@ -282,7 +282,7 @@ const choiceSchema = {
         goalChanges: goalChangesSchema,
         craftedItemChanges: craftedItemChangesSchema,
         healthConditionChange: { type: Type.STRING, description: 'A nova condição de saúde (ex: "Em tratamento de câncer"). Use `null` para indicar cura.' },
-        specialEnding: { type: Type.STRING, description: 'RARAMENTE, se esta escolha levar a um final secreto e narrativo da vida, forneça o texto completo do final aqui. Isso encerrará o jogo imediatamente.' }
+        specialEnding: { type: Type.STRING, description: 'EXTREMAMENTE RARAMENTE, se esta escolha levar a um final secreto e narrativo da vida (ex: fugir do país e começar uma nova identidade, sacrificar-se por uma causa maior, ser preso perpetuamente), forneça o texto completo do final aqui. Isso encerrará o jogo imediatamente.' }
     },
     required: ['choiceText', 'outcomeText', 'statChanges']
 };
@@ -393,7 +393,10 @@ export const generateGameEvent = async (character: Character, lifeStage: LifeSta
 
 
     const prompt = `
-        Você é o mestre de um jogo de simulação de vida roguelite.
+        Você é o mestre de um jogo de simulação de vida roguelite, atuando como um narrador de um mundo sandbox.
+
+        **FILOSOFIA DE MESTRE DE JOGO SANDBOX:** Sua principal diretriz é "Sim, e...". Você deve ser um narrador que reage ao jogador, não que o bloqueia. O jogador tem total liberdade de ação. Sua função é criar consequências interessantes, realistas e, por vezes, inesperadas para as ações e ambições do jogador, em vez de negá-las. Se um jogador tenta criar um sindicato por 20 anos, os eventos devem refletir essa longa luta: pequenos progressos, forte oposição, aliados inesperados, traições, etc. O mundo deve parecer vivo e reagir às ambições do personagem. Nunca diga "você não pode fazer isso". Em vez disso, mostre o que acontece quando ele tenta.
+
         Gere um evento de vida convincente em PORTUGUÊS para um personagem com os seguintes atributos:
         - Ano de Nascimento: ${character.birthYear}
         - Ano do Evento: ${eventYear}
@@ -450,7 +453,7 @@ export const generateGameEvent = async (character: Character, lifeStage: LifeSta
         - **Objetivos de Vida:** Crie eventos que permitam progredir, completar ou adicionar novos objetivos com \`goalChanges\`.
         - **Crises de Saúde:** Use \`healthConditionChange\` para adicionar/remover condições de saúde.
         - **Influência Social:** Crie eventos que impactem 'influence', 'fame' e 'morality'.
-        - **Finais Especiais:** RARAMENTE, ofereça escolhas que levem a um \`specialEnding\` narrativo para encerrar o jogo de forma única.
+        - **Finais Especiais:** EXTREMAMENTE RARAMENTE, ofereça escolhas que levem a um \`specialEnding\` narrativo para encerrar o jogo de forma única. Use isso apenas para eventos que sejam verdadeiramente o fim de uma história (ex: fugir do país e começar uma nova identidade, sacrificar-se por uma causa maior, ser preso perpetuamente).
         - **Memórias:** Para marcos importantes, adicione um \`memoryGained\`.
         
         **Caminhos Sombrios e Consequências:** O jogo permite que os personagens sigam caminhos moralmente questionáveis. Gere eventos que explorem isso.
@@ -531,7 +534,7 @@ export const evaluatePlayerResponse = async (character: Character, eventText: st
         "${playerResponse}"
 
         **SUA TAREFA:**
-        1.  Interprete a ação do jogador de forma criativa e realista, considerando seus atributos e hobbies. Uma resposta inteligente de um personagem com baixa inteligência pode sair errada. Um artista pode tentar desenhar uma solução.
+        1.  Interprete a ação do jogador com a mentalidade de "Sim, e...". Aceite a premissa da ação do jogador e narre o que acontece a seguir de forma criativa e realista. O sucesso não é garantido, mas a ação sempre deve ter um resultado que move a história para frente. Considere os atributos do personagem: um personagem com baixo carisma pode tentar um discurso, mas o resultado pode ser embaraçoso; um artista pode tentar desenhar uma solução. O resultado deve ser uma consequência lógica da ação dentro do mundo do jogo.
         2.  Determine o resultado imediato da ação.
         3.  Crie UM ÚNICO objeto JSON com as consequências, seguindo o schema fornecido.
 

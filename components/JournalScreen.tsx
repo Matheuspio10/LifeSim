@@ -18,7 +18,7 @@ const MemoryIcon: React.FC<{ type: MemoryItemType }> = ({ type }) => {
         [MemoryItemType.RELIC]: <SparklesIcon />,
         [MemoryItemType.MEMENTO]: <TicketIcon />,
     };
-    return <div className="w-8 h-8 text-cyan-400">{icons[type] || null}</div>;
+    return <div className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-1">{icons[type] || null}</div>;
 };
 
 const JournalScreen: React.FC<JournalScreenProps> = ({ character, lifeSummary, onClose }) => {
@@ -65,21 +65,21 @@ const JournalScreen: React.FC<JournalScreenProps> = ({ character, lifeSummary, o
                 {/* Crafted Items */}
                 <div>
                     <h4 className="text-lg font-semibold text-slate-300 mb-3 flex items-center gap-2">
-                        <PencilSquareIcon /> Especiais
+                        <span className="w-5 h-5"><PencilSquareIcon /></span> Especiais
                     </h4>
                     {character.craftedItems.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-2">
                             {character.craftedItems.map((item, index) => (
                                 <div key={index} className="bg-slate-700/50 p-3 rounded-lg border border-slate-600 group relative cursor-help">
-                                    <div className="flex items-center gap-3">
-                                        <div className="flex-shrink-0 w-8 h-8 text-cyan-400">
+                                    <div className="flex items-start gap-3">
+                                        <div className="flex-shrink-0 w-6 h-6 text-cyan-400 mt-1">
                                             <PencilSquareIcon />
                                         </div>
                                         <div>
-                                            <p className="font-bold text-slate-100 truncate">{item.name}</p>
+                                            <p className="font-bold text-slate-100">{item.name}</p>
                                         </div>
                                     </div>
-                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-950 border border-slate-600 rounded-lg shadow-xl text-sm text-slate-300 z-10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-60 p-3 bg-slate-950 border border-slate-600 rounded-lg shadow-xl text-sm text-slate-300 z-20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                                         <p className="break-words">{item.description}</p>
                                         <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-8 border-x-transparent border-t-8 border-t-slate-950"></div>
                                     </div>
@@ -101,22 +101,20 @@ const JournalScreen: React.FC<JournalScreenProps> = ({ character, lifeSummary, o
                 {/* Memories */}
                 <div>
                     <h4 className="text-lg font-semibold text-slate-300 mb-3 flex items-center gap-2">
-                        <StarIcon /> Recordações
+                        <span className="w-5 h-5"><StarIcon /></span> Recordações
                     </h4>
                     {character.memories.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-2">
                             {character.memories.map((memory, index) => (
                                 <div key={index} className="bg-slate-700/50 p-3 rounded-lg border border-slate-600 group relative cursor-help">
-                                    <div className="flex items-center gap-3">
-                                        <div className="flex-shrink-0">
-                                            <MemoryIcon type={memory.type} />
-                                        </div>
+                                    <div className="flex items-start gap-3">
+                                        <MemoryIcon type={memory.type} />
                                         <div>
-                                            <p className="font-bold text-slate-100 truncate">{memory.name}</p>
+                                            <p className="font-bold text-slate-100">{memory.name}</p>
                                             <p className="text-xs text-slate-400">Adquirido(a) aos {memory.yearAcquired} anos</p>
                                         </div>
                                     </div>
-                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-950 border border-slate-600 rounded-lg shadow-xl text-sm text-slate-300 z-10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-60 p-3 bg-slate-950 border border-slate-600 rounded-lg shadow-xl text-sm text-slate-300 z-20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                                         <p className="break-words">{memory.description}</p>
                                         <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-8 border-x-transparent border-t-8 border-t-slate-950"></div>
                                     </div>

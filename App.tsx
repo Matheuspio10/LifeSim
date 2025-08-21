@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, EconomicUpdate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Hobby } from './types';
+import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, EconomicUpdate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Hobby, HobbyType } from './types';
 import { generateGameEvent, evaluatePlayerResponse } from './services/gameService';
 import { WEEKLY_CHALLENGES, LAST_NAMES, PORTRAIT_COLORS, HEALTH_CONDITIONS, LINEAGE_TITLES } from './constants';
 import { CREST_COLORS, CREST_ICONS, CREST_SHAPES } from './lineageConstants';
@@ -164,6 +164,7 @@ const App: React.FC = () => {
         setError("Chave de API do Gemini não configurada.");
         return;
     }
+    // Clear any existing notice *before* showing the loading screen.
     setEconomicUpdateNotice(null);
     setIsLoading(true);
     setError(null);
@@ -239,7 +240,6 @@ const App: React.FC = () => {
     setLineage(null);
     setLegacyBonuses(null);
     setLegacyPoints(0);
-    setCharacter(null);
     setCurrentEvent(null);
     setCompletedChallenges([]);
     setIsMultiplayerCycle(false);
@@ -252,7 +252,6 @@ const App: React.FC = () => {
 
   const startNextGeneration = (bonuses: LegacyBonuses) => {
     setLegacyBonuses(bonuses);
-    setCharacter(null);
     setCurrentEvent(null);
     setCompletedChallenges([]);
     setGameState(GameState.NOT_STARTED);
@@ -342,10 +341,8 @@ const App: React.FC = () => {
     return { updatedCharacter: updatedChar, updateInfo };
   };
 
-   const advanceYear = useCallback(() => {
-    if (!character) return;
-
-    let updatedChar = { ...character, age: character.age + 1 };
+   const advanceYear = useCallback((characterAfterChoice: Character) => {
+    let updatedChar = { ...characterAfterChoice, age: characterAfterChoice.age + 1 };
     updatedChar.mood = Mood.CONTENT; // Mood resets each year towards content
 
     // Health degradation with age
@@ -356,9 +353,31 @@ const App: React.FC = () => {
     
     // Check for end of life
     if (updatedChar.health <= 0 || updatedChar.age >= 105) {
-      handleEndOfLife(updatedChar);
+      let causeOfDeath = 'Causas naturais devido à idade avançada';
+      if (updatedChar.health <= 0) {
+        if (updatedChar.healthCondition) {
+            causeOfDeath = `Complicações de ${updatedChar.healthCondition.name}`;
+        } else if (updatedChar.age < 65) {
+            causeOfDeath = 'Um mal súbito e inesperado';
+        } else {
+            causeOfDeath = 'Saúde debilitada';
+        }
+      }
+      handleEndOfLife({ ...updatedChar, causeOfDeath });
       return;
     }
+
+    // This function determines the next game state after the current year's events are processed.
+    const proceedToNextStep = (charAfterUpdate: Character) => {
+        const newYearsSinceRoutine = yearsSinceLastRoutine + 1;
+        setYearsSinceLastRoutine(newYearsSinceRoutine);
+        if (newYearsSinceRoutine >= ROUTINE_PLANNING_INTERVAL) {
+            setGameState(GameState.ROUTINE_PLANNING);
+        } else {
+            // After the economic notice (if any), fetch the next event.
+            fetchNextEvent(charAfterUpdate, currentYear + 1);
+        }
+    };
 
     let wasEconomicUpdate = false;
     // Economic Phase
@@ -370,52 +389,200 @@ const App: React.FC = () => {
             updatedChar = updatedCharacter;
             setEconomicUpdateNotice(updateInfo);
             wasEconomicUpdate = true;
-        } else {
-            setEconomicUpdateNotice(null);
         }
-    } else {
-        setEconomicUpdateNotice(null);
     }
-
-
+    
     setCharacter(updatedChar);
     setCurrentYear(prev => prev + 1);
     
-    const newYearsSinceRoutine = yearsSinceLastRoutine + 1;
-    setYearsSinceLastRoutine(newYearsSinceRoutine);
-    
-    if (newYearsSinceRoutine >= ROUTINE_PLANNING_INTERVAL) {
-        setGameState(GameState.ROUTINE_PLANNING);
+    if (wasEconomicUpdate) {
+        // If there was an update, show the notice for a moment, then proceed.
+        setTimeout(() => proceedToNextStep(updatedChar), 2500);
     } else {
-       setTimeout(() => fetchNextEvent(updatedChar, currentYear + 1), wasEconomicUpdate ? 2500 : 500);
+        // If no update, proceed immediately.
+        setEconomicUpdateNotice(null); 
+        proceedToNextStep(updatedChar);
     }
 
-  }, [character, currentYear, economicClimate, fetchNextEvent, yearsSinceLastRoutine]);
+  }, [currentYear, economicClimate, fetchNextEvent, yearsSinceLastRoutine]);
   
   const handleChoice = (choice: Choice) => {
     if (!character) return;
     
     let updatedChar = { ...character };
 
-    // Apply changes, create helper function later
+    // Apply stat changes
     if (choice.statChanges) {
         for (const key in choice.statChanges) {
             const stat = key as keyof typeof choice.statChanges;
             (updatedChar[stat] as number) = (updatedChar[stat] as number) + (choice.statChanges[stat] || 0);
         }
     }
+
+    // Apply asset changes
      if (choice.assetChanges) {
         updatedChar.assets = [...updatedChar.assets, ...(choice.assetChanges.add || [])];
         updatedChar.assets = updatedChar.assets.filter(a => !(choice.assetChanges!.remove || []).includes(a));
     }
+
+    // Add new memories
     if(choice.memoryGained) {
         const newMemory: MemoryItem = { ...choice.memoryGained, yearAcquired: updatedChar.age };
         updatedChar.memories = [...updatedChar.memories, newMemory];
     }
+
+    // Change mood
     if (choice.moodChange) {
         updatedChar.mood = choice.moodChange;
     }
     
+    // Apply relationship changes
+    if (choice.relationshipChanges) {
+        let relationships = [...updatedChar.relationships];
+        // Add new
+        if (choice.relationshipChanges.add) {
+            choice.relationshipChanges.add.forEach(newRel => {
+                if (!relationships.some(r => r.name === newRel.name)) {
+                    relationships.push(newRel);
+                }
+            });
+        }
+        // Update existing
+        if (choice.relationshipChanges.update) {
+            relationships = relationships.map(rel => {
+                const updateInfo = choice.relationshipChanges!.update!.find(u => u.name === rel.name);
+                if (updateInfo) {
+                    return { ...rel, intimacy: Math.max(-100, Math.min(100, rel.intimacy + updateInfo.intimacyChange)) };
+                }
+                return rel;
+            });
+        }
+        // Remove
+        if (choice.relationshipChanges.remove) {
+            relationships = relationships.filter(rel => !choice.relationshipChanges!.remove!.includes(rel.name));
+        }
+        // Update history
+        if (choice.relationshipChanges.updateHistory) {
+            relationships = relationships.map(rel => {
+                const historyUpdate = choice.relationshipChanges!.updateHistory!.find(h => h.name === rel.name);
+                if (historyUpdate) {
+                    const newHistory = [...(rel.history || []), historyUpdate.memory].slice(-5); // Keep last 5
+                    return { ...rel, history: newHistory };
+                }
+                return rel;
+            });
+        }
+        updatedChar.relationships = relationships;
+    }
+
+    // Apply hobby changes
+    if (choice.hobbyChanges) {
+        let hobbies = [...updatedChar.hobbies];
+        // Add new
+        if (choice.hobbyChanges.add) {
+            choice.hobbyChanges.add.forEach(newHobby => {
+                if (!hobbies.some(h => h.type === newHobby.type)) {
+                    hobbies.push(newHobby);
+                }
+            });
+        }
+        // Update existing
+        if (choice.hobbyChanges.update) {
+            choice.hobbyChanges.update.forEach(updateInfo => {
+                const hobbyIndex = hobbies.findIndex(h => h.type === updateInfo.type);
+                if (hobbyIndex > -1) {
+                    hobbies[hobbyIndex].level = Math.max(0, Math.min(100, hobbies[hobbyIndex].level + updateInfo.levelChange));
+                    if (updateInfo.description) {
+                        hobbies[hobbyIndex].description = updateInfo.description;
+                    }
+                } else {
+                    // If hobby doesn't exist, add it
+                    hobbies.push({
+                        type: updateInfo.type,
+                        level: Math.max(0, Math.min(100, updateInfo.levelChange)),
+                        description: updateInfo.description || `Iniciante em ${updateInfo.type}`
+                    });
+                }
+            });
+        }
+        updatedChar.hobbies = hobbies;
+    }
+
+    // Apply career changes
+    if (choice.careerChange) {
+        if (choice.careerChange.profession !== undefined) {
+            updatedChar.profession = choice.careerChange.profession === "" ? null : choice.careerChange.profession;
+            if (updatedChar.profession === null) {
+                updatedChar.jobTitle = null; // Also clear job title when unemployed
+            }
+        }
+        if (choice.careerChange.jobTitle !== undefined) {
+            updatedChar.jobTitle = updatedChar.profession ? choice.careerChange.jobTitle : null; // Only have a job title if employed
+        }
+        if (choice.careerChange.levelChange) {
+            updatedChar.careerLevel = Math.max(0, Math.min(100, updatedChar.careerLevel + choice.careerChange.levelChange));
+        }
+    }
+
+    // Apply trait changes
+    if (choice.traitChanges) {
+        let traits = [...updatedChar.traits];
+        if (choice.traitChanges.add) {
+            // Avoid adding duplicate traits
+            choice.traitChanges.add.forEach(newTrait => {
+                if (!traits.some(t => t.name === newTrait.name)) {
+                    traits.push(newTrait);
+                }
+            });
+        }
+        if (choice.traitChanges.remove) {
+            traits = traits.filter(t => !choice.traitChanges!.remove!.includes(t.name));
+        }
+        updatedChar.traits = traits;
+    }
+    
+    // Apply goal changes
+    if (choice.goalChanges) {
+        let goals = [...updatedChar.lifeGoals];
+        if (choice.goalChanges.add) {
+            choice.goalChanges.add.forEach(desc => {
+                if (!goals.some(g => g.description === desc)) {
+                    goals.push({ description: desc, completed: false });
+                }
+            });
+        }
+        if (choice.goalChanges.complete) {
+            goals = goals.map(g => 
+                choice.goalChanges!.complete!.includes(g.description) ? { ...g, completed: true } : g
+            );
+        }
+        updatedChar.lifeGoals = goals;
+    }
+
+    // Apply crafted item changes
+    if (choice.craftedItemChanges) {
+        let items = [...updatedChar.craftedItems];
+        if (choice.craftedItemChanges.add) {
+            items.push(...choice.craftedItemChanges.add);
+        }
+        if (choice.craftedItemChanges.remove) {
+            items = items.filter(item => !choice.craftedItemChanges!.remove!.includes(item.name));
+        }
+        updatedChar.craftedItems = items;
+    }
+
+    // Apply health condition change
+    if (choice.healthConditionChange !== undefined) {
+        if (choice.healthConditionChange === null) {
+            updatedChar.healthCondition = null;
+        } else {
+            updatedChar.healthCondition = {
+                name: choice.healthConditionChange,
+                ageOfOnset: updatedChar.age,
+            };
+        }
+    }
+
     // Clamp values
     updatedChar.health = Math.max(0, Math.min(100, updatedChar.health));
     updatedChar.intelligence = Math.max(0, Math.min(100, updatedChar.intelligence));
@@ -434,8 +601,7 @@ const App: React.FC = () => {
         return;
     }
     
-    setCharacter(updatedChar);
-    advanceYear();
+    advanceYear(updatedChar);
   };
   
   const handleOpenResponseSubmit = async (responseText: string) => {

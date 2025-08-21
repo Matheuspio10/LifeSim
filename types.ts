@@ -140,6 +140,7 @@ export interface Character {
   healthCondition: HealthCondition | null;
   specialEnding?: string;
   founderTraits: FounderTraits;
+  causeOfDeath?: string;
   // Career
   profession: string | null;
   jobTitle: string | null;

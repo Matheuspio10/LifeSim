@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { Character, LifeSummaryEntry, MemoryItem, MemoryItemType, ParallelLifeData, Lineage } from '../types';
 import { StarIcon, DocumentTextIcon, PhotoIcon, EnvelopeIcon, TrophyIcon, SparklesIcon, TicketIcon, CheckCircleIcon } from './Icons';
@@ -74,9 +73,10 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({ finalCharacter, lifeSum
             </>
         ) : (
             <>
-                <h2 className="text-4xl font-pixel text-red-500 mb-2">Fim de Jogo</h2>
+                <h2 className="text-4xl font-pixel text-red-500 mb-2">A Linhagem Terminou</h2>
                 <p className="text-xl text-slate-300 mb-2">
-                    A vida de {finalCharacter.name} {finalCharacter.lastName} chegou ao fim.
+                    {finalCharacter.name} {finalCharacter.lastName} morreu aos {finalCharacter.age} anos
+                    {finalCharacter.causeOfDeath ? ` devido a ${finalCharacter.causeOfDeath.toLowerCase()}` : ''}.
                 </p>
             </>
         )}
