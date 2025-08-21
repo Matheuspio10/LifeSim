@@ -2,6 +2,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Hobby, HobbyType, DecisionArea } from './types';
 import { generateGameEvent, evaluatePlayerResponse } from './services/gameService';
+import { applyChoiceToCharacter } from './services/characterService';
 import { WEEKLY_CHALLENGES, LAST_NAMES, PORTRAIT_COLORS, HEALTH_CONDITIONS, LINEAGE_TITLES, TOTAL_MONTHS_PER_YEAR } from './constants';
 import { CREST_COLORS, CREST_ICONS, CREST_SHAPES } from './lineageConstants';
 import CharacterSheet from './components/CharacterSheet';
@@ -41,6 +42,8 @@ const App: React.FC = () => {
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [decisionQueue, setDecisionQueue] = useState<DecisionArea[]>([]);
   const [isQuotaModalOpen, setIsQuotaModalOpen] = useState<boolean>(false);
+  const [lastError, setLastError] = useState<string | null>(null);
+  const [showDebug, setShowDebug] = useState<boolean>(false);
 
 
   // Legacy State
@@ -176,6 +179,8 @@ const App: React.FC = () => {
       setGameState(GameState.IN_PROGRESS);
     } catch (err)      {
       console.error(err);
+      const errorString = err instanceof Error ? `${err.name}: ${err.message}\n${err.stack}` : JSON.stringify(err);
+      setLastError(errorString);
       if (err instanceof Error) {
         if (err.message.includes('429') || err.message.toLowerCase().includes('quota')) {
             setIsQuotaModalOpen(true);
@@ -417,190 +422,8 @@ const App: React.FC = () => {
     
     const eventBeingProcessed = currentEvent;
     setCurrentEvent(null); // Clear the event immediately to prevent re-rendering the old card
-    let updatedChar = { ...character };
 
-    // Apply stat changes
-    if (choice.statChanges) {
-        for (const key in choice.statChanges) {
-            const stat = key as keyof typeof choice.statChanges;
-            (updatedChar[stat] as number) = (updatedChar[stat] as number) + (choice.statChanges[stat] || 0);
-        }
-    }
-
-    // Apply asset changes
-     if (choice.assetChanges) {
-        updatedChar.assets = [...updatedChar.assets, ...(choice.assetChanges.add || [])];
-        updatedChar.assets = updatedChar.assets.filter(a => !(choice.assetChanges!.remove || []).includes(a));
-    }
-
-    // Add new memories
-    if(choice.memoryGained) {
-        const newMemory: MemoryItem = { ...choice.memoryGained, yearAcquired: updatedChar.age };
-        updatedChar.memories = [...updatedChar.memories, newMemory];
-    }
-
-    // Change mood
-    if (choice.moodChange) {
-        updatedChar.mood = choice.moodChange;
-    }
-    
-    // Apply relationship changes
-    if (choice.relationshipChanges) {
-        let relationships = [...updatedChar.relationships];
-        // Add new
-        if (choice.relationshipChanges.add) {
-            choice.relationshipChanges.add.forEach(newRel => {
-                if (!relationships.some(r => r.name === newRel.name)) {
-                    relationships.push(newRel);
-                }
-            });
-        }
-        // Update existing
-        if (choice.relationshipChanges.update) {
-            relationships = relationships.map(rel => {
-                const updateInfo = choice.relationshipChanges!.update!.find(u => u.name === rel.name);
-                if (updateInfo) {
-                    return { ...rel, intimacy: Math.max(-100, Math.min(100, rel.intimacy + updateInfo.intimacyChange)) };
-                }
-                return rel;
-            });
-        }
-        // Remove
-        if (choice.relationshipChanges.remove) {
-            relationships = relationships.filter(rel => !choice.relationshipChanges!.remove!.includes(rel.name));
-        }
-        // Update history
-        if (choice.relationshipChanges.updateHistory) {
-            relationships = relationships.map(rel => {
-                const historyUpdate = choice.relationshipChanges!.updateHistory!.find(h => h.name === rel.name);
-                if (historyUpdate) {
-                    const newHistory = [...(rel.history || []), historyUpdate.memory].slice(-5); // Keep last 5
-                    return { ...rel, history: newHistory };
-                }
-                return rel;
-            });
-        }
-        updatedChar.relationships = relationships;
-    }
-
-    // Apply hobby changes
-    if (choice.hobbyChanges) {
-        let hobbies = [...updatedChar.hobbies];
-        // Add new
-        if (choice.hobbyChanges.add) {
-            choice.hobbyChanges.add.forEach(newHobby => {
-                if (!hobbies.some(h => h.type === newHobby.type)) {
-                    hobbies.push(newHobby);
-                }
-            });
-        }
-        // Update existing
-        if (choice.hobbyChanges.update) {
-            choice.hobbyChanges.update.forEach(updateInfo => {
-                const hobbyIndex = hobbies.findIndex(h => h.type === updateInfo.type);
-                if (hobbyIndex > -1) {
-                    hobbies[hobbyIndex].level = Math.max(0, Math.min(100, hobbies[hobbyIndex].level + updateInfo.levelChange));
-                    if (updateInfo.description) {
-                        hobbies[hobbyIndex].description = updateInfo.description;
-                    }
-                } else {
-                    // If hobby doesn't exist, add it
-                    hobbies.push({
-                        type: updateInfo.type,
-                        level: Math.max(0, Math.min(100, updateInfo.levelChange)),
-                        description: updateInfo.description || `Iniciante em ${updateInfo.type}`
-                    });
-                }
-            });
-        }
-        updatedChar.hobbies = hobbies;
-    }
-
-    // Apply career changes
-    if (choice.careerChange) {
-        if (choice.careerChange.profession !== undefined) {
-            updatedChar.profession = choice.careerChange.profession === "" ? null : choice.careerChange.profession;
-            if (updatedChar.profession === null) {
-                updatedChar.jobTitle = null; // Also clear job title when unemployed
-            }
-        }
-        if (choice.careerChange.jobTitle !== undefined) {
-            updatedChar.jobTitle = updatedChar.profession ? choice.careerChange.jobTitle : null; // Only have a job title if employed
-        }
-        if (choice.careerChange.levelChange) {
-            updatedChar.careerLevel = Math.max(0, Math.min(100, updatedChar.careerLevel + choice.careerChange.levelChange));
-        }
-    }
-
-    // Apply trait changes
-    if (choice.traitChanges) {
-        let traits = [...updatedChar.traits];
-        if (choice.traitChanges.add) {
-            // Avoid adding duplicate traits
-            choice.traitChanges.add.forEach(newTrait => {
-                if (!traits.some(t => t.name === newTrait.name)) {
-                    traits.push(newTrait);
-                }
-            });
-        }
-        if (choice.traitChanges.remove) {
-            traits = traits.filter(t => !choice.traitChanges!.remove!.includes(t.name));
-        }
-        updatedChar.traits = traits;
-    }
-    
-    // Apply goal changes
-    if (choice.goalChanges) {
-        let goals = [...updatedChar.lifeGoals];
-        if (choice.goalChanges.add) {
-            choice.goalChanges.add.forEach(desc => {
-                if (!goals.some(g => g.description === desc)) {
-                    goals.push({ description: desc, completed: false });
-                }
-            });
-        }
-        if (choice.goalChanges.complete) {
-            goals = goals.map(g => 
-                choice.goalChanges!.complete!.includes(g.description) ? { ...g, completed: true } : g
-            );
-        }
-        updatedChar.lifeGoals = goals;
-    }
-
-    // Apply crafted item changes
-    if (choice.craftedItemChanges) {
-        let items = [...updatedChar.craftedItems];
-        if (choice.craftedItemChanges.add) {
-            items.push(...choice.craftedItemChanges.add);
-        }
-        if (choice.craftedItemChanges.remove) {
-            items = items.filter(item => !choice.craftedItemChanges!.remove!.includes(item.name));
-        }
-        updatedChar.craftedItems = items;
-    }
-
-    // Apply health condition change
-    if (choice.healthConditionChange !== undefined) {
-        if (choice.healthConditionChange === null) {
-            updatedChar.healthCondition = null;
-        } else {
-            updatedChar.healthCondition = {
-                name: choice.healthConditionChange,
-                ageOfOnset: updatedChar.age,
-            };
-        }
-    }
-
-    // Clamp values
-    updatedChar.health = Math.max(0, Math.min(100, updatedChar.health));
-    updatedChar.intelligence = Math.max(0, Math.min(100, updatedChar.intelligence));
-    updatedChar.charisma = Math.max(0, Math.min(100, updatedChar.charisma));
-    updatedChar.creativity = Math.max(0, Math.min(100, updatedChar.creativity));
-    updatedChar.discipline = Math.max(0, Math.min(100, updatedChar.discipline));
-    updatedChar.morality = Math.max(-100, Math.min(100, updatedChar.morality));
-    updatedChar.fame = Math.max(-100, Math.min(100, updatedChar.fame));
-    updatedChar.influence = Math.max(-100, Math.min(100, updatedChar.influence));
-
+    const updatedChar = applyChoiceToCharacter(character, choice, eventBeingProcessed.isEpic);
 
     setLifeSummary(prev => [...prev, { text: choice.outcomeText, isEpic: eventBeingProcessed.isEpic || false }]);
     
@@ -609,7 +432,13 @@ const App: React.FC = () => {
         return;
     }
     
-    const timeCost = choice.timeCostInUnits || eventBeingProcessed.timeCostInUnits || 1;
+    let timeCost = choice.timeCostInUnits || eventBeingProcessed.timeCostInUnits || 1;
+    
+    // Durante a infância, os eventos custam o dobro de tempo para fazer essa fase passar mais rápido.
+    if (getCurrentLifeStage(updatedChar.age) === LifeStage.CHILDHOOD) {
+        timeCost *= 2;
+    }
+    
     advanceTime(updatedChar, timeCost);
   };
   
@@ -622,6 +451,8 @@ const App: React.FC = () => {
         handleChoice(choice);
      } catch (err) {
         console.error(err);
+        const errorString = err instanceof Error ? `${err.name}: ${err.message}\n${err.stack}` : JSON.stringify(err);
+        setLastError(errorString);
         if (err instanceof Error && (err.message.includes('429') || err.message.toLowerCase().includes('quota'))) {
             setIsQuotaModalOpen(true);
             setError(null);
@@ -679,9 +510,9 @@ const App: React.FC = () => {
   const renderMainContent = () => {
     if (isLoading) {
         if (gameState === GameState.IN_PROGRESS) {
-            return character && <DowntimeActivities character={character} onMicroAction={handleMicroAction} />;
+            return character && <DowntimeActivities character={character} onMicroAction={handleMicroAction} onShowDebug={() => setShowDebug(true)} />;
         }
-        return <LoadingSpinner />;
+        return <LoadingSpinner onShowDebug={() => setShowDebug(true)} />;
     }
     if (error) {
         return <div className="text-red-400 text-center p-4 bg-red-900/50 rounded-lg">{error}</div>;
@@ -689,16 +520,16 @@ const App: React.FC = () => {
 
     switch (gameState) {
       case GameState.NOT_STARTED:
-        return <StartScreen onStart={startGame} lineage={lineage} legacyBonuses={legacyBonuses} currentYear={currentYear} hasSaveData={hasSaveData} onContinueGame={handleContinueGame} onStartNewGame={handleStartNewGameFromScratch} />;
+        return <StartScreen onStart={startGame} lineage={lineage} legacyBonuses={legacyBonuses} currentYear={currentYear} hasSaveData={hasSaveData} onContinueGame={handleContinueGame} onStartNewGame={handleStartNewGameFromScratch} onShowDebug={() => setShowDebug(true)} />;
       case GameState.ROUTINE_PLANNING:
         return character && <RoutineScreen character={character} onConfirm={handleRoutineConfirm} isLoading={isLoading} />;
       case GameState.IN_PROGRESS:
         if (currentEvent?.type === 'MINI_GAME') {
             return character && <MiniGameHost event={currentEvent} character={character} onComplete={handleChoice} />;
         }
-        return currentEvent ? <EventCard event={currentEvent} onChoice={handleChoice} onOpenResponseSubmit={handleOpenResponseSubmit} /> : <LoadingSpinner />;
+        return currentEvent ? <EventCard event={currentEvent} onChoice={handleChoice} onOpenResponseSubmit={handleOpenResponseSubmit} /> : <LoadingSpinner onShowDebug={() => setShowDebug(true)} />;
       case GameState.GAME_OVER:
-        return character ? <GameOverScreen finalCharacter={character} lifeSummary={lifeSummary} legacyPoints={legacyPoints} completedChallenges={completedChallenges} isMultiplayerCycle={isMultiplayerCycle} onContinueLineage={continueLineage} onStartNewLineage={startNewLineage} lineage={lineage} /> : <LoadingSpinner />;
+        return character ? <GameOverScreen finalCharacter={character} lifeSummary={lifeSummary} legacyPoints={legacyPoints} completedChallenges={completedChallenges} isMultiplayerCycle={isMultiplayerCycle} onContinueLineage={continueLineage} onStartNewLineage={startNewLineage} lineage={lineage} /> : <LoadingSpinner onShowDebug={() => setShowDebug(true)} />;
       case GameState.LEGACY:
         return <LegacyScreen points={legacyPoints} onStart={startNextGeneration} finalCharacter={character} lineage={lineage} />;
       default:
@@ -727,6 +558,28 @@ const App: React.FC = () => {
         )}
         {isJournalOpen && character && <JournalScreen character={character} lifeSummary={lifeSummary} onClose={() => setIsJournalOpen(false)} />}
         {isQuotaModalOpen && <QuotaErrorModal onClose={() => setIsQuotaModalOpen(false)} />}
+        {showDebug && (
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+                <div className="w-full max-w-2xl bg-slate-800 border border-slate-600 rounded-lg p-6 text-left">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold text-white">Informações de Depuração</h2>
+                        <button
+                            onClick={() => setShowDebug(false)}
+                            className="w-8 h-8 flex items-center justify-center bg-slate-700/50 rounded-full text-slate-300 hover:bg-slate-600 hover:text-white transition-colors"
+                            aria-label="Fechar"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <h3 className="text-lg font-semibold text-slate-300 mb-2">Último Erro Capturado</h3>
+                    <pre className="bg-slate-900 p-4 rounded-md text-sm text-red-300 whitespace-pre-wrap overflow-auto max-h-96">
+                        {lastError || 'Nenhum erro foi capturado ainda.'}
+                    </pre>
+                </div>
+            </div>
+        )}
     </main>
   );
 };

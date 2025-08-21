@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Character, FamilyBackground, RelationshipType, LegacyBonuses, Trait, Lineage, Mood } from '../types';
 import { BIRTHPLACES, POSITIVE_TRAITS, NEGATIVE_TRAITS, LIFE_GOALS, LAST_NAMES, WEEKLY_CHALLENGES, FIRST_NAMES, PORTRAIT_COLORS, LINEAGE_TITLES } from '../constants';
@@ -34,12 +33,13 @@ interface StartScreenProps {
     hasSaveData: boolean;
     onContinueGame: () => void;
     onStartNewGame: () => void;
+    onShowDebug: () => void;
 }
 
 const getRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const getRandomInt = (min: number, max: number): number => Math.floor(Math.random() * (max - min + 1)) + min;
 
-const StartScreen: React.FC<StartScreenProps> = ({ onStart, lineage, legacyBonuses, currentYear, hasSaveData, onContinueGame, onStartNewGame }) => {
+const StartScreen: React.FC<StartScreenProps> = ({ onStart, lineage, legacyBonuses, currentYear, hasSaveData, onContinueGame, onStartNewGame, onShowDebug }) => {
     const [character, setCharacter] = useState<Character | null>(null);
     const [step, setStep] = useState<'era' | 'character'>(lineage ? 'character' : 'era');
     const [selectedEra, setSelectedEra] = useState<Era | null>(null);
@@ -223,7 +223,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, lineage, legacyBonus
     }
     
     if (step === 'character' && !character) {
-        return <div className="w-full max-w-xl text-center p-8"><LoadingSpinner /></div>;
+        return <div className="w-full max-w-xl text-center p-8"><LoadingSpinner onShowDebug={onShowDebug} /></div>;
     }
 
     if (step === 'character' && character) {

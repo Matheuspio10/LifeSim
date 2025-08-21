@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { GameEvent, Choice, MiniGameType, Character } from '../types';
 import InvestmentGame from './mini-games/InvestmentGame';
 import { SpeakerWaveIcon, ShieldExclamationIcon, BriefcaseIcon, ScaleIcon, ShieldCheckIcon, LightBulbIcon, SparklesIcon, BeakerIcon } from './Icons';
@@ -9,9 +10,37 @@ interface MiniGameProps {
   onComplete: (choice: Choice) => void;
 }
 
+// --- Custom Hook for Mini-Game Result Flow ---
+const useMiniGameResult = (onComplete: (choice: Choice) => void) => {
+    const [resultText, setResultText] = useState<string | null>(null);
+    const [title, setTitle] = useState<string>('Resultado');
+
+    const showResult = (choice: Choice, resultTitle: string, delay: number = 3500) => {
+        setResultText(choice.outcomeText);
+        setTitle(resultTitle);
+        
+        const timer = setTimeout(() => {
+            onComplete(choice);
+        }, delay);
+
+        return () => clearTimeout(timer); // Cleanup on unmount
+    };
+
+    const ResultDisplay = resultText ? (
+        <div className="w-full max-w-lg bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border border-slate-700 text-center animate-fade-in">
+             <div className="w-12 h-12 border-4 border-dashed rounded-full animate-spin border-cyan-400 mx-auto mb-4"></div>
+             <h2 className="text-2xl font-bold text-cyan-400 mb-4">{title}</h2>
+             <p className="text-slate-300 leading-relaxed">{resultText}</p>
+        </div>
+    ) : null;
+
+    return { showResult, ResultDisplay, isShowingResult: !!resultText };
+};
+
+
 // --- Speakeasy Smuggling Mini-Game Component ---
 const SpeakeasySmugglingGame: React.FC<MiniGameProps> = ({ event, character, onComplete }) => {
-    const [result, setResult] = useState<string | null>(null);
+    const { showResult, ResultDisplay, isShowingResult } = useMiniGameResult(onComplete);
 
     const handleRoute = (route: 'fast' | 'standard' | 'slow') => {
         let successChance = 0;
@@ -55,24 +84,16 @@ const SpeakeasySmugglingGame: React.FC<MiniGameProps> = ({ event, character, onC
         }
 
         statChanges.morality = -5; // It's still illegal
-        setResult(outcomeText);
         
-        setTimeout(() => {
-             onComplete({
-                choiceText: `Escolheu a rota ${route}.`,
-                outcomeText,
-                statChanges
-            });
-        }, 3000);
+        showResult({
+            choiceText: `Escolheu a rota ${route}.`,
+            outcomeText,
+            statChanges
+        }, 'Resultado da Entrega');
     };
     
-    if (result) {
-        return (
-            <div className="w-full max-w-lg bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border border-slate-700 text-center">
-                 <h2 className="text-2xl font-bold text-cyan-400 mb-4">Resultado da Entrega</h2>
-                 <p className="text-slate-300 leading-relaxed animate-fade-in">{result}</p>
-            </div>
-        )
+    if (isShowingResult) {
+        return ResultDisplay;
     }
 
     return (
@@ -99,7 +120,7 @@ const SpeakeasySmugglingGame: React.FC<MiniGameProps> = ({ event, character, onC
 };
 
 // --- Black Market Mini-Game Component ---
-const BlackMarketGame: React.FC<MiniGameProps> = ({ event, character, onComplete }) => {
+const BlackMarketGame: React.FC<MiniGameProps> = ({ event, onComplete }) => {
     const createChoice = (type: 'medicine' | 'food' | 'secrets'): Choice => {
         const choices = {
             medicine: {
@@ -160,7 +181,7 @@ interface TacticChoiceGameProps extends MiniGameProps {
 }
 
 const TacticChoiceGame: React.FC<TacticChoiceGameProps> = ({ event, character, onComplete, title, icon, tactics }) => {
-    const [result, setResult] = useState<string | null>(null);
+    const { showResult, ResultDisplay, isShowingResult } = useMiniGameResult(onComplete);
 
     const handleTactic = (tactic: Tactic) => {
         const statValue = (character[tactic.stat] as number) || 50;
@@ -181,24 +202,15 @@ const TacticChoiceGame: React.FC<TacticChoiceGameProps> = ({ event, character, o
             (statChanges[tactic.stat] as number) = ((statChanges[tactic.stat] as number) || 0) - 1;
         }
 
-        setResult(outcomeText);
-        
-        setTimeout(() => {
-             onComplete({
-                choiceText: `Usou a tática de ${tactic.name}.`,
-                outcomeText,
-                statChanges,
-            });
-        }, 3000);
+        showResult({
+            choiceText: `Usou a tática de ${tactic.name}.`,
+            outcomeText,
+            statChanges,
+        }, 'Resultado da Missão');
     };
 
-    if (result) {
-        return (
-            <div className="w-full max-w-lg bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border border-slate-700 text-center">
-                 <h2 className="text-2xl font-bold text-cyan-400 mb-4">Resultado da Missão</h2>
-                 <p className="text-slate-300 leading-relaxed animate-fade-in">{result}</p>
-            </div>
-        )
+    if (isShowingResult) {
+        return ResultDisplay;
     }
 
     return (
@@ -257,74 +269,63 @@ const MoralChoiceGame: React.FC<MoralChoiceGameProps> = ({ event, onComplete, ti
 
 // --- Public Debate Mini-Game Component ---
 const PublicDebateGame: React.FC<MiniGameProps> = ({ event, character, onComplete }) => {
-    const [result, setResult] = useState<string | null>(null);
+    const { showResult, ResultDisplay, isShowingResult } = useMiniGameResult(onComplete);
 
     const handleDebate = (tactic: 'logic' | 'emotion' | 'attack') => {
         let successChance = 0;
         let outcomeText = '';
         const statChanges: Choice['statChanges'] = {};
-        const relationshipChanges: Choice['relationshipChanges'] = {};
 
         switch (tactic) {
             case 'logic':
-                successChance = 20 + character.intelligence; // Base 20% + 1% por ponto de inteligência
+                successChance = 20 + character.intelligence;
                 if (Math.random() * 100 < successChance) {
                     outcomeText = "Com argumentos lógicos e bem estruturados, você desmantela a posição do seu oponente. A multidão aplaude sua sabedoria.";
-                    statChanges.influence = (statChanges.influence || 0) + 5;
-                    statChanges.fame = (statChanges.fame || 0) + 3;
-                    statChanges.intelligence = (statChanges.intelligence || 0) + 1;
+                    statChanges.influence = 5;
+                    statChanges.fame = 3;
+                    statChanges.intelligence = 1;
                 } else {
                     outcomeText = "Você tenta usar a lógica, mas se atrapalha em seus próprios argumentos. Seu oponente explora a falha e te ridiculariza.";
-                    statChanges.influence = (statChanges.influence || 0) - 4;
-                    statChanges.fame = (statChanges.fame || 0) - 2;
+                    statChanges.influence = -4;
+                    statChanges.fame = -2;
                 }
                 break;
             case 'emotion':
-                successChance = 20 + character.charisma; // Base 20% + 1% por ponto de carisma
+                successChance = 20 + character.charisma;
                  if (Math.random() * 100 < successChance) {
                     outcomeText = "Você apela para os corações e mentes da audiência. Suas palavras apaixonadas comovem a todos e seu oponente fica sem resposta.";
-                    statChanges.influence = (statChanges.influence || 0) + 5;
-                    statChanges.charisma = (statChanges.charisma || 0) + 2;
+                    statChanges.influence = 5;
+                    statChanges.charisma = 2;
                 } else {
                     outcomeText = "Sua tentativa de apelo emocional parece forçada e insincera. A audiência não se convence e você perde credibilidade.";
-                    statChanges.influence = (statChanges.influence || 0) - 4;
-                    statChanges.charisma = (statChanges.charisma || 0) - 1;
+                    statChanges.influence = -4;
+                    statChanges.charisma = -1;
                 }
                 break;
             case 'attack':
-                successChance = 30 + character.charisma - (character.morality / 5); // Carisma ajuda, moralidade alta atrapalha
+                successChance = 30 + character.charisma - (character.morality / 5);
                 if (Math.random() * 100 < successChance) {
                     outcomeText = "Você ataca o caráter do seu oponente, expondo uma falha pessoal. Chocada, a audiência se volta contra ele, lhe dando a vitória.";
-                    statChanges.influence = (statChanges.influence || 0) + 6;
-                    statChanges.morality = (statChanges.morality || 0) - 10;
-                    statChanges.fame = (statChanges.fame || 0) - 2; // Vitória, mas infame
+                    statChanges.influence = 6;
+                    statChanges.morality = -10;
+                    statChanges.fame = -2;
                 } else {
                     outcomeText = "Seu ataque pessoal é visto como um golpe baixo e desesperado. A multidão se volta contra você, e seu oponente ganha a simpatia de todos.";
-                    statChanges.influence = (statChanges.influence || 0) - 8;
-                    statChanges.morality = (statChanges.morality || 0) - 5;
+                    statChanges.influence = -8;
+                    statChanges.morality = -5;
                 }
                 break;
         }
         
-        setResult(outcomeText);
-        
-        setTimeout(() => {
-             onComplete({
-                choiceText: `Usou a tática de ${tactic} no debate.`,
-                outcomeText,
-                statChanges,
-                relationshipChanges,
-            });
-        }, 3000);
+        showResult({
+            choiceText: `Usou a tática de ${tactic} no debate.`,
+            outcomeText,
+            statChanges,
+        }, 'Resultado do Debate');
     };
 
-    if (result) {
-        return (
-            <div className="w-full max-w-lg bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border border-slate-700 text-center">
-                 <h2 className="text-2xl font-bold text-cyan-400 mb-4">Resultado do Debate</h2>
-                 <p className="text-slate-300 leading-relaxed animate-fade-in">{result}</p>
-            </div>
-        )
+    if (isShowingResult) {
+        return ResultDisplay;
     }
 
     return (
@@ -357,7 +358,7 @@ const PublicDebateGame: React.FC<MiniGameProps> = ({ event, character, onComplet
 
 // --- Pistol Duel Mini-Game Component ---
 const PistolDuelGame: React.FC<MiniGameProps> = ({ event, character, onComplete }) => {
-    const [result, setResult] = useState<string | null>(null);
+    const { showResult, ResultDisplay, isShowingResult } = useMiniGameResult(onComplete);
 
     const handleDuel = (action: 'aim' | 'air' | 'quick') => {
         let outcomeText = '';
@@ -421,25 +422,16 @@ const PistolDuelGame: React.FC<MiniGameProps> = ({ event, character, onComplete 
                 break;
         }
 
-        setResult(outcomeText);
-
-        setTimeout(() => {
-             onComplete({
-                choiceText: `Escolheu a ação '${action}' no duelo.`,
-                outcomeText,
-                statChanges,
-                specialEnding,
-            });
-        }, 3500);
+        showResult({
+            choiceText: `Escolheu a ação '${action}' no duelo.`,
+            outcomeText,
+            statChanges,
+            specialEnding,
+        }, 'O Tiro Ecoa...');
     }
     
-     if (result) {
-        return (
-            <div className="w-full max-w-lg bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border border-slate-700 text-center">
-                 <h2 className="text-2xl font-bold text-red-500 mb-4">O Tiro Ecoa...</h2>
-                 <p className="text-slate-300 leading-relaxed animate-fade-in">{result}</p>
-            </div>
-        )
+     if (isShowingResult) {
+        return ResultDisplay;
     }
 
     return (

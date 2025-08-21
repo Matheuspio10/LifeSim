@@ -11,9 +11,10 @@ export interface MicroActionResult {
 interface DowntimeActivitiesProps {
     character: Character;
     onMicroAction: (result: MicroActionResult) => void;
+    onShowDebug: () => void;
 }
 
-const DowntimeActivities: React.FC<DowntimeActivitiesProps> = ({ character, onMicroAction }) => {
+const DowntimeActivities: React.FC<DowntimeActivitiesProps> = ({ character, onMicroAction, onShowDebug }) => {
     const [lastOutcome, setLastOutcome] = useState<string | null>(null);
     const [isCoolingDown, setIsCoolingDown] = useState<boolean>(false);
     const currentYear = character.birthYear + character.age;
@@ -186,6 +187,13 @@ const DowntimeActivities: React.FC<DowntimeActivitiesProps> = ({ character, onMi
                     </div>
                 )}
             </div>
+
+            <button 
+                onClick={onShowDebug} 
+                className="mt-4 px-4 py-2 text-xs bg-slate-700 text-slate-300 rounded-md hover:bg-slate-600 transition-colors"
+            >
+                Ver Informações de Depuração
+            </button>
         </div>
     );
 };
