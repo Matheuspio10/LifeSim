@@ -18,6 +18,7 @@ import ApiKeyModal from './components/ApiKeyModal';
 import QuotaErrorModal from './components/QuotaErrorModal';
 import { BookOpenIcon } from './components/Icons';
 import DowntimeActivities, { MicroActionResult } from './components/DowntimeActivities';
+import ThinkingLoader from './components/ThinkingLoader';
 
 const getRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const SAVE_GAME_KEY = 'lifeSimMMORGSaveData';
@@ -44,6 +45,7 @@ const App: React.FC = () => {
   const [isQuotaModalOpen, setIsQuotaModalOpen] = useState<boolean>(false);
   const [lastError, setLastError] = useState<string | null>(null);
   const [showDebug, setShowDebug] = useState<boolean>(false);
+  const [currentDecisionArea, setCurrentDecisionArea] = useState<DecisionArea | null>(null);
 
 
   // Legacy State
@@ -193,6 +195,7 @@ const App: React.FC = () => {
       }
     } finally {
       setIsLoading(false);
+      setCurrentDecisionArea(null);
     }
   }, [economicClimate, lineage, currentFocusContext, behaviorTracker, isTurboMode, apiKey]);
 
@@ -209,7 +212,8 @@ const App: React.FC = () => {
 
     const nextArea = queue[0];
     const newQueue = queue.slice(1);
-
+    
+    setCurrentDecisionArea(nextArea);
     setDecisionQueue(newQueue);
     await fetchNextEvent(char, currentYear, nextArea);
   }, [decisionQueue, currentYear, fetchNextEvent]);
@@ -516,6 +520,12 @@ const App: React.FC = () => {
 
   const renderMainContent = () => {
     if (isLoading) {
+        // If in normal mode and fetching the next event, show the detailed loader.
+        if (!isTurboMode && currentDecisionArea) {
+            return <ThinkingLoader area={currentDecisionArea} />;
+        }
+        
+        // Fallback for other loading states (e.g., open response processing, turbo mode).
         if (gameState === GameState.IN_PROGRESS) {
             return character && <DowntimeActivities character={character} onMicroAction={handleMicroAction} onShowDebug={() => setShowDebug(true)} />;
         }
