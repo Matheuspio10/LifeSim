@@ -315,7 +315,7 @@ Você é o Mestre do Jogo (GM) para "LifeSim MMORG", um simulador de vida roguel
 
 REGRAS PRINCIPAIS:
 1.  **Crie Eventos Realistas e Interessantes**: Gere eventos críveis baseados na idade, traços, carreira e contexto histórico do personagem. Evite clichês. Surpreenda o jogador.
-2.  **Equilíbrio de Jogo**: As escolhas devem ter consequências lógicas, tanto positivas quanto negativas. Use o schema para aplicar mudanças de status, adicionar/remover traços, bens e relacionamentos. Uma grande recompensa geralmente deve vir com um grande risco.
+2.  **Equilíbrio e Risco**: O jogo deve ser desafiador. As escolhas devem ter consequências lógicas, com um equilíbrio realista entre sucesso, fracasso e resultados mistos. Uma grande recompensa DEVE vir com um grande risco. Ações de alto risco (como atividades ilegais, confrontos diretos, investimentos ousados) devem ter uma chance significativa de falha com consequências severas (perda de riqueza, saúde, reputação, ou até mesmo a morte em casos extremos com 'specialEnding'). Nem toda ação bem-sucedida é um sucesso completo; introduza trade-offs. Exemplo: um hacker pode conseguir a informação, mas pegar um vírus que reduz sua 'intelligence' ou alerta as autoridades, impactando sua 'fame' negativamente.
 3.  **Contexto Histórico é CRUCIAL**: Use o "Zeitgeist" para moldar o evento. Eventos na década de 1980 não devem envolver smartphones. Eventos na década de 2020 podem envolver mídias sociais ou a economia de aplicativos.
 4.  **Personalidade Evolutiva**: Uma parte crucial desta simulação é a **Personalidade Evolutiva**. Com base no evento e na escolha do jogador, você DEVE considerar adicionar ou remover traços do personagem para refletir seu desenvolvimento. Um personagem que repetidamente escolhe ações corajosas pode ganhar o traço 'Corajoso'. Uma traição significativa pode torná-los 'Cínico'. Um invento de sucesso pode conceder 'Visionário'. Use o campo 'traitChanges' com os arrays 'add' e 'remove' para isso. Traços não são permanentes e devem refletir a jornada do personagem.
 5.  **Mini-Jogos Temáticos de Era**: Para aumentar a imersão histórica, você DEVE gerar mini-jogos específicos da era para certos eventos.
@@ -443,7 +443,7 @@ export const evaluatePlayerResponse = async (
 
         REGRAS:
         1.  **Interprete a Intenção**: Entenda o que o jogador quer alcançar com a resposta dele.
-        2.  **Seja Justo e Realista**: As consequências devem ser lógicas e equilibradas. Ações ousadas podem ter grandes recompensas ou grandes falhas.
+        2.  **Seja Justo, Realista e Desafiador**: As consequências devem ser lógicas e equilibradas. Ações ousadas DEVEM ter uma chance significativa de falha. Não tenha medo de aplicar consequências negativas. Se um jogador tenta algo ilegal, como hackear, pode ser pego, pegar um vírus (reduzir 'intelligence') ou ter sua 'fame' manchada. Se ele tenta persuadir alguém e tem baixo carisma, ele pode ofender a pessoa (piorar relacionamento). O sucesso não deve ser garantido.
         3.  **Use o Contexto**: Baseie as consequências no personagem (estatísticas, traços) e no evento. Um personagem com alto carisma terá mais sucesso em persuadir alguém.
         4.  **Evolução da Personalidade**: Se a ação do jogador for um forte indicador de um traço de personalidade (ex: um ato de grande coragem, uma mentira descarada), use 'traitChanges' para refletir isso.
         5.  **Formato JSON Estrito**: Responda APENAS com o objeto JSON da escolha. Sem texto extra.
