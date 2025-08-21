@@ -1,5 +1,4 @@
 
-
 export interface Trait {
     name: string;
     description: string;
@@ -87,8 +86,6 @@ export enum HobbyType {
     SPORTS = 'Esportes',
     GAMBLING = 'Jogos de Azar',
 }
-
-export type DecisionArea = 'CAREER' | 'PERSONAL' | 'SOCIAL';
 
 export interface Hobby {
     type: HobbyType;
@@ -239,7 +236,6 @@ export interface Choice {
 export interface GameEvent {
   eventText: string;
   choices: Choice[];
-  area: DecisionArea;
   isEpic?: boolean;
   isWorldEvent?: boolean;
   type: 'MULTIPLE_CHOICE' | 'OPEN_RESPONSE' | 'MINI_GAME';

@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Hobby, HobbyType, DecisionArea } from './types';
+import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Hobby, HobbyType } from './types';
 import { generateGameEvent, evaluatePlayerResponse } from './services/gameService';
 import { applyChoiceToCharacter } from './services/characterService';
 import { WEEKLY_CHALLENGES, LAST_NAMES, PORTRAIT_COLORS, HEALTH_CONDITIONS, LINEAGE_TITLES, TOTAL_MONTHS_PER_YEAR } from './constants';
@@ -18,7 +18,6 @@ import ApiKeyModal from './components/ApiKeyModal';
 import QuotaErrorModal from './components/QuotaErrorModal';
 import { BookOpenIcon } from './components/Icons';
 import DowntimeActivities, { MicroActionResult } from './components/DowntimeActivities';
-import ThinkingLoader from './components/ThinkingLoader';
 
 const getRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const SAVE_GAME_KEY = 'lifeSimMMORGSaveData';
@@ -41,11 +40,9 @@ const App: React.FC = () => {
   const [hasSaveData, setHasSaveData] = useState<boolean>(false);
   const [isTurboMode, setIsTurboMode] = useState<boolean>(false);
   const [apiKey, setApiKey] = useState<string | null>(null);
-  const [decisionQueue, setDecisionQueue] = useState<DecisionArea[]>([]);
   const [isQuotaModalOpen, setIsQuotaModalOpen] = useState<boolean>(false);
   const [lastError, setLastError] = useState<string | null>(null);
   const [showDebug, setShowDebug] = useState<boolean>(false);
-  const [currentDecisionArea, setCurrentDecisionArea] = useState<DecisionArea | null>(null);
 
 
   // Legacy State
@@ -80,7 +77,6 @@ const App: React.FC = () => {
             setLineage(parsedData.lineage ?? null);
             setLegacyPoints(parsedData.legacyPoints ?? 0);
             setIsTurboMode(parsedData.isTurboMode ?? false);
-            setDecisionQueue(parsedData.decisionQueue ?? []);
         } catch (e) {
             console.error("Falha ao carregar o jogo salvo", e);
             localStorage.removeItem(SAVE_GAME_KEY);
@@ -115,10 +111,9 @@ const App: React.FC = () => {
         lineage,
         legacyPoints,
         isTurboMode,
-        decisionQueue,
     };
     localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameToSave));
-  }, [gameState, character, currentEvent, lifeSummary, currentYear, economicClimate, isMultiplayerCycle, monthsRemainingInYear, currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode, decisionQueue]);
+  }, [gameState, character, currentEvent, lifeSummary, currentYear, economicClimate, isMultiplayerCycle, monthsRemainingInYear, currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode]);
 
   const resetGameAndClearSave = () => {
     localStorage.removeItem(SAVE_GAME_KEY);
@@ -141,7 +136,6 @@ const App: React.FC = () => {
     setLegacyBonuses(null);
     setCompletedChallenges([]);
     setIsTurboMode(false);
-    setDecisionQueue([]);
   };
 
   const handleStartNewGameFromScratch = () => {
@@ -166,57 +160,59 @@ const App: React.FC = () => {
     return LifeStage.OLD_AGE;
   };
   
-  const fetchNextEvent = useCallback(async (char: Character, eventYear: number, area: DecisionArea, newBehaviorTracker?: Record<string, number>) => {
+  const fetchNextEvent = useCallback(async (char: Character, eventYear: number, newBehaviorTracker?: Record<string, number>) => {
     if (!apiKey) {
         setError("Chave de API do Gemini não configurada.");
         return;
     }
     setIsLoading(true);
     setError(null);
-    try {
-      const lifeStage = getCurrentLifeStage(char.age);
-      const lineageTitle = lineage ? lineage.title : null;
-      const event = await generateGameEvent(char, lifeStage, eventYear, economicClimate, lineageTitle, currentFocusContext, newBehaviorTracker ?? behaviorTracker, isTurboMode, apiKey, area);
-      setCurrentEvent(event);
-      setGameState(GameState.IN_PROGRESS);
-    } catch (err)      {
-      console.error(err);
-      const errorString = err instanceof Error ? `${err.name}: ${err.message}\n${err.stack}` : JSON.stringify(err);
-      setLastError(errorString);
-      if (err instanceof Error) {
-        if (err.message.includes('429') || err.message.toLowerCase().includes('quota')) {
-            setIsQuotaModalOpen(true);
-            setError(null);
-        } else {
-            setError(err.message);
+
+    const MAX_RETRIES = 3;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+            const lifeStage = getCurrentLifeStage(char.age);
+            const lineageTitle = lineage ? lineage.title : null;
+            const event = await generateGameEvent(char, lifeStage, eventYear, economicClimate, lineageTitle, currentFocusContext, newBehaviorTracker ?? behaviorTracker, isTurboMode, apiKey);
+            
+            if (!event || !event.eventText || !event.type) {
+                throw new Error("A resposta da IA estava vazia ou malformada.");
+            }
+
+            setCurrentEvent(event);
+            setGameState(GameState.IN_PROGRESS);
+            setIsLoading(false);
+            return; // Success
+        } catch (err) {
+            console.error(`Falha na tentativa ${attempt} ao buscar evento:`, err);
+            const errorString = err instanceof Error ? `${err.name}: ${err.message}\n${err.stack}` : JSON.stringify(err);
+            setLastError(errorString);
+
+            if (attempt === MAX_RETRIES) {
+                if (err instanceof Error) {
+                    if (err.message.includes('429') || err.message.toLowerCase().includes('quota')) {
+                        setIsQuotaModalOpen(true);
+                        setError(null);
+                    } else {
+                        setError(err.message);
+                    }
+                } else {
+                    setError('Falha ao gerar um evento de vida. O universo está contemplando sua existência.');
+                }
+                setIsLoading(false);
+            } else {
+                await new Promise(res => setTimeout(res, 750));
+            }
         }
-      } else {
-        setError('Falha ao gerar um evento de vida. O universo está contemplando sua existência. Por favor, tente novamente.');
-      }
-    } finally {
-      setIsLoading(false);
-      setCurrentDecisionArea(null);
     }
   }, [economicClimate, lineage, currentFocusContext, behaviorTracker, isTurboMode, apiKey]);
 
-  const processNextDecision = useCallback(async (char: Character) => {
-    let queue = decisionQueue;
-    if (queue.length === 0) {
-        const areas: DecisionArea[] = ['CAREER', 'PERSONAL', 'SOCIAL'];
-        for (let i = areas.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [areas[i], areas[j]] = [areas[j], areas[i]];
-        }
-        queue = areas;
-    }
 
-    const nextArea = queue[0];
-    const newQueue = queue.slice(1);
-    
-    setCurrentDecisionArea(nextArea);
-    setDecisionQueue(newQueue);
-    await fetchNextEvent(char, currentYear, nextArea);
-  }, [decisionQueue, currentYear, fetchNextEvent]);
+  const processNextDecision = useCallback(async (char: Character) => {
+    // Simplificado: A IA agora irá gerar um evento com base no foco atual do personagem,
+    // em vez de uma área de decisão predefinida (Carreira, Pessoal, Social).
+    await fetchNextEvent(char, currentYear);
+  }, [currentYear, fetchNextEvent]);
 
   const startGame = (newCharacter: Character, isMultiplayer: boolean) => {
     const startYear = newCharacter.birthYear;
@@ -224,7 +220,6 @@ const App: React.FC = () => {
     setIsMultiplayerCycle(isMultiplayer);
     setMonthsRemainingInYear(TOTAL_MONTHS_PER_YEAR);
     setBehaviorTracker({}); 
-    setDecisionQueue([]);
     if (!lineage) {
         const color1 = getRandom(CREST_COLORS);
         const crest: LineageCrest = {
@@ -447,33 +442,47 @@ const App: React.FC = () => {
   };
   
   const handleOpenResponseSubmit = async (responseText: string) => {
-     if (!character || !currentEvent || !apiKey) return;
-     setIsLoading(true);
-     setError(null);
-     try {
-        const choice = await evaluatePlayerResponse(character, currentEvent.eventText, responseText, currentEvent.area, apiKey, isTurboMode);
-        const isEndOfYear = handleChoice(choice);
-        
-        // If we are transitioning to the next year (or game over), the loading state
-        // triggered by this submission can be turned off. Otherwise, the loading
-        // state will be handled by the next event fetch.
-        if (isEndOfYear) {
-            setIsLoading(false);
+    if (!character || !currentEvent || !apiKey) return;
+    setIsLoading(true);
+    setError(null);
+
+    const MAX_RETRIES = 3;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+            const choice = await evaluatePlayerResponse(character, currentEvent.eventText, responseText, currentFocusContext, apiKey, isTurboMode);
+
+            if (!choice || !choice.choiceText || !choice.outcomeText) {
+                throw new Error("A resposta da IA para sua ação estava vazia ou malformada.");
+            }
+
+            const isEndOfYear = handleChoice(choice);
+            if (isEndOfYear) {
+                setIsLoading(false);
+            }
+            return; // Success
+        } catch (err) {
+            console.error(`Falha na tentativa ${attempt} ao avaliar a resposta:`, err);
+            const errorString = err instanceof Error ? `${err.name}: ${err.message}\n${err.stack}` : JSON.stringify(err);
+            setLastError(errorString);
+
+            if (attempt === MAX_RETRIES) {
+                if (err instanceof Error && (err.message.includes('429') || err.message.toLowerCase().includes('quota'))) {
+                    setIsQuotaModalOpen(true);
+                    setError(null);
+                } else {
+                    const errorMessage = err instanceof Error
+                        ? err.message
+                        : 'Houve um problema ao processar sua resposta. Por favor, tente uma das opções ou reformule sua ação.';
+                    setError(errorMessage);
+                }
+                setIsLoading(false);
+            } else {
+                await new Promise(res => setTimeout(res, 750));
+            }
         }
-     } catch (err) {
-        console.error(err);
-        const errorString = err instanceof Error ? `${err.name}: ${err.message}\n${err.stack}` : JSON.stringify(err);
-        setLastError(errorString);
-        if (err instanceof Error && (err.message.includes('429') || err.message.toLowerCase().includes('quota'))) {
-            setIsQuotaModalOpen(true);
-            setError(null);
-        } else {
-            const errorMessage = 'Houve um problema ao processar sua resposta. Por favor, tente uma das opções ou reformule sua ação.';
-            setError(errorMessage);
-        }
-        setIsLoading(false);
-     }
+    }
   };
+
 
   const handleRoutineConfirm = (focuses: WeeklyFocus[]) => {
       if (!character) return;
@@ -518,21 +527,33 @@ const App: React.FC = () => {
     setApiKey(key);
   };
 
+  const handleRetry = () => {
+    setError(null);
+    if (!currentEvent && character) {
+        processNextDecision(character);
+    }
+  };
+
   const renderMainContent = () => {
     if (isLoading) {
-        // If in normal mode and fetching the next event, show the detailed loader.
-        if (!isTurboMode && currentDecisionArea) {
-            return <ThinkingLoader area={currentDecisionArea} />;
-        }
-        
-        // Fallback for other loading states (e.g., open response processing, turbo mode).
-        if (gameState === GameState.IN_PROGRESS) {
-            return character && <DowntimeActivities character={character} onMicroAction={handleMicroAction} onShowDebug={() => setShowDebug(true)} />;
+        if (!isTurboMode && gameState === GameState.IN_PROGRESS && character) {
+            return <DowntimeActivities character={character} onMicroAction={handleMicroAction} onShowDebug={() => setShowDebug(true)} />;
         }
         return <LoadingSpinner onShowDebug={() => setShowDebug(true)} />;
     }
     if (error) {
-        return <div className="text-red-400 text-center p-4 bg-red-900/50 rounded-lg">{error}</div>;
+        return (
+            <div className="w-full max-w-lg text-center p-8 bg-red-900/50 border border-red-700 rounded-2xl shadow-2xl animate-fade-in">
+                <h2 className="text-xl font-bold text-white mb-2">Um Contratempo do Destino</h2>
+                <p className="text-slate-300 mb-6">{error}</p>
+                <button
+                    onClick={handleRetry}
+                    className="px-6 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-500 transition-colors"
+                >
+                    Tentar Novamente
+                </button>
+            </div>
+        );
     }
 
     switch (gameState) {

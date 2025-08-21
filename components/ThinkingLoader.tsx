@@ -1,4 +1,4 @@
-
+/*
 import React, { useState, useEffect } from 'react';
 import { DecisionArea } from '../types';
 import { BriefcaseIcon, HeartIcon, UsersIcon } from './Icons';
@@ -86,3 +86,4 @@ document.head.appendChild(styleSheet);
 
 
 export default ThinkingLoader;
+*/

@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { Character, LifeStage, GameEvent, RelationshipType, MemoryItemType, Trait, EconomicClimate, Choice, MiniGameType, Mood, HobbyType, DecisionArea } from '../types';
+import { Character, LifeStage, GameEvent, RelationshipType, MemoryItemType, Trait, EconomicClimate, Choice, MiniGameType, Mood, HobbyType } from '../types';
 
 // Helper function to robustly parse JSON from the model's text response
 const cleanAndParseJson = <T>(responseText: string): T => {
@@ -346,7 +346,6 @@ export const generateGameEvent = async (
     behaviorTracker: Record<string, number>,
     isTurbo: boolean,
     apiKey: string,
-    area: DecisionArea,
 ): Promise<GameEvent> => {
     const ai = new GoogleGenAI({ apiKey });
 
@@ -387,7 +386,7 @@ export const generateGameEvent = async (
     const isBoss = Math.random() < 0.10; // 10% de chance de um evento "chefe"
     const eventTypePrompt = isBoss
         ? `Este é um evento de 'Chefe' - um grande ponto de virada na vida. Use este cenário: ${getBossBattlePrompt(lifeStage)}`
-        : `Gere um evento de vida comum para a área de foco: ${area}.`;
+        : `Gere um evento de vida comum baseado nos focos atuais do personagem: "${currentFocus || 'vida cotidiana'}". O evento deve estar relacionado a um ou mais desses focos.`;
     
     const content = `
         **Informações do Jogo:**
@@ -395,8 +394,7 @@ export const generateGameEvent = async (
         - Zeitgeist (Contexto Histórico): ${getZeitgeist(year)}
         - Clima Econômico: ${economicClimate}
         - Título da Linhagem: ${lineageTitle || 'Nenhum'}
-        - Foco Atual do Personagem: ${currentFocus || 'Nenhum'}
-        - Área de Decisão: ${area}
+        - Foco Atual do Personagem: ${currentFocus || 'Nenhum foco específico, gere um evento geral da vida.'}
         - Estágio da Vida: ${lifeStage}
         - Comportamentos Recentes (contagem de ações): ${JSON.stringify(behaviorTracker)}
 
@@ -405,8 +403,7 @@ export const generateGameEvent = async (
 
         **Tarefa:**
         ${eventTypePrompt}
-        Crie um evento JSON com base em todas as informações fornecidas.
-        Para a área '${area}', crie um evento que se concentre em desafios ou oportunidades relacionados a ${area === 'CAREER' ? 'trabalho, carreira, finanças' : area === 'PERSONAL' ? 'desenvolvimento pessoal, saúde, hobbies' : 'relacionamentos, família, amigos, vida social'}.
+        Crie um evento JSON com base em todas as informações fornecidas. O evento deve ser uma consequência ou desenvolvimento natural dos focos escolhidos pelo personagem.
         As escolhas devem ser distintas e ter consequências lógicas.
         Lembre-se das regras principais, especialmente o contexto histórico, a evolução da personalidade e o formato de resposta JSON.
     `;
@@ -428,7 +425,6 @@ export const generateGameEvent = async (
     });
 
     const eventData = cleanAndParseJson<GameEvent>(response.text);
-    eventData.area = area; // Ensure the area is correctly set on the returned event
     return eventData;
 };
 
@@ -436,7 +432,7 @@ export const evaluatePlayerResponse = async (
     character: Character, 
     eventText: string, 
     playerResponse: string,
-    area: DecisionArea,
+    currentFocus: string | null,
     apiKey: string,
     isTurbo: boolean,
 ): Promise<Choice> => {
@@ -462,7 +458,7 @@ export const evaluatePlayerResponse = async (
         - Traços: ${character.traits.map(t => t.name).join(', ')}
         - Estatísticas Chave: Inteligência(${character.intelligence}), Carisma(${character.charisma}), Disciplina(${character.discipline})
         - Moralidade: ${character.morality}
-        - Área de Foco: ${area}
+        - Focos Atuais: ${currentFocus || 'Não especificado'}
 
         **Ação do Jogador:** "${playerResponse}"
 
