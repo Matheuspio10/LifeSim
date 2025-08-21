@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Hobby, HobbyType, DecisionArea } from './types';
 import { generateGameEvent, evaluatePlayerResponse } from './services/gameService';
@@ -407,6 +408,8 @@ const App: React.FC = () => {
   const handleChoice = (choice: Choice) => {
     if (!character || !currentEvent) return;
     
+    const eventBeingProcessed = currentEvent;
+    setCurrentEvent(null); // Clear the event immediately to prevent re-rendering the old card
     let updatedChar = { ...character };
 
     // Apply stat changes
@@ -592,14 +595,14 @@ const App: React.FC = () => {
     updatedChar.influence = Math.max(-100, Math.min(100, updatedChar.influence));
 
 
-    setLifeSummary(prev => [...prev, { text: choice.outcomeText, isEpic: currentEvent?.isEpic || false }]);
+    setLifeSummary(prev => [...prev, { text: choice.outcomeText, isEpic: eventBeingProcessed.isEpic || false }]);
     
     if(choice.specialEnding){
         handleEndOfLife({...updatedChar, specialEnding: choice.specialEnding});
         return;
     }
     
-    const timeCost = choice.timeCostInUnits || currentEvent.timeCostInUnits || 1;
+    const timeCost = choice.timeCostInUnits || eventBeingProcessed.timeCostInUnits || 1;
     advanceTime(updatedChar, timeCost);
   };
   
@@ -614,7 +617,6 @@ const App: React.FC = () => {
         console.error(err);
         const errorMessage = 'Houve um problema ao processar sua resposta. Por favor, tente uma das opções ou reformule sua ação.';
         setError(errorMessage);
-     } finally {
         setIsLoading(false);
      }
   };
