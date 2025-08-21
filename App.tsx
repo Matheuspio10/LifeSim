@@ -14,6 +14,7 @@ import RoutineScreen from './components/RoutineScreen';
 import MiniGameHost from './components/MiniGameHost';
 import JournalScreen from './components/JournalScreen';
 import ApiKeyModal from './components/ApiKeyModal';
+import QuotaErrorModal from './components/QuotaErrorModal';
 import { BookOpenIcon } from './components/Icons';
 import DowntimeActivities, { MicroActionResult } from './components/DowntimeActivities';
 
@@ -39,6 +40,7 @@ const App: React.FC = () => {
   const [isTurboMode, setIsTurboMode] = useState<boolean>(false);
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [decisionQueue, setDecisionQueue] = useState<DecisionArea[]>([]);
+  const [isQuotaModalOpen, setIsQuotaModalOpen] = useState<boolean>(false);
 
 
   // Legacy State
@@ -175,7 +177,12 @@ const App: React.FC = () => {
     } catch (err)      {
       console.error(err);
       if (err instanceof Error) {
-        setError(err.message);
+        if (err.message.includes('429') || err.message.toLowerCase().includes('quota')) {
+            setIsQuotaModalOpen(true);
+            setError(null);
+        } else {
+            setError(err.message);
+        }
       } else {
         setError('Falha ao gerar um evento de vida. O universo está contemplando sua existência. Por favor, tente novamente.');
       }
@@ -611,12 +618,17 @@ const App: React.FC = () => {
      setIsLoading(true);
      setError(null);
      try {
-        const choice = await evaluatePlayerResponse(character, currentEvent.eventText, responseText, currentEvent.area, apiKey);
+        const choice = await evaluatePlayerResponse(character, currentEvent.eventText, responseText, currentEvent.area, apiKey, isTurboMode);
         handleChoice(choice);
      } catch (err) {
         console.error(err);
-        const errorMessage = 'Houve um problema ao processar sua resposta. Por favor, tente uma das opções ou reformule sua ação.';
-        setError(errorMessage);
+        if (err instanceof Error && (err.message.includes('429') || err.message.toLowerCase().includes('quota'))) {
+            setIsQuotaModalOpen(true);
+            setError(null);
+        } else {
+            const errorMessage = 'Houve um problema ao processar sua resposta. Por favor, tente uma das opções ou reformule sua ação.';
+            setError(errorMessage);
+        }
         setIsLoading(false);
      }
   };
@@ -714,6 +726,7 @@ const App: React.FC = () => {
             </button>
         )}
         {isJournalOpen && character && <JournalScreen character={character} lifeSummary={lifeSummary} onClose={() => setIsJournalOpen(false)} />}
+        {isQuotaModalOpen && <QuotaErrorModal onClose={() => setIsQuotaModalOpen(false)} />}
     </main>
   );
 };

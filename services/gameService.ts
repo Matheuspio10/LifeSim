@@ -1,6 +1,41 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { Character, LifeStage, GameEvent, RelationshipType, MemoryItemType, Trait, EconomicClimate, Choice, MiniGameType, Mood, HobbyType, DecisionArea } from '../types';
 
+// Helper function to robustly parse JSON from the model's text response
+const cleanAndParseJson = <T>(responseText: string): T => {
+    let jsonText = responseText.trim();
+
+    // Attempt to find JSON within markdown code blocks like ```json ... ``` or ``` ... ```
+    const markdownMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (markdownMatch && markdownMatch[1]) {
+        jsonText = markdownMatch[1].trim();
+    } else {
+        // If no markdown block, it might be prefixed/suffixed with text.
+        // Find the first '{' and last '}' to extract the JSON object.
+        const firstBrace = jsonText.indexOf('{');
+        const lastBrace = jsonText.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace > firstBrace) {
+            jsonText = jsonText.substring(firstBrace, lastBrace + 1);
+        }
+    }
+    
+    // Sanitize extremely large numbers that might break JSON.parse.
+    // It looks for a number (positive or negative) with 16 or more digits and caps it to MAX_SAFE_INTEGER.
+    jsonText = jsonText.replace(/:(\s*)(-?\d{16,})/g, (match, space, number) => {
+        const isNegative = number.startsWith('-');
+        console.warn(`Número grande detectado da API e limitado: ${number}`);
+        const cappedNumber = isNegative ? '-9007199254740991' : '9007199254740991'; // Number.MAX_SAFE_INTEGER
+        return `:${space}${cappedNumber}`;
+    });
+
+    try {
+        return JSON.parse(jsonText) as T;
+    } catch (e) {
+        console.error("Falha ao analisar JSON da API após a limpeza. Texto limpo:", jsonText, "Texto Original:", responseText, e);
+        throw new Error("A resposta da IA não era um JSON válido.");
+    }
+};
 
 const getBossBattlePrompt = (lifeStage: LifeStage): string => {
     const bosses = {
@@ -27,7 +62,7 @@ const getZeitgeist = (year: number): string => {
         return `Era das Grandes Guerras (1900-1929): O mundo está se modernizando com automóveis e rádios, mas as tensões levam à Primeira Guerra Mundial. A informação viaja por jornais e telégrafo. Carreiras industriais florescem, mas o trabalho é árduo. A sociedade vive a euforia dos "Anos Loucos", com jazz e novas liberdades, mas à sombra de conflitos recentes.`;
     }
     if (year < 1946) {
-        return `Era da Incerteza (1930-1945): A Grande Depressão causa pobreza generalizada, seguida pela ascensão de ideologias extremas e a Segunda Guerra Mundial. O rádio é a principal fonte de notícias e entretenimento. A propaganda de guerra é onipresente. Carreiras estão ligadas ao esforço de guerra ou à sobrevivência em tempos difíceíceis.`;
+        return `Era da Incerteza (1930-1945): A Grande Depressão causa pobreza generalizada, seguida pela ascensão de ideologias extremas e a Segunda Guerra Mundial. O rádio é a principal fonte de notícias e entretenimento. A propaganda de guerra é onipresente. Carreiras estão ligadas ao esforço de guerra ou à sobrevivência em tempos difíceis.`;
     }
     if (year < 1980) {
         return `Era Atômica (1946-1979): O mundo vive sob a sombra da Guerra Fria e da ameaça nuclear. A televisão se torna o centro da vida familiar, transmitindo a corrida espacial, a contracultura e a revolução do rock and roll. O consumismo cresce, mas movimentos sociais questionam o status quo.`;
@@ -77,16 +112,16 @@ const traitSchema = {
 const statChangesSchema = {
     type: Type.OBJECT,
     properties: {
-        health: { type: Type.INTEGER, description: "Mudança na saúde. Pode ser positivo ou negativo." },
-        intelligence: { type: Type.INTEGER },
-        charisma: { type: Type.INTEGER },
-        creativity: { type: Type.INTEGER },
-        discipline: { type: Type.INTEGER },
-        wealth: { type: Type.INTEGER, description: "Mudança na riqueza. Pode ser negativo (custo). Adicione valores significativos para eventos de carreira ou financeiros." },
-        investments: { type: Type.INTEGER, description: "Mudança no valor dos investimentos." },
-        morality: { type: Type.INTEGER, description: "Mudança na moralidade (-100 a 100). Ações egoístas ou prejudiciais são negativas." },
-        fame: { type: Type.INTEGER, description: "Mudança na fama (-100 a 100). Ações notáveis, boas ou ruins, afetam a fama." },
-        influence: { type: Type.INTEGER, description: "Mudança na influência (-100 a 100). Ações que afetam a comunidade ou poder." },
+        health: { type: Type.INTEGER, description: "Mudança na saúde. Geralmente um valor pequeno, como -10 a 10." },
+        intelligence: { type: Type.INTEGER, description: "Mudança na inteligência. Geralmente um valor pequeno, como 1 a 5." },
+        charisma: { type: Type.INTEGER, description: "Mudança no carisma. Geralmente um valor pequeno, como 1 a 5." },
+        creativity: { type: Type.INTEGER, description: "Mudança na criatividade. Geralmente um valor pequeno, como 1 a 5." },
+        discipline: { type: Type.INTEGER, description: "Mudança na disciplina. Geralmente um valor pequeno, como 1 a 5." },
+        wealth: { type: Type.INTEGER, description: "Mudança na riqueza. Pode ser negativo (custo). Para eventos normais, use valores entre -500 e 500. Para eventos de grande impacto financeiro, o valor pode chegar a 50000, mas NUNCA use números com mais de 9 dígitos. Números muito grandes quebram o jogo." },
+        investments: { type: Type.INTEGER, description: "Mudança no valor dos investimentos. Use valores realistas, geralmente na casa das centenas ou poucos milhares, no máximo 9 dígitos." },
+        morality: { type: Type.INTEGER, description: "Mudança na moralidade (-100 a 100). Ações comuns causam mudanças de -10 a 10." },
+        fame: { type: Type.INTEGER, description: "Mudança na fama (-100 a 100). Ações comuns causam mudanças de -10 a 10." },
+        influence: { type: Type.INTEGER, description: "Mudança na influência (-100 a 100). Ações comuns causam mudanças de -10 a 10." },
     },
 };
 
@@ -375,26 +410,26 @@ export const generateGameEvent = async (
         As escolhas devem ser distintas e ter consequências lógicas.
         Lembre-se das regras principais, especialmente o contexto histórico, a evolução da personalidade e o formato de resposta JSON.
     `;
+    
+    const config: any = {
+        systemInstruction: systemPrompt,
+        responseMimeType: "application/json",
+        responseSchema: eventSchema,
+    };
+
+    if (isTurbo) {
+        config.thinkingConfig = { thinkingBudget: 0 };
+    }
 
     const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: content,
-        config: {
-            systemInstruction: systemPrompt,
-            responseMimeType: "application/json",
-            responseSchema: eventSchema,
-        },
+        config: config,
     });
 
-    try {
-        const jsonText = response.text.trim();
-        const eventData = JSON.parse(jsonText) as GameEvent;
-        eventData.area = area; // Ensure the area is correctly set on the returned event
-        return eventData;
-    } catch (e) {
-        console.error("Falha ao analisar JSON da API:", response.text, e);
-        throw new Error("A resposta da IA não era um JSON válido.");
-    }
+    const eventData = cleanAndParseJson<GameEvent>(response.text);
+    eventData.area = area; // Ensure the area is correctly set on the returned event
+    return eventData;
 };
 
 export const evaluatePlayerResponse = async (
@@ -403,6 +438,7 @@ export const evaluatePlayerResponse = async (
     playerResponse: string,
     area: DecisionArea,
     apiKey: string,
+    isTurbo: boolean,
 ): Promise<Choice> => {
      const ai = new GoogleGenAI({ apiKey });
      
@@ -415,6 +451,7 @@ export const evaluatePlayerResponse = async (
         3.  **Use o Contexto**: Baseie as consequências no personagem (estatísticas, traços) e no evento. Um personagem com alto carisma terá mais sucesso em persuadir alguém.
         4.  **Evolução da Personalidade**: Se a ação do jogador for um forte indicador de um traço de personalidade (ex: um ato de grande coragem, uma mentira descarada), use 'traitChanges' para refletir isso.
         5.  **Formato JSON Estrito**: Responda APENAS com o objeto JSON da escolha. Sem texto extra.
+        ${isTurbo ? "6. **MODO TURBO ATIVADO**: Gere um resultado de forma rápida e direta, com um 'outcomeText' mais conciso." : ""}
      `;
 
      const content = `
@@ -436,21 +473,21 @@ export const evaluatePlayerResponse = async (
         - 'statChanges' e outros campos devem refletir as consequências.
      `;
 
+    const config: any = {
+        systemInstruction: systemPrompt,
+        responseMimeType: "application/json",
+        responseSchema: evaluateResponseSchema,
+    };
+
+    if (isTurbo) {
+        config.thinkingConfig = { thinkingBudget: 0 };
+    }
+
     const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: content,
-        config: {
-            systemInstruction: systemPrompt,
-            responseMimeType: "application/json",
-            responseSchema: evaluateResponseSchema,
-        },
+        config: config,
     });
 
-     try {
-        const jsonText = response.text.trim();
-        return JSON.parse(jsonText) as Choice;
-    } catch (e) {
-        console.error("Falha ao analisar JSON da API (avaliação):", response.text, e);
-        throw new Error("A resposta da IA não era um JSON válido.");
-    }
+    return cleanAndParseJson<Choice>(response.text);
 };
