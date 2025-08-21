@@ -58,7 +58,7 @@ export const LINEAGE_TITLES: LineageTitleInfo[] = [
         name: 'A Casa dos Criminosos',
         description: 'Uma família infame que construiu seu império à margem da lei, temida e respeitada no submundo.',
         condition: (char) => (char.wealth + char.investments) >= 250000 && char.morality <= -60,
-        bonus: { wealth: 15000, trait: NEGATIVE_TRAITS.find(t => t.name === 'Índole Criminosa') },
+        bonus: { wealth: 15000, addTraits: [NEGATIVE_TRAITS.find(t => t.name === 'Índole Criminosa')!] },
         bonusDescription: 'Comece com +$15.000 e o traço "Índole Criminosa".'
     },
     {

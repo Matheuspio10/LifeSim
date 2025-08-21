@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Character, FamilyBackground, RelationshipType, LegacyBonuses, Trait, Lineage, Mood } from '../types';
 import { BIRTHPLACES, POSITIVE_TRAITS, NEGATIVE_TRAITS, LIFE_GOALS, LAST_NAMES, WEEKLY_CHALLENGES, FIRST_NAMES, PORTRAIT_COLORS, LINEAGE_TITLES } from '../constants';
@@ -13,6 +14,9 @@ interface Era {
 }
 
 const ERAS: Era[] = [
+  { name: 'Era das Luzes e Revoluções', description: 'Navegue por um tempo de ideias iluministas, revoluções e agitação política. Oportunidades surgem em salões culturais, mas a censura e a instabilidade são perigos constantes.', startYear: 1700, endYear: 1820 },
+  { name: 'Era Industrial e Romântica', description: 'Testemunhe o vapor das fábricas e a paixão do Romantismo. Oportunidades econômicas crescem nas cidades, mas as condições de trabalho são duras e os conflitos sociais, intensos.', startYear: 1820, endYear: 1870 },
+  { name: 'Era dos Impérios e da Segunda Revolução Industrial', description: 'Viva a era da eletricidade, dos grandes impérios e da expansão global. Inove em um mercado mundial, mas enfrente a desigualdade social e as tensões imperialistas.', startYear: 1870, endYear: 1900 },
   { name: 'Era das Grandes Guerras', description: 'Viva a ascensão da indústria, as tensões globais da Primeira Guerra Mundial e a efervescência cultural dos Anos Loucos.', startYear: 1900, endYear: 1929 },
   { name: 'Era da Incerteza', description: 'Enfrente a Grande Depressão, testemunhe a Segunda Guerra Mundial e lute pela sobrevivência em tempos de crise global.', startYear: 1930, endYear: 1945 },
   { name: 'Era Atômica', description: 'Experimente a prosperidade do pós-guerra, a revolução do rock and roll e a tensão constante da Guerra Fria.', startYear: 1946, endYear: 1979 },
@@ -49,17 +53,25 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, lineage, legacyBonus
         const lineageBonus: LegacyBonuses = lineage?.title ? LINEAGE_TITLES.find(t => t.name === lineage.title)?.bonus || {} : {};
         const purchasedBonuses: LegacyBonuses = legacyBonuses || {};
 
+        const allBonuses = {
+            ...lineageBonus,
+            ...purchasedBonuses,
+            wealth: (lineageBonus.wealth || 0) + (purchasedBonuses.wealth || 0),
+            intelligence: (lineageBonus.intelligence || 0) + (purchasedBonuses.intelligence || 0),
+            charisma: (lineageBonus.charisma || 0) + (purchasedBonuses.charisma || 0),
+            creativity: (lineageBonus.creativity || 0) + (purchasedBonuses.creativity || 0),
+            discipline: (lineageBonus.discipline || 0) + (purchasedBonuses.discipline || 0),
+            health: (lineageBonus.health || 0) + (purchasedBonuses.health || 0),
+            fame: (lineageBonus.fame || 0) + (purchasedBonuses.fame || 0),
+            influence: (lineageBonus.influence || 0) + (purchasedBonuses.influence || 0),
+            addTraits: [...(lineageBonus.addTraits || []), ...(purchasedBonuses.addTraits || [])],
+        };
+
         const initialTraits: Trait[] = [
             getRandom(POSITIVE_TRAITS),
             getRandom(NEGATIVE_TRAITS),
+            ...allBonuses.addTraits,
         ];
-
-        if (purchasedBonuses.trait && !initialTraits.some(t => t.name === purchasedBonuses.trait?.name)) {
-            initialTraits.push(purchasedBonuses.trait);
-        }
-        if (lineageBonus.trait && !initialTraits.some(t => t.name === lineageBonus.trait.name)) {
-            initialTraits.push(lineageBonus.trait);
-        }
         
         const founderTraits = lineage 
             ? lineage.founderTraits
@@ -87,16 +99,16 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, lineage, legacyBonus
             generation: lineage ? lineage.generation + 1 : 1,
             birthYear: birthYear,
             age: 5,
-            health: getRandomInt(65, 85) + (purchasedBonuses.health || 0) + (lineageBonus.health || 0),
-            intelligence: baseStat + distributedPoints[0] + (purchasedBonuses.intelligence || 0) + (lineageBonus.intelligence || 0),
-            charisma: baseStat + distributedPoints[1] + (purchasedBonuses.charisma || 0) + (lineageBonus.charisma || 0),
-            creativity: baseStat + distributedPoints[2] + (purchasedBonuses.creativity || 0) + (lineageBonus.creativity || 0),
-            discipline: baseStat + distributedPoints[3] + (purchasedBonuses.discipline || 0) + (lineageBonus.discipline || 0),
-            wealth: startingWealth + (purchasedBonuses.wealth || 0) + (lineageBonus.wealth || 0),
+            health: getRandomInt(65, 85) + (allBonuses.health || 0),
+            intelligence: baseStat + distributedPoints[0] + (allBonuses.intelligence || 0),
+            charisma: baseStat + distributedPoints[1] + (allBonuses.charisma || 0),
+            creativity: baseStat + distributedPoints[2] + (allBonuses.creativity || 0),
+            discipline: baseStat + distributedPoints[3] + (allBonuses.discipline || 0),
+            wealth: startingWealth + (allBonuses.wealth || 0),
             investments: 0,
             morality: 0,
-            fame: (purchasedBonuses.fame || 0) + (lineageBonus.fame || 0),
-            influence: (purchasedBonuses.influence || 0) + (lineageBonus.influence || 0),
+            fame: (allBonuses.fame || 0),
+            influence: (allBonuses.influence || 0),
             mood: Mood.CONTENT,
             birthplace: getRandom(BIRTHPLACES),
             familyBackground: family,
@@ -115,14 +127,15 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, lineage, legacyBonus
             jobTitle: null,
             careerLevel: 0,
             founderTraits,
+            inheritedSecret: purchasedBonuses.inheritedSecret || null,
         };
 
         // Clamp stats
-        newChar.health = Math.min(100, newChar.health);
-        newChar.intelligence = Math.min(100, newChar.intelligence);
-        newChar.charisma = Math.min(100, newChar.charisma);
-        newChar.creativity = Math.min(100, newChar.creativity);
-        newChar.discipline = Math.min(100, newChar.discipline);
+        newChar.health = Math.max(10, Math.min(100, newChar.health));
+        newChar.intelligence = Math.max(5, Math.min(100, newChar.intelligence));
+        newChar.charisma = Math.max(5, Math.min(100, newChar.charisma));
+        newChar.creativity = Math.max(5, Math.min(100, newChar.creativity));
+        newChar.discipline = Math.max(5, Math.min(100, newChar.discipline));
         newChar.fame = Math.max(-100, Math.min(100, newChar.fame));
         newChar.influence = Math.max(-100, Math.min(100, newChar.influence));
 
@@ -257,12 +270,12 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, lineage, legacyBonus
                              <p className="text-sm text-slate-400 mb-2">Traços Iniciais</p>
                             <div className="space-y-2">
                                 {character.traits.map(trait => (
-                                    <div key={trait.name} title={trait.description} className={`flex items-center gap-2 p-2 bg-slate-700/50 rounded-md cursor-help ${legacyBonuses?.trait?.name === trait.name ? 'ring-2 ring-amber-400' : ''}`}>
+                                    <div key={trait.name} title={trait.description} className={`flex items-center gap-2 p-2 bg-slate-700/50 rounded-md cursor-help ${legacyBonuses?.addTraits?.find(t => t.name === trait.name) ? 'ring-2 ring-amber-400' : ''}`}>
                                     <span className={`w-5 h-5 flex-shrink-0 ${trait.type === 'positive' ? 'text-green-400' : 'text-red-400'}`}>
                                         {trait.type === 'positive' ? <PlusCircleIcon /> : <MinusCircleIcon />}
                                     </span>
                                     <p className="text-sm font-medium text-slate-200">{trait.name}</p>
-                                    {legacyBonuses?.trait?.name === trait.name && <span className="text-xs text-amber-400 font-bold ml-auto">Comprado</span>}
+                                    {legacyBonuses?.addTraits?.find(t => t.name === trait.name) && <span className="text-xs text-amber-400 font-bold ml-auto">Herdado</span>}
                                     </div>
                                 ))}
                             </div>

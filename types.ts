@@ -51,8 +51,25 @@ export enum EconomicClimate {
     BOOM = 'Boom Econômico',
 }
 
+export interface EconomicUpdate {
+    climate: EconomicClimate;
+    message: string;
+    wealthChange: number;
+    investmentChange: number;
+}
+
 export enum MiniGameType {
     INVESTMENT = 'INVESTMENT',
+    PISTOL_DUEL = 'PISTOL_DUEL',
+    PUBLIC_DEBATE = 'PUBLIC_DEBATE',
+    STOCK_MARKET_SPECULATION = 'STOCK_MARKET_SPECULATION',
+    SPEAKEASY_SMUGGLING = 'SPEAKEASY_SMUGGLING',
+    BLACK_MARKET_TRADING = 'BLACK_MARKET_TRADING',
+    COLD_WAR_ESPIONAGE = 'COLD_WAR_ESPIONAGE',
+    GARAGE_STARTUP = 'GARAGE_STARTUP',
+    DOTCOM_DAY_TRADING = 'DOTCOM_DAY_TRADING',
+    VIRAL_CONTENT_CHALLENGE = 'VIRAL_CONTENT_CHALLENGE',
+    GENETIC_EDITING_DILEMMA = 'GENETIC_EDITING_DILEMMA',
 }
 
 export enum Mood {
@@ -70,6 +87,8 @@ export enum HobbyType {
     SPORTS = 'Esportes',
     GAMBLING = 'Jogos de Azar',
 }
+
+export type DecisionArea = 'CAREER' | 'PERSONAL' | 'SOCIAL';
 
 export interface Hobby {
     type: HobbyType;
@@ -141,6 +160,7 @@ export interface Character {
   specialEnding?: string;
   founderTraits: FounderTraits;
   causeOfDeath?: string;
+  inheritedSecret?: string | null;
   // Career
   profession: string | null;
   jobTitle: string | null;
@@ -213,17 +233,20 @@ export interface Choice {
   hobbyChanges?: HobbyChanges;
   moodChange?: Mood;
   specialEnding?: string;
+  timeCostInUnits?: number; // Representa meses
 }
 
 export interface GameEvent {
   eventText: string;
   choices: Choice[];
+  area: DecisionArea;
   isEpic?: boolean;
   isWorldEvent?: boolean;
   type: 'MULTIPLE_CHOICE' | 'OPEN_RESPONSE' | 'MINI_GAME';
   placeholderText?: string;
   miniGameType?: MiniGameType;
   miniGameData?: any;
+  timeCostInUnits?: number; // Representa meses
 }
 
 export interface LifeSummaryEntry {
@@ -238,17 +261,12 @@ export interface LegacyBonuses {
     creativity?: number;
     discipline?: number;
     health?: number;
-    trait?: Trait;
     influence?: number;
     fame?: number;
+    addTraits?: Trait[];
+    inheritedSecret?: string;
 }
 
-export interface EconomicUpdate {
-    climate: EconomicClimate;
-    wealthChange: number;
-    investmentChange: number;
-    message: string;
-}
 
 export interface WeeklyChallenge {
     id: string;

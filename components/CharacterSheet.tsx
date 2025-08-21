@@ -6,6 +6,7 @@ import StatDisplay from './StatDisplay';
 import { HeartIcon, BrainIcon, UserGroupIcon, CurrencyDollarIcon, LightBulbIcon, ShieldCheckIcon, PlusCircleIcon, MinusCircleIcon, GlobeAltIcon, HomeIcon, StarIcon, UsersIcon, BriefcaseIcon, ScaleIcon, BookOpenIcon, ExclamationTriangleIcon, ClipboardDocumentListIcon, SparklesIcon, CheckCircleIcon, ChartBarIcon, SpeakerWaveIcon, PixelArtPortraitIcon, FaceSmileIcon, FaceFrownIcon, FireIcon, HandThumbUpIcon, CloudIcon, PencilSquareIcon, MusicalNoteIcon, PaintBrushIcon, BeakerIcon, TrophyIcon, Cog6ToothIcon } from './Icons';
 import SpectrumDisplay from './SpectrumDisplay';
 import LineageCrestDisplay from './LineageCrestDisplay';
+import { TOTAL_MONTHS_PER_YEAR } from '../constants';
 
 interface CharacterSheetProps {
   character: Character;
@@ -14,6 +15,7 @@ interface CharacterSheetProps {
   isTurboMode: boolean;
   onToggleTurboMode: () => void;
   onChangeApiKeyAndReset: () => void;
+  monthsRemainingInYear: number;
 }
 
 const RelationshipBar: React.FC<{ intimacy: number }> = ({ intimacy }) => {
@@ -82,10 +84,11 @@ const HobbyBar: React.FC<{ level: number, color: string }> = ({ level, color }) 
 }
 
 
-const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, lineage, isTurboMode, onToggleTurboMode, onChangeApiKeyAndReset }) => {
+const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, lineage, isTurboMode, onToggleTurboMode, onChangeApiKeyAndReset, monthsRemainingInYear }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
   const displayName = lineage?.title ? `${lineage.title} dos ${character.lastName}` : `${character.name} ${character.lastName}`;
+  const currentMonth = Math.max(1, TOTAL_MONTHS_PER_YEAR - monthsRemainingInYear + 1);
   
   const hobbyConfig = {
       [HobbyType.ART]: { icon: <PaintBrushIcon />, color: 'bg-purple-500' },
@@ -148,7 +151,7 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
         <h2 className="text-xl font-bold text-white">{displayName}</h2>
         {!lineage?.title && <p className="text-sm text-slate-400">{character.name} {character.lastName}</p>}
         <p className="text-lg text-cyan-400 font-semibold">{`Geração ${character.generation} | Idade: ${character.age}`}</p>
-        <p className="text-sm text-slate-400">(Ano: {character.birthYear + character.age})</p>
+        <p className="text-sm text-slate-400">Ano: {character.birthYear + character.age} | Período: {currentMonth}/{TOTAL_MONTHS_PER_YEAR}</p>
         <p className="mt-2 text-sm bg-cyan-900/50 text-cyan-300 rounded-full px-3 py-1 inline-block">{lifeStage}</p>
       </div>
       <div className="space-y-4">

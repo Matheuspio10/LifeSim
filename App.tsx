@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, EconomicUpdate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Hobby, HobbyType } from './types';
+import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Hobby, HobbyType, DecisionArea } from './types';
 import { generateGameEvent, evaluatePlayerResponse } from './services/gameService';
-import { WEEKLY_CHALLENGES, LAST_NAMES, PORTRAIT_COLORS, HEALTH_CONDITIONS, LINEAGE_TITLES } from './constants';
+import { WEEKLY_CHALLENGES, LAST_NAMES, PORTRAIT_COLORS, HEALTH_CONDITIONS, LINEAGE_TITLES, TOTAL_MONTHS_PER_YEAR } from './constants';
 import { CREST_COLORS, CREST_ICONS, CREST_SHAPES } from './lineageConstants';
 import CharacterSheet from './components/CharacterSheet';
 import EventCard from './components/EventCard';
@@ -9,7 +9,6 @@ import GameOverScreen from './components/GameOverScreen';
 import StartScreen from './components/StartScreen';
 import LoadingSpinner from './components/LoadingSpinner';
 import LegacyScreen from './components/LegacyScreen';
-import EconomicUpdateNotice from './components/EconomicUpdateNotice';
 import RoutineScreen from './components/RoutineScreen';
 import MiniGameHost from './components/MiniGameHost';
 import JournalScreen from './components/JournalScreen';
@@ -18,10 +17,8 @@ import { BookOpenIcon } from './components/Icons';
 import DowntimeActivities, { MicroActionResult } from './components/DowntimeActivities';
 
 const getRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
-const ROUTINE_PLANNING_INTERVAL = 4; // Player plans their routine every 4 years.
 const SAVE_GAME_KEY = 'lifeSimMMORGSaveData';
 const API_KEY_KEY = 'geminiApiKey';
-
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(GameState.NOT_STARTED);
@@ -32,15 +29,15 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [currentYear, setCurrentYear] = useState<number>(1980);
   const [economicClimate, setEconomicClimate] = useState<EconomicClimate>(EconomicClimate.STABLE);
-  const [economicUpdateNotice, setEconomicUpdateNotice] = useState<EconomicUpdate | null>(null);
   const [isMultiplayerCycle, setIsMultiplayerCycle] = useState<boolean>(false);
-  const [yearsSinceLastRoutine, setYearsSinceLastRoutine] = useState<number>(0);
+  const [monthsRemainingInYear, setMonthsRemainingInYear] = useState<number>(TOTAL_MONTHS_PER_YEAR);
   const [currentFocusContext, setCurrentFocusContext] = useState<string | null>(null);
   const [behaviorTracker, setBehaviorTracker] = useState<Record<string, number>>({});
   const [isJournalOpen, setIsJournalOpen] = useState<boolean>(false);
   const [hasSaveData, setHasSaveData] = useState<boolean>(false);
   const [isTurboMode, setIsTurboMode] = useState<boolean>(false);
   const [apiKey, setApiKey] = useState<string | null>(null);
+  const [decisionQueue, setDecisionQueue] = useState<DecisionArea[]>([]);
 
 
   // Legacy State
@@ -69,12 +66,13 @@ const App: React.FC = () => {
             setCurrentYear(parsedData.currentYear ?? 1980);
             setEconomicClimate(parsedData.economicClimate ?? EconomicClimate.STABLE);
             setIsMultiplayerCycle(parsedData.isMultiplayerCycle ?? false);
-            setYearsSinceLastRoutine(parsedData.yearsSinceLastRoutine ?? 0);
+            setMonthsRemainingInYear(parsedData.monthsRemainingInYear ?? TOTAL_MONTHS_PER_YEAR);
             setCurrentFocusContext(parsedData.currentFocusContext ?? null);
             setBehaviorTracker(parsedData.behaviorTracker ?? {});
             setLineage(parsedData.lineage ?? null);
             setLegacyPoints(parsedData.legacyPoints ?? 0);
             setIsTurboMode(parsedData.isTurboMode ?? false);
+            setDecisionQueue(parsedData.decisionQueue ?? []);
         } catch (e) {
             console.error("Falha ao carregar o jogo salvo", e);
             localStorage.removeItem(SAVE_GAME_KEY);
@@ -103,15 +101,16 @@ const App: React.FC = () => {
         currentYear,
         economicClimate,
         isMultiplayerCycle,
-        yearsSinceLastRoutine,
+        monthsRemainingInYear,
         currentFocusContext,
         behaviorTracker,
         lineage,
         legacyPoints,
         isTurboMode,
+        decisionQueue,
     };
     localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameToSave));
-  }, [gameState, character, currentEvent, lifeSummary, currentYear, economicClimate, isMultiplayerCycle, yearsSinceLastRoutine, currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode]);
+  }, [gameState, character, currentEvent, lifeSummary, currentYear, economicClimate, isMultiplayerCycle, monthsRemainingInYear, currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode, decisionQueue]);
 
   const resetGameAndClearSave = () => {
     localStorage.removeItem(SAVE_GAME_KEY);
@@ -124,9 +123,8 @@ const App: React.FC = () => {
     setError(null);
     setCurrentYear(1980);
     setEconomicClimate(EconomicClimate.STABLE);
-    setEconomicUpdateNotice(null);
     setIsMultiplayerCycle(false);
-    setYearsSinceLastRoutine(0);
+    setMonthsRemainingInYear(TOTAL_MONTHS_PER_YEAR);
     setCurrentFocusContext(null);
     setBehaviorTracker({});
     setIsJournalOpen(false);
@@ -135,6 +133,7 @@ const App: React.FC = () => {
     setLegacyBonuses(null);
     setCompletedChallenges([]);
     setIsTurboMode(false);
+    setDecisionQueue([]);
   };
 
   const handleStartNewGameFromScratch = () => {
@@ -159,19 +158,17 @@ const App: React.FC = () => {
     return LifeStage.OLD_AGE;
   };
   
-  const fetchNextEvent = useCallback(async (char: Character, eventYear: number, focusContext: string | null = null, newBehaviorTracker?: Record<string, number>) => {
+  const fetchNextEvent = useCallback(async (char: Character, eventYear: number, area: DecisionArea, newBehaviorTracker?: Record<string, number>) => {
     if (!apiKey) {
         setError("Chave de API do Gemini não configurada.");
         return;
     }
-    // Clear any existing notice *before* showing the loading screen.
-    setEconomicUpdateNotice(null);
     setIsLoading(true);
     setError(null);
     try {
       const lifeStage = getCurrentLifeStage(char.age);
       const lineageTitle = lineage ? lineage.title : null;
-      const event = await generateGameEvent(char, lifeStage, eventYear, economicClimate, lineageTitle, focusContext || currentFocusContext, newBehaviorTracker ?? behaviorTracker, isTurboMode, apiKey);
+      const event = await generateGameEvent(char, lifeStage, eventYear, economicClimate, lineageTitle, currentFocusContext, newBehaviorTracker ?? behaviorTracker, isTurboMode, apiKey, area);
       setCurrentEvent(event);
       setGameState(GameState.IN_PROGRESS);
     } catch (err)      {
@@ -186,12 +183,31 @@ const App: React.FC = () => {
     }
   }, [economicClimate, lineage, currentFocusContext, behaviorTracker, isTurboMode, apiKey]);
 
+  const processNextDecision = useCallback(async (char: Character) => {
+    let queue = decisionQueue;
+    if (queue.length === 0) {
+        const areas: DecisionArea[] = ['CAREER', 'PERSONAL', 'SOCIAL'];
+        for (let i = areas.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [areas[i], areas[j]] = [areas[j], areas[i]];
+        }
+        queue = areas;
+    }
+
+    const nextArea = queue[0];
+    const newQueue = queue.slice(1);
+
+    setDecisionQueue(newQueue);
+    await fetchNextEvent(char, currentYear, nextArea);
+  }, [decisionQueue, currentYear, fetchNextEvent]);
+
   const startGame = (newCharacter: Character, isMultiplayer: boolean) => {
     const startYear = newCharacter.birthYear;
     setCurrentYear(startYear);
     setIsMultiplayerCycle(isMultiplayer);
-    setYearsSinceLastRoutine(0); 
+    setMonthsRemainingInYear(TOTAL_MONTHS_PER_YEAR);
     setBehaviorTracker({}); 
+    setDecisionQueue([]);
     if (!lineage) {
         const color1 = getRandom(CREST_COLORS);
         const crest: LineageCrest = {
@@ -222,16 +238,17 @@ const App: React.FC = () => {
   
   const calculateLegacyPoints = (char: Character): number => {
     let points = 0;
-    points += Math.floor(char.wealth / 1000);
-    points += Math.floor(char.investments / 2000);
-    points += Math.floor((char.intelligence + char.charisma + char.creativity + char.discipline) / 20);
-    points += char.age > 85 ? Math.floor((char.age - 85) / 2) : 0;
+    points += Math.floor(char.wealth / 20000);
+    points += Math.floor(char.investments / 30000);
+    points += Math.floor((char.intelligence + char.charisma + char.creativity + char.discipline) / 60);
+    points += char.age > 95 ? (char.age - 95) * 2 : 0;
     points += char.assets.length;
-    points += char.memories.length * 2;
-    points += char.lifeGoals.filter(g => g.completed).length * 5;
-    points += Math.floor(char.careerLevel / 10);
-    points += Math.floor(char.fame / 10);
-    points += Math.max(0, Math.floor(char.influence / 5));
+    points += Math.floor(char.memories.length / 2);
+    points += char.lifeGoals.filter(g => g.completed).length * 15;
+    points += Math.floor(char.careerLevel / 25);
+    points += Math.floor(char.fame / 30);
+    points += Math.max(0, Math.floor(char.influence / 25));
+    points += char.relationships.filter(r => r.intimacy > 80).length * 2;
     return Math.max(0, points);
   };
 
@@ -299,11 +316,10 @@ const App: React.FC = () => {
     setLifeSummary(finalSummary);
   };
 
-  const applyEconomicPhase = (char: Character, currentClimate: EconomicClimate): { updatedCharacter: Character, updateInfo: EconomicUpdate } => {
+  const applyEconomicPhase = (char: Character, currentClimate: EconomicClimate): Character => {
     const updatedChar = { ...char };
     let wealthChange = 0;
     let investmentChange = 0;
-    let message = "";
 
     const rand = Math.random();
 
@@ -311,9 +327,7 @@ const App: React.FC = () => {
         case EconomicClimate.RECESSION:
             investmentChange = -Math.floor(updatedChar.investments * (0.05 + Math.random() * 0.10)); // Lose 5-15%
             wealthChange = -Math.floor(updatedChar.wealth * 0.01); // Higher cost of living
-            message = "A recessão aperta. Seus investimentos perdem valor e o custo de vida aumenta.";
             if (updatedChar.profession && rand < 0.05) { // 5% chance of layoff
-                message += " Você foi demitido. O mercado de trabalho está congelado.";
                 updatedChar.profession = null;
                 updatedChar.jobTitle = null;
                 updatedChar.careerLevel = Math.max(0, updatedChar.careerLevel - 10);
@@ -321,14 +335,11 @@ const App: React.FC = () => {
             break;
         case EconomicClimate.STABLE:
             investmentChange = Math.floor(updatedChar.investments * (Math.random() * 0.06 - 0.01)); // -1% to +5%
-            message = "A economia está estável, com pequenas flutuações no mercado de ações.";
             break;
         case EconomicClimate.BOOM:
             investmentChange = Math.floor(updatedChar.investments * (0.05 + Math.random() * 0.15)); // Gain 5-20%
             wealthChange = Math.floor(updatedChar.wealth * 0.02); // Small bonus
-            message = "A economia está em alta! Seus investimentos disparam e novas oportunidades surgem.";
             if (updatedChar.profession && rand < 0.1) { // 10% chance of promotion
-                message += " Você recebeu uma promoção inesperada!";
                 updatedChar.careerLevel += 5;
             }
             break;
@@ -337,77 +348,64 @@ const App: React.FC = () => {
     updatedChar.wealth += wealthChange;
     updatedChar.investments += investmentChange;
 
-    const updateInfo: EconomicUpdate = { climate: currentClimate, wealthChange, investmentChange, message };
-    return { updatedCharacter: updatedChar, updateInfo };
+    return updatedChar;
   };
 
-   const advanceYear = useCallback((characterAfterChoice: Character) => {
-    let updatedChar = { ...characterAfterChoice, age: characterAfterChoice.age + 1 };
-    updatedChar.mood = Mood.CONTENT; // Mood resets each year towards content
+   const advanceTime = useCallback((characterAfterChoice: Character, timeCostInMonths: number) => {
+    const newMonthsRemaining = monthsRemainingInYear - timeCostInMonths;
 
-    // Health degradation with age
-    if (updatedChar.age > 40) {
-      const healthDecline = Math.max(1, Math.floor((updatedChar.age - 40) / 10));
-      updatedChar.health = Math.max(0, updatedChar.health - healthDecline);
-    }
-    
-    // Check for end of life
-    if (updatedChar.health <= 0 || updatedChar.age >= 105) {
-      let causeOfDeath = 'Causas naturais devido à idade avançada';
-      if (updatedChar.health <= 0) {
-        if (updatedChar.healthCondition) {
-            causeOfDeath = `Complicações de ${updatedChar.healthCondition.name}`;
-        } else if (updatedChar.age < 65) {
-            causeOfDeath = 'Um mal súbito e inesperado';
-        } else {
-            causeOfDeath = 'Saúde debilitada';
-        }
-      }
-      handleEndOfLife({ ...updatedChar, causeOfDeath });
-      return;
-    }
+    if (newMonthsRemaining <= 0) {
+        // --- End of Year Logic ---
+        let updatedChar = { ...characterAfterChoice, age: characterAfterChoice.age + 1 };
+        updatedChar.mood = Mood.CONTENT; // Mood resets each year
 
-    // This function determines the next game state after the current year's events are processed.
-    const proceedToNextStep = (charAfterUpdate: Character) => {
-        const newYearsSinceRoutine = yearsSinceLastRoutine + 1;
-        setYearsSinceLastRoutine(newYearsSinceRoutine);
-        if (newYearsSinceRoutine >= ROUTINE_PLANNING_INTERVAL) {
-            setGameState(GameState.ROUTINE_PLANNING);
-        } else {
-            // After the economic notice (if any), fetch the next event.
-            fetchNextEvent(charAfterUpdate, currentYear + 1);
+        // Economic Phase
+        if (Math.random() < 0.25) { // 25% chance of economic shift per year
+            const newEconomicClimate = getRandom([EconomicClimate.BOOM, EconomicClimate.RECESSION, EconomicClimate.STABLE]);
+            if (newEconomicClimate !== economicClimate) {
+                setEconomicClimate(newEconomicClimate);
+                updatedChar = applyEconomicPhase(updatedChar, newEconomicClimate);
+            }
         }
-    };
 
-    let wasEconomicUpdate = false;
-    // Economic Phase
-    if (Math.random() < 0.25) { // 25% chance of economic shift per year
-        const newEconomicClimate = getRandom([EconomicClimate.BOOM, EconomicClimate.RECESSION, EconomicClimate.STABLE]);
-        if (newEconomicClimate !== economicClimate) {
-            setEconomicClimate(newEconomicClimate);
-            const { updatedCharacter, updateInfo } = applyEconomicPhase(updatedChar, newEconomicClimate);
-            updatedChar = updatedCharacter;
-            setEconomicUpdateNotice(updateInfo);
-            wasEconomicUpdate = true;
+        // Health degradation with age
+        if (updatedChar.age > 40) {
+          const healthDecline = Math.max(1, Math.floor((updatedChar.age - 40) / 10));
+          updatedChar.health = Math.max(0, updatedChar.health - healthDecline);
         }
-    }
-    
-    setCharacter(updatedChar);
-    setCurrentYear(prev => prev + 1);
-    
-    if (wasEconomicUpdate) {
-        // If there was an update, show the notice for a moment, then proceed.
-        setTimeout(() => proceedToNextStep(updatedChar), 2500);
+        
+        // Check for end of life
+        if (updatedChar.health <= 0 || updatedChar.age >= 105) {
+          let causeOfDeath = 'Causas naturais devido à idade avançada';
+          if (updatedChar.health <= 0) {
+            if (updatedChar.healthCondition) {
+                causeOfDeath = `Complicações de ${updatedChar.healthCondition.name}`;
+            } else if (updatedChar.age < 65) {
+                causeOfDeath = 'Um mal súbito e inesperado';
+            } else {
+                causeOfDeath = 'Saúde debilitada';
+            }
+          }
+          handleEndOfLife({ ...updatedChar, causeOfDeath });
+          return;
+        }
+
+        // Set state for the new year
+        setCharacter(updatedChar);
+        setCurrentYear(prev => prev + 1);
+        setMonthsRemainingInYear(TOTAL_MONTHS_PER_YEAR + newMonthsRemaining); // Carry over negative time
+        setGameState(GameState.ROUTINE_PLANNING); // Always plan at the start of a new year
+
     } else {
-        // If no update, proceed immediately.
-        setEconomicUpdateNotice(null); 
-        proceedToNextStep(updatedChar);
+        // --- Mid-Year Logic ---
+        setMonthsRemainingInYear(newMonthsRemaining);
+        setCharacter(characterAfterChoice);
+        processNextDecision(characterAfterChoice);
     }
-
-  }, [currentYear, economicClimate, fetchNextEvent, yearsSinceLastRoutine]);
+  }, [monthsRemainingInYear, currentYear, economicClimate, processNextDecision]);
   
   const handleChoice = (choice: Choice) => {
-    if (!character) return;
+    if (!character || !currentEvent) return;
     
     let updatedChar = { ...character };
 
@@ -601,7 +599,8 @@ const App: React.FC = () => {
         return;
     }
     
-    advanceYear(updatedChar);
+    const timeCost = choice.timeCostInUnits || currentEvent.timeCostInUnits || 1;
+    advanceTime(updatedChar, timeCost);
   };
   
   const handleOpenResponseSubmit = async (responseText: string) => {
@@ -609,7 +608,7 @@ const App: React.FC = () => {
      setIsLoading(true);
      setError(null);
      try {
-        const choice = await evaluatePlayerResponse(character, currentEvent.eventText, responseText, apiKey);
+        const choice = await evaluatePlayerResponse(character, currentEvent.eventText, responseText, currentEvent.area, apiKey);
         handleChoice(choice);
      } catch (err) {
         console.error(err);
@@ -623,19 +622,18 @@ const App: React.FC = () => {
   const handleRoutineConfirm = (focuses: WeeklyFocus[]) => {
       if (!character) return;
       let updatedChar = { ...character };
-      let focusContext = "Focando em: ";
+      let focusContextText = "Focando em: ";
       focuses.forEach(focus => {
-          focusContext += focus.name + " ";
+          focusContextText += focus.name + " ";
           for(const key in focus.statChanges) {
               const stat = key as keyof typeof focus.statChanges;
               (updatedChar[stat] as number) = (updatedChar[stat] as number) + (focus.statChanges[stat] || 0);
           }
       });
       
-      setCurrentFocusContext(focuses.length > 0 ? focuses[0].name : null);
-      setYearsSinceLastRoutine(0);
+      setCurrentFocusContext(focuses.map(f => f.name).join(', '));
       setCharacter(updatedChar);
-      fetchNextEvent(updatedChar, currentYear, focuses.length > 0 ? focuses[0].name : null);
+      processNextDecision(updatedChar);
   };
   
   const handleMicroAction = (result: MicroActionResult) => {
@@ -681,9 +679,6 @@ const App: React.FC = () => {
       case GameState.ROUTINE_PLANNING:
         return character && <RoutineScreen character={character} onConfirm={handleRoutineConfirm} isLoading={isLoading} />;
       case GameState.IN_PROGRESS:
-        if (economicUpdateNotice) {
-            return <EconomicUpdateNotice update={economicUpdateNotice} />;
-        }
         if (currentEvent?.type === 'MINI_GAME') {
             return character && <MiniGameHost event={currentEvent} character={character} onComplete={handleChoice} />;
         }
@@ -707,7 +702,7 @@ const App: React.FC = () => {
 
   return (
     <main className="min-h-screen flex flex-col md:flex-row items-start justify-center gap-8 p-4 md:p-8 bg-slate-900 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]">
-        {character && <CharacterSheet character={character} lifeStage={getCurrentLifeStage(character.age)} lineage={lineage} isTurboMode={isTurboMode} onToggleTurboMode={handleToggleTurboMode} onChangeApiKeyAndReset={handleChangeApiKeyAndReset} />}
+        {character && <CharacterSheet character={character} lifeStage={getCurrentLifeStage(character.age)} lineage={lineage} isTurboMode={isTurboMode} onToggleTurboMode={handleToggleTurboMode} onChangeApiKeyAndReset={handleChangeApiKeyAndReset} monthsRemainingInYear={monthsRemainingInYear} />}
         <div className="flex-grow flex items-center justify-center w-full">
             {renderMainContent()}
         </div>

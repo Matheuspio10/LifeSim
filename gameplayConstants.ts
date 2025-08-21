@@ -1,5 +1,8 @@
 import { LifeStage, WeeklyChallenge, Character, RelationshipType, WeeklyFocus, HobbyType } from './types';
 
+export const MAX_FOCUS_POINTS = 3;
+export const TOTAL_MONTHS_PER_YEAR = 12;
+
 export const LIFE_GOALS: string[] = [
     'Viver uma vida simples e pacífica no campo.',
     'Tornar-se um grande artista respeitado pela sua comunidade.',

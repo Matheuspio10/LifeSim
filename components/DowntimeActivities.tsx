@@ -15,26 +15,24 @@ interface DowntimeActivitiesProps {
 
 const DowntimeActivities: React.FC<DowntimeActivitiesProps> = ({ character, onMicroAction }) => {
     const [lastOutcome, setLastOutcome] = useState<string | null>(null);
-    const [cooldowns, setCooldowns] = useState<Record<string, boolean>>({});
+    const [isCoolingDown, setIsCoolingDown] = useState<boolean>(false);
     const currentYear = character.birthYear + character.age;
 
-    const handleAction = (actionId: string, outcomes: MicroActionResult[]) => {
-        if (cooldowns[actionId]) return;
+    const handleAction = (outcomes: MicroActionResult[]) => {
+        if (isCoolingDown) return;
 
         const result = outcomes[Math.floor(Math.random() * outcomes.length)];
         onMicroAction(result);
         setLastOutcome(result.outcomeText);
 
-        setCooldowns(prev => ({ ...prev, [actionId]: true }));
+        setIsCoolingDown(true);
         setTimeout(() => {
-            setCooldowns(prev => ({ ...prev, [actionId]: false }));
+            setIsCoolingDown(false);
         }, 3000); 
 
         setTimeout(() => {
             // Check if the current outcome is the one that triggered this timeout
-            if (lastOutcome === result.outcomeText) {
-                setLastOutcome(null);
-            }
+            setLastOutcome(current => (current === result.outcomeText ? null : current));
         }, 2800);
     };
 
@@ -132,48 +130,48 @@ const DowntimeActivities: React.FC<DowntimeActivitiesProps> = ({ character, onMi
 
             <div className="space-y-3 mb-6">
                 <button 
-                    onClick={() => handleAction(communicationSlot.id, communicationSlot.outcomes)} 
-                    disabled={cooldowns[communicationSlot.id]}
+                    onClick={() => handleAction(communicationSlot.outcomes)} 
+                    disabled={isCoolingDown}
                     className="w-full text-left p-3 bg-slate-700/50 border border-slate-600 rounded-lg flex items-center gap-3 disabled:opacity-50 transition-all hover:bg-slate-700"
                 >
                     <span className="text-xl w-6 h-6 text-center">{communicationSlot.emoji}</span>
                     <span className="font-semibold text-slate-200">{communicationSlot.label}</span>
                 </button>
                 <button 
-                    onClick={() => handleAction('snack', snackActions)} 
-                    disabled={cooldowns['snack']}
+                    onClick={() => handleAction(snackActions)} 
+                    disabled={isCoolingDown}
                     className="w-full text-left p-3 bg-slate-700/50 border border-slate-600 rounded-lg flex items-center gap-3 disabled:opacity-50 transition-all hover:bg-slate-700"
                 >
                     <span className="text-xl w-6 h-6 text-center">☕</span>
                     <span className="font-semibold text-slate-200">Tomar um Café / Lanche</span>
                 </button>
                 <button 
-                    onClick={() => handleAction(mediaSlot.id, mediaSlot.outcomes)} 
-                    disabled={cooldowns[mediaSlot.id]}
+                    onClick={() => handleAction(mediaSlot.outcomes)} 
+                    disabled={isCoolingDown}
                     className="w-full text-left p-3 bg-slate-700/50 border border-slate-600 rounded-lg flex items-center gap-3 disabled:opacity-50 transition-all hover:bg-slate-700"
                 >
                     <span className="text-xl w-6 h-6 text-center">{mediaSlot.emoji}</span>
                     <span className="font-semibold text-slate-200">{mediaSlot.label}</span>
                 </button>
                 <button 
-                    onClick={() => handleAction('window', windowActions)} 
-                    disabled={cooldowns['window']}
+                    onClick={() => handleAction(windowActions)} 
+                    disabled={isCoolingDown}
                     className="w-full text-left p-3 bg-slate-700/50 border border-slate-600 rounded-lg flex items-center gap-3 disabled:opacity-50 transition-all hover:bg-slate-700"
                 >
                     <span className="text-xl w-6 h-6 text-center">🏞️</span>
                     <span className="font-semibold text-slate-200">Olhar pela Janela</span>
                 </button>
                 <button 
-                    onClick={() => handleAction('meditate', meditateActions)} 
-                    disabled={cooldowns['meditate']}
+                    onClick={() => handleAction(meditateActions)} 
+                    disabled={isCoolingDown}
                     className="w-full text-left p-3 bg-slate-700/50 border border-slate-600 rounded-lg flex items-center gap-3 disabled:opacity-50 transition-all hover:bg-slate-700"
                 >
                     <span className="text-xl w-6 h-6 text-center">🧘</span>
                     <span className="font-semibold text-slate-200">Meditar / Organizar Pensamentos</span>
                 </button>
                 <button 
-                    onClick={() => handleAction('doodle', doodleActions)} 
-                    disabled={cooldowns['doodle']}
+                    onClick={() => handleAction(doodleActions)} 
+                    disabled={isCoolingDown}
                     className="w-full text-left p-3 bg-slate-700/50 border border-slate-600 rounded-lg flex items-center gap-3 disabled:opacity-50 transition-all hover:bg-slate-700"
                 >
                     <span className="text-xl w-6 h-6 text-center">✏️</span>

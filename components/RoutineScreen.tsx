@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Character, WeeklyFocus } from '../types';
-import { FOCUS_OPTIONS } from '../constants';
+import { FOCUS_OPTIONS, MAX_FOCUS_POINTS } from '../constants';
 import { 
     BriefcaseIcon, 
     UsersIcon, 
@@ -48,7 +48,6 @@ const iconMap: { [key: string]: React.ReactNode } = {
     SparklesIcon: <SparklesIcon />,
 };
 
-const MAX_FOCUS_POINTS = 2;
 
 const RoutineScreen: React.FC<RoutineScreenProps> = ({ character, onConfirm, isLoading }) => {
   const [selectedFocuses, setSelectedFocuses] = useState<string[]>([]);
@@ -91,7 +90,7 @@ const RoutineScreen: React.FC<RoutineScreenProps> = ({ character, onConfirm, isL
 
   return (
     <div className="w-full max-w-2xl text-center p-8 bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl shadow-2xl animate-fade-in">
-      <h2 className="text-3xl font-bold text-white mb-2">Planeje os Próximos Anos</h2>
+      <h2 className="text-3xl font-bold text-white mb-2">Planeje seu Ano</h2>
       <p className="text-slate-300 mb-6">A vida é feita de escolhas. Em que você vai focar suas energias agora?</p>
 
       <div className="sticky top-4 z-10 bg-slate-800/80 backdrop-blur-sm rounded-xl p-4 mb-6 border border-slate-700">
@@ -142,7 +141,7 @@ const RoutineScreen: React.FC<RoutineScreenProps> = ({ character, onConfirm, isL
 
       <button
         onClick={handleConfirm}
-        disabled={pointsRemaining > 0}
+        disabled={pointsRemaining > MAX_FOCUS_POINTS -1}
         className="w-full sm:w-auto px-8 py-4 bg-cyan-600 text-white font-bold text-lg rounded-lg
                    hover:bg-cyan-500 transition-all duration-200 transform hover:scale-105
                    shadow-lg shadow-cyan-600/30 disabled:bg-slate-600 disabled:shadow-none disabled:scale-100 disabled:cursor-not-allowed"

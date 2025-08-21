@@ -21,6 +21,8 @@ export const POSITIVE_TRAITS: Trait[] = [
     { name: 'Constituição Forte', description: 'Sua saúde base é naturalmente mais alta e você adoece com menos frequência.', type: 'positive' },
     { name: 'Mente Aberta', description: 'Você está disposto a considerar novas ideias, o que acelera o ganho de inteligência e criatividade.', type: 'positive' },
     { name: 'Senso de Humor', description: 'Sua capacidade de fazer os outros rirem melhora suas interações sociais e alivia o estresse.', type: 'positive' },
+    { name: 'Corajoso', description: 'Você enfrenta o perigo de frente, mesmo quando está com medo.', type: 'positive' },
+    { name: 'Visionário', description: 'Você vê possibilidades onde outros veem apenas o status quo.', type: 'positive' },
 ];
 
 export const NEGATIVE_TRAITS: Trait[] = [
@@ -38,6 +40,12 @@ export const NEGATIVE_TRAITS: Trait[] = [
     { name: 'Tendência a Vícios', description: 'Você é propenso a desenvolver hábitos compulsivos e vícios, de jogos a substâncias.', type: 'negative' },
     { name: 'Índole Criminosa', description: 'Você tem uma inclinação natural para resolver problemas através de meios ilegais e antiéticos.', type: 'negative' },
     { name: 'Paranoico', description: 'Você constantemente acha que os outros estão conspirando contra você, dificultando a confiança.', type: 'negative' },
+    { name: 'Histórico Familiar Duvidoso', description: 'O passado da sua família é sombrio e pode voltar para te assombrar a qualquer momento.', type: 'negative' },
+    { name: 'Distração Crônica', description: 'Sua mente está sempre em mil lugares, dificultando o foco em tarefas longas ou complexas.', type: 'negative' },
+    { name: 'Reputação Manchada', description: 'O nome da sua família está na lama. Você precisa se esforçar em dobro para ganhar o respeito das pessoas.', type: 'negative' },
+    { name: 'Coração Solitário', description: 'Sua infância te ensinou que o dinheiro é mais confiável que as pessoas, dificultando a criação de laços genuínos.', type: 'negative' },
+    { name: 'Fardo das Expectativas', description: 'Sua família espera nada menos que a perfeição, e cada falha parece o fim do mundo.', type: 'negative' },
+    { name: 'Solitário', description: 'Você se sente desconectado dos outros e prefere a própria companhia, mesmo que isso traga tristeza.', type: 'negative' },
 ];
 
 export const PORTRAIT_COLORS = {
