@@ -364,7 +364,7 @@ const App: React.FC = () => {
     return updatedChar;
   };
 
-   const advanceTime = useCallback((characterAfterChoice: Character, timeCostInMonths: number) => {
+   const advanceTime = (characterAfterChoice: Character, timeCostInMonths: number): boolean => {
     const newMonthsRemaining = monthsRemainingInYear - timeCostInMonths;
 
     if (newMonthsRemaining <= 0) {
@@ -400,7 +400,7 @@ const App: React.FC = () => {
             }
           }
           handleEndOfLife({ ...updatedChar, causeOfDeath });
-          return;
+          return true; // End of year flow
         }
 
         // Set state for the new year
@@ -408,17 +408,18 @@ const App: React.FC = () => {
         setCurrentYear(prev => prev + 1);
         setMonthsRemainingInYear(TOTAL_MONTHS_PER_YEAR + newMonthsRemaining); // Carry over negative time
         setGameState(GameState.ROUTINE_PLANNING); // Always plan at the start of a new year
-
+        return true; // Signal that it's the end of the year
     } else {
         // --- Mid-Year Logic ---
         setMonthsRemainingInYear(newMonthsRemaining);
         setCharacter(characterAfterChoice);
         processNextDecision(characterAfterChoice);
+        return false; // Signal that it's mid-year
     }
-  }, [monthsRemainingInYear, currentYear, economicClimate, processNextDecision]);
+  };
   
-  const handleChoice = (choice: Choice) => {
-    if (!character || !currentEvent) return;
+  const handleChoice = (choice: Choice): boolean => {
+    if (!character || !currentEvent) return false;
     
     const eventBeingProcessed = currentEvent;
     setCurrentEvent(null); // Clear the event immediately to prevent re-rendering the old card
@@ -429,17 +430,16 @@ const App: React.FC = () => {
     
     if(choice.specialEnding){
         handleEndOfLife({...updatedChar, specialEnding: choice.specialEnding});
-        return;
+        return true; // Game over is an end-of-year style transition
     }
     
     let timeCost = choice.timeCostInUnits || eventBeingProcessed.timeCostInUnits || 1;
     
-    // Durante a infância, os eventos custam o dobro de tempo para fazer essa fase passar mais rápido.
-    if (getCurrentLifeStage(updatedChar.age) === LifeStage.CHILDHOOD) {
+    if (updatedChar.age <= 12) {
         timeCost *= 2;
     }
     
-    advanceTime(updatedChar, timeCost);
+    return advanceTime(updatedChar, timeCost);
   };
   
   const handleOpenResponseSubmit = async (responseText: string) => {
@@ -448,7 +448,14 @@ const App: React.FC = () => {
      setError(null);
      try {
         const choice = await evaluatePlayerResponse(character, currentEvent.eventText, responseText, currentEvent.area, apiKey, isTurboMode);
-        handleChoice(choice);
+        const isEndOfYear = handleChoice(choice);
+        
+        // If we are transitioning to the next year (or game over), the loading state
+        // triggered by this submission can be turned off. Otherwise, the loading
+        // state will be handled by the next event fetch.
+        if (isEndOfYear) {
+            setIsLoading(false);
+        }
      } catch (err) {
         console.error(err);
         const errorString = err instanceof Error ? `${err.name}: ${err.message}\n${err.stack}` : JSON.stringify(err);
