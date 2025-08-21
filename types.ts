@@ -318,3 +318,17 @@ export interface Checkpoint {
   keyActions: string[];
   stateSnapshot: any;
 }
+
+export interface Ancestor {
+  id: string;
+  generation: number;
+  name: string;
+  lastName: string;
+  eraLived: string;
+  portraitTraits: FounderTraits;
+  title: string | null;
+  achievements: { text: string; icon: string; }[];
+  definingTraits: string[];
+  finalStatus: string;
+  narrative: string;
+}

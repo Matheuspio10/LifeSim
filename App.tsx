@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Hobby, HobbyType, FamilyBackground, Checkpoint } from './types';
+import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Hobby, HobbyType, FamilyBackground, Checkpoint, Ancestor } from './types';
 import { generateGameEvent, evaluatePlayerResponse } from './services/gameService';
 import { applyChoiceToCharacter } from './services/characterService';
 import { WEEKLY_CHALLENGES, LAST_NAMES, PORTRAIT_COLORS, HEALTH_CONDITIONS, LINEAGE_TITLES, TOTAL_MONTHS_PER_YEAR } from './constants';
@@ -19,6 +19,7 @@ import QuotaErrorModal from './components/QuotaErrorModal';
 import { BookOpenIcon } from './components/Icons';
 import DowntimeActivities, { MicroActionResult } from './components/DowntimeActivities';
 import EmergencyRollbackModal from './components/EmergencyRollbackModal';
+import FamilyBookModal from './components/FamilyBookModal';
 
 const getRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const SAVE_GAME_KEY = 'lifeSimMMORGSaveData';
@@ -46,6 +47,8 @@ const App: React.FC = () => {
   const [showDebug, setShowDebug] = useState<boolean>(false);
   const [history, setHistory] = useState<Checkpoint[]>([]);
   const [isRollbackModalOpen, setIsRollbackModalOpen] = useState(false);
+  const [isFamilyBookOpen, setIsFamilyBookOpen] = useState(false);
+  const [ancestors, setAncestors] = useState<Ancestor[]>([]);
 
 
   // Legacy State
@@ -66,6 +69,7 @@ const App: React.FC = () => {
         gameState, character, currentEvent, lifeSummary, currentYear,
         economicClimate, isMultiplayerCycle, monthsRemainingInYear,
         currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode,
+        ancestors,
     };
 
     let name = `Ponto de Restauração`;
@@ -88,7 +92,7 @@ const App: React.FC = () => {
     };
 
     setHistory(prev => [newCheckpoint, ...prev].slice(0, 10));
-  }, [gameState, character, currentEvent, lifeSummary, currentYear, economicClimate, isMultiplayerCycle, monthsRemainingInYear, currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode]);
+  }, [gameState, character, currentEvent, lifeSummary, currentYear, economicClimate, isMultiplayerCycle, monthsRemainingInYear, currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode, ancestors]);
 
   // --- Save/Load Logic ---
   const loadGame = useCallback(() => {
@@ -110,6 +114,7 @@ const App: React.FC = () => {
             setLegacyPoints(parsedData.legacyPoints ?? 0);
             setIsTurboMode(parsedData.isTurboMode ?? true);
             setHistory(parsedData.history ?? []);
+            setAncestors(parsedData.ancestors ?? []);
         } catch (e) {
             console.error("Falha ao carregar o jogo salvo", e);
             localStorage.removeItem(SAVE_GAME_KEY);
@@ -133,10 +138,10 @@ const App: React.FC = () => {
     const gameToSave = {
         gameState, character, currentEvent, lifeSummary, currentYear,
         economicClimate, isMultiplayerCycle, monthsRemainingInYear,
-        currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode, history,
+        currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode, history, ancestors
     };
     localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameToSave));
-  }, [gameState, character, currentEvent, lifeSummary, currentYear, economicClimate, isMultiplayerCycle, monthsRemainingInYear, currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode, history]);
+  }, [gameState, character, currentEvent, lifeSummary, currentYear, economicClimate, isMultiplayerCycle, monthsRemainingInYear, currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode, history, ancestors]);
 
   const resetGameAndClearSave = () => {
     localStorage.removeItem(SAVE_GAME_KEY);
@@ -160,6 +165,7 @@ const App: React.FC = () => {
     setCompletedChallenges([]);
     setIsTurboMode(true);
     setHistory([]);
+    setAncestors([]);
   };
 
   const handleStartNewGameFromScratch = () => {
@@ -207,6 +213,7 @@ const App: React.FC = () => {
         setLineage(stateSnapshot.lineage);
         setLegacyPoints(stateSnapshot.legacyPoints);
         setIsTurboMode(stateSnapshot.isTurboMode);
+        setAncestors(stateSnapshot.ancestors);
 
         const checkpointIndex = history.findIndex(h => h.id === checkpoint.id);
         if (checkpointIndex > -1) {
@@ -306,6 +313,7 @@ const App: React.FC = () => {
             title: null,
             founderTraits
         });
+        setAncestors([]); // Reset ancestors for a new lineage
     } else {
         setLineage(prev => prev ? { ...prev, lastName: newCharacter.lastName, generation: newCharacter.generation } : null);
     }
@@ -354,6 +362,7 @@ const App: React.FC = () => {
     setCompletedChallenges([]);
     setIsMultiplayerCycle(false);
     setGameState(GameState.NOT_STARTED);
+    setAncestors([]);
   }
 
   const continueLineage = () => {
@@ -375,6 +384,46 @@ const App: React.FC = () => {
       }
       return currentLineage.title;
   }
+  
+  const createAncestorFromCharacter = (char: Character, finalLineage: Lineage | null): Ancestor => {
+    const achievements: Ancestor['achievements'] = [];
+    if (char.lifeGoals.filter(g => g.completed).length > 0) {
+        achievements.push({ text: `Completou ${char.lifeGoals.filter(g => g.completed).length} objetivo(s) de vida`, icon: 'CheckCircleIcon' });
+    }
+    if ((char.wealth + char.investments) > 500000) {
+        achievements.push({ text: `Acumulou mais de $${(char.wealth + char.investments).toLocaleString()}`, icon: 'CurrencyDollarIcon' });
+    }
+    if (char.careerLevel > 80 && char.jobTitle) {
+        achievements.push({ text: `Atingiu o ápice como ${char.jobTitle}`, icon: 'BriefcaseIcon' });
+    }
+    if (char.fame > 80) {
+        achievements.push({ text: 'Alcançou fama mundial', icon: 'StarIcon' });
+    } else if (char.fame < -80) {
+        achievements.push({ text: 'Tornou-se globalmente infame', icon: 'ShieldExclamationIcon' });
+    }
+    
+    const positiveTraits = char.traits.filter(t => t.type === 'positive').slice(0, 2).map(t => t.name);
+    const negativeTraits = char.traits.filter(t => t.type === 'negative').slice(0, 1).map(t => t.name);
+    const definingTraits = [...positiveTraits, ...negativeTraits];
+
+    const finalStatus = char.specialEnding || char.causeOfDeath || 'Faleceu de causas naturais.';
+
+    const narrative = `${char.name} foi um(a) ${definingTraits.join(', ')} que marcou sua época. Sua jornada foi definida por ${achievements.length > 0 ? achievements[0].text.toLowerCase() : 'uma vida de momentos simples'}. ${finalStatus}`;
+
+    return {
+        id: `${char.generation}-${char.lastName}`,
+        generation: char.generation,
+        name: char.name,
+        lastName: char.lastName,
+        eraLived: `${char.birthYear} - ${char.birthYear + char.age}`,
+        portraitTraits: char.founderTraits,
+        title: finalLineage?.title || null,
+        achievements: achievements.slice(0, 3), // Max 3 achievements
+        definingTraits,
+        finalStatus,
+        narrative
+    };
+  };
 
   const handleEndOfLife = (char: Character) => {
     let finalSummary = [...lifeSummary];
@@ -389,6 +438,7 @@ const App: React.FC = () => {
         finalSummary.push({ text: `Por trilhar um caminho único, sua linhagem ganhou um bônus de 100 Pontos de Legado.`, isEpic: true });
     }
     
+    let finalLineage = lineage;
     if (lineage) {
         const newTitle = updateLineageTitle(char, lineage);
         const finalWealth = char.wealth + char.investments;
@@ -397,13 +447,17 @@ const App: React.FC = () => {
         else if (finalWealth < 500000) wealthTier = FamilyBackground.MIDDLE_CLASS;
         else wealthTier = FamilyBackground.WEALTHY;
 
-        setLineage(prevLineage => prevLineage ? { 
-            ...prevLineage, 
+        finalLineage = { 
+            ...lineage, 
             title: newTitle, 
             lastKnownLocation: char.birthplace, 
             lastKnownWealthTier: wealthTier 
-        } : null);
+        };
+        setLineage(finalLineage);
     }
+    
+    const newAncestor = createAncestorFromCharacter(char, finalLineage);
+    setAncestors(prev => [...prev, newAncestor]);
 
     setLegacyPoints(basePoints + challengePoints);
 
@@ -679,7 +733,7 @@ const App: React.FC = () => {
 
   return (
     <main className="min-h-screen flex flex-col md:flex-row items-start justify-center gap-8 p-4 md:p-8 bg-slate-900 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]">
-        {character && <CharacterSheet character={character} lifeStage={getCurrentLifeStage(character.age)} lineage={lineage} isTurboMode={isTurboMode} onToggleTurboMode={handleToggleTurboMode} onChangeApiKey={handleChangeApiKey} onFullReset={handleFullReset} monthsRemainingInYear={monthsRemainingInYear} />}
+        {character && <CharacterSheet character={character} lifeStage={getCurrentLifeStage(character.age)} lineage={lineage} isTurboMode={isTurboMode} onToggleTurboMode={handleToggleTurboMode} onChangeApiKey={handleChangeApiKey} onFullReset={handleFullReset} monthsRemainingInYear={monthsRemainingInYear} onOpenFamilyBook={() => setIsFamilyBookOpen(true)} />}
         <div className="flex-grow flex items-center justify-center w-full">
             {renderMainContent()}
         </div>
@@ -696,6 +750,14 @@ const App: React.FC = () => {
                 onClose={() => setIsRollbackModalOpen(false)}
                 onRestore={handleRestore}
                 checkpoints={history}
+            />
+        )}
+        {isFamilyBookOpen && lineage && (
+            <FamilyBookModal
+                isOpen={isFamilyBookOpen}
+                onClose={() => setIsFamilyBookOpen(false)}
+                ancestors={ancestors}
+                lastName={lineage.lastName}
             />
         )}
         {showDebug && (

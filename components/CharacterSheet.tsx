@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Character, LifeStage, Lineage, Mood, HobbyType } from '../types';
 import StatDisplay from './StatDisplay';
@@ -15,6 +16,7 @@ interface CharacterSheetProps {
   onChangeApiKey: () => void;
   onFullReset: () => void;
   monthsRemainingInYear: number;
+  onOpenFamilyBook: () => void;
 }
 
 const RelationshipBar: React.FC<{ intimacy: number }> = ({ intimacy }) => {
@@ -83,7 +85,7 @@ const HobbyBar: React.FC<{ level: number, color: string }> = ({ level, color }) 
 }
 
 
-const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, lineage, isTurboMode, onToggleTurboMode, onChangeApiKey, onFullReset, monthsRemainingInYear }) => {
+const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, lineage, isTurboMode, onToggleTurboMode, onChangeApiKey, onFullReset, monthsRemainingInYear, onOpenFamilyBook }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
   const displayName = lineage?.title ? `${lineage.title} dos ${character.lastName}` : `${character.name} ${character.lastName}`;
@@ -145,11 +147,18 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
           )}
         </div>
       <div className="text-center mb-6 relative">
-        {lineage && (
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/3">
-                <LineageCrestDisplay crest={lineage.crest} />
-            </div>
-        )}
+         <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/3 flex items-center gap-2">
+            {lineage && <LineageCrestDisplay crest={lineage.crest} />}
+            {lineage && (
+                <button 
+                    onClick={onOpenFamilyBook}
+                    className="w-10 h-10 p-2 bg-amber-800/80 border border-amber-600 rounded-full text-amber-200 hover:bg-amber-700 transition-colors"
+                    title="Abrir Livro da Família"
+                >
+                    <BookOpenIcon />
+                </button>
+            )}
+        </div>
         <div className="w-24 h-24 mx-auto mb-4 rounded-full overflow-hidden border-4 border-slate-600 bg-slate-700 shadow-lg mt-8">
             <PixelArtPortraitIcon 
                 hairColor={character.founderTraits.hairColor} 
