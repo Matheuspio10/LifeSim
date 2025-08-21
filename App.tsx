@@ -38,7 +38,7 @@ const App: React.FC = () => {
   const [behaviorTracker, setBehaviorTracker] = useState<Record<string, number>>({});
   const [isJournalOpen, setIsJournalOpen] = useState<boolean>(false);
   const [hasSaveData, setHasSaveData] = useState<boolean>(false);
-  const [isTurboMode, setIsTurboMode] = useState<boolean>(false);
+  const [isTurboMode, setIsTurboMode] = useState<boolean>(true);
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [isQuotaModalOpen, setIsQuotaModalOpen] = useState<boolean>(false);
   const [lastError, setLastError] = useState<string | null>(null);
@@ -76,7 +76,7 @@ const App: React.FC = () => {
             setBehaviorTracker(parsedData.behaviorTracker ?? {});
             setLineage(parsedData.lineage ?? null);
             setLegacyPoints(parsedData.legacyPoints ?? 0);
-            setIsTurboMode(parsedData.isTurboMode ?? false);
+            setIsTurboMode(parsedData.isTurboMode ?? true);
         } catch (e) {
             console.error("Falha ao carregar o jogo salvo", e);
             localStorage.removeItem(SAVE_GAME_KEY);
@@ -135,7 +135,7 @@ const App: React.FC = () => {
     setLegacyPoints(0);
     setLegacyBonuses(null);
     setCompletedChallenges([]);
-    setIsTurboMode(false);
+    setIsTurboMode(true);
   };
 
   const handleStartNewGameFromScratch = () => {
@@ -144,8 +144,15 @@ const App: React.FC = () => {
     }
   };
 
-  const handleChangeApiKeyAndReset = () => {
-    if (window.confirm('Tem certeza de que deseja alterar sua chave de API? Todo o progresso do jogo atual e salvo será perdido.')) {
+  const handleChangeApiKey = () => {
+    if (window.confirm('Tem certeza de que deseja alterar sua chave de API? Seu progresso salvo será mantido.')) {
+        localStorage.removeItem(API_KEY_KEY);
+        setApiKey(null);
+    }
+  };
+
+  const handleFullReset = () => {
+    if (window.confirm('Tem certeza de que deseja apagar TODO o progresso e a chave de API? Esta ação é irreversível.')) {
         localStorage.removeItem(API_KEY_KEY);
         setApiKey(null);
         resetGameAndClearSave();
@@ -536,7 +543,7 @@ const App: React.FC = () => {
 
   const renderMainContent = () => {
     if (isLoading) {
-        if (!isTurboMode && character) {
+        if (character) {
             return <DowntimeActivities character={character} onMicroAction={handleMicroAction} onShowDebug={() => setShowDebug(true)} />;
         }
         return <LoadingSpinner onShowDebug={() => setShowDebug(true)} />;
@@ -585,7 +592,7 @@ const App: React.FC = () => {
 
   return (
     <main className="min-h-screen flex flex-col md:flex-row items-start justify-center gap-8 p-4 md:p-8 bg-slate-900 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]">
-        {character && <CharacterSheet character={character} lifeStage={getCurrentLifeStage(character.age)} lineage={lineage} isTurboMode={isTurboMode} onToggleTurboMode={handleToggleTurboMode} onChangeApiKeyAndReset={handleChangeApiKeyAndReset} monthsRemainingInYear={monthsRemainingInYear} />}
+        {character && <CharacterSheet character={character} lifeStage={getCurrentLifeStage(character.age)} lineage={lineage} isTurboMode={isTurboMode} onToggleTurboMode={handleToggleTurboMode} onChangeApiKey={handleChangeApiKey} onFullReset={handleFullReset} monthsRemainingInYear={monthsRemainingInYear} />}
         <div className="flex-grow flex items-center justify-center w-full">
             {renderMainContent()}
         </div>

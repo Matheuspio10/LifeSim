@@ -1,5 +1,4 @@
 
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Character, LifeStage, Lineage, Mood, HobbyType } from '../types';
 import StatDisplay from './StatDisplay';
@@ -14,7 +13,8 @@ interface CharacterSheetProps {
   lineage: Lineage | null;
   isTurboMode: boolean;
   onToggleTurboMode: () => void;
-  onChangeApiKeyAndReset: () => void;
+  onChangeApiKey: () => void;
+  onFullReset: () => void;
   monthsRemainingInYear: number;
 }
 
@@ -84,7 +84,7 @@ const HobbyBar: React.FC<{ level: number, color: string }> = ({ level, color }) 
 }
 
 
-const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, lineage, isTurboMode, onToggleTurboMode, onChangeApiKeyAndReset, monthsRemainingInYear }) => {
+const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, lineage, isTurboMode, onToggleTurboMode, onChangeApiKey, onFullReset, monthsRemainingInYear }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
   const displayName = lineage?.title ? `${lineage.title} dos ${character.lastName}` : `${character.name} ${character.lastName}`;
@@ -123,15 +123,24 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
             <Cog6ToothIcon />
           </button>
           {isSettingsOpen && (
-            <div className="absolute top-full right-0 mt-2 w-56 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-20 animate-fade-in-fast">
+            <div className="absolute top-full right-0 mt-2 w-64 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-20 animate-fade-in-fast">
               <button
                 onClick={() => {
-                  onChangeApiKeyAndReset();
+                  onChangeApiKey();
                   setIsSettingsOpen(false);
                 }}
-                className="w-full text-left px-4 py-3 text-sm text-slate-200 hover:bg-slate-800 rounded-lg"
+                className="w-full text-left px-4 py-3 text-sm text-slate-200 hover:bg-slate-800 rounded-t-lg"
               >
-                Mudar Chave de API e Reiniciar
+                Mudar Chave de API (Manter Jogo)
+              </button>
+              <button
+                onClick={() => {
+                  onFullReset();
+                  setIsSettingsOpen(false);
+                }}
+                className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-slate-800 rounded-b-lg border-t border-slate-700"
+              >
+                Reiniciar Jogo (Apaga Tudo)
               </button>
             </div>
           )}
@@ -395,21 +404,21 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
         )}
       </div>
 
-       <div className="mt-6 pt-6 border-t border-slate-700">
-            <div className="flex justify-between items-center">
-                <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Modo Turbo</h3>
-                <button 
-                    onClick={onToggleTurboMode} 
-                    className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${isTurboMode ? 'bg-cyan-500' : 'bg-slate-600'}`}
-                    aria-label="Ativar Modo Turbo"
-                >
-                    <span className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${isTurboMode ? 'translate-x-6' : 'translate-x-1'}`} />
-                </button>
-            </div>
-            <p className="text-xs text-slate-500 mt-2">
-                Respostas mais rápidas da IA, com eventos potencialmente mais simples. Bom para um jogo mais dinâmico.
-            </p>
-        </div>
+      <div className="mt-6 pt-6 border-t border-slate-700">
+          <div className="flex justify-between items-center">
+              <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Modo Avançado</h3>
+              <button 
+                  onClick={onToggleTurboMode} 
+                  className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${!isTurboMode ? 'bg-cyan-500' : 'bg-slate-600'}`}
+                  aria-label="Ativar Modo Avançado"
+              >
+                  <span className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${!isTurboMode ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+          </div>
+          <p className="text-xs text-slate-500 mt-2">
+              Ativa um modelo de IA mais complexo para gerar eventos com maior profundidade e imprevisibilidade. As respostas podem ser mais lentas.
+          </p>
+      </div>
 
     </aside>
   );
