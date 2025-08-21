@@ -536,7 +536,7 @@ const App: React.FC = () => {
 
   const renderMainContent = () => {
     if (isLoading) {
-        if (!isTurboMode && gameState === GameState.IN_PROGRESS && character) {
+        if (!isTurboMode && character) {
             return <DowntimeActivities character={character} onMicroAction={handleMicroAction} onShowDebug={() => setShowDebug(true)} />;
         }
         return <LoadingSpinner onShowDebug={() => setShowDebug(true)} />;

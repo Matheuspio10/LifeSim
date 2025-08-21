@@ -195,7 +195,8 @@ export const applyChoiceToCharacter = (character: Character, choice: Choice, isE
 
     // Apply health condition change
     if (choice.healthConditionChange !== undefined) {
-        if (choice.healthConditionChange === null) {
+        // The AI might return the string "null" instead of the JSON null value.
+        if (choice.healthConditionChange === null || choice.healthConditionChange.toLowerCase() === 'null') {
             updatedChar.healthCondition = null;
         } else {
             updatedChar.healthCondition = {

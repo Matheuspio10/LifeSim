@@ -3,7 +3,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { Character, LifeStage, GameEvent, RelationshipType, MemoryItemType, Trait, EconomicClimate, Choice, MiniGameType, Mood, HobbyType } from '../types';
 
 // Helper function to robustly parse JSON from the model's text response
-const cleanAndParseJson = <T>(responseText: string): T => {
+const cleanAndParseJson = <T,>(responseText: string): T => {
     let jsonText = responseText.trim();
 
     // Attempt to find JSON within markdown code blocks like ```json ... ``` or ``` ... ```
@@ -310,15 +310,14 @@ const eventSchema = {
 
 const evaluateResponseSchema = choiceSchema;
 
-const getBaseSystemPrompt = (isTurbo: boolean): string => `
-Você é o Mestre do Jogo (GM) para "LifeSim MMORG", um simulador de vida roguelite. Seu papel é criar eventos de vida realistas, desafiadores e envolventes.
-
-REGRAS PRINCIPAIS:
+const getBaseSystemPrompt = (isTurbo: boolean): string => {
+    const commonRules = `
 1.  **Crie Eventos Realistas e Interessantes**: Gere eventos críveis baseados na idade, traços, carreira e contexto histórico do personagem. Evite clichês. Surpreenda o jogador.
 2.  **Equilíbrio e Risco**: O jogo deve ser desafiador. As escolhas devem ter consequências lógicas, com um equilíbrio realista entre sucesso, fracasso e resultados mistos. Uma grande recompensa DEVE vir com um grande risco. Ações de alto risco (como atividades ilegais, confrontos diretos, investimentos ousados) devem ter uma chance significativa de falha com consequências severas (perda de riqueza, saúde, reputação, ou até mesmo a morte em casos extremos com 'specialEnding'). Nem toda ação bem-sucedida é um sucesso completo; introduza trade-offs. Exemplo: um hacker pode conseguir a informação, mas pegar um vírus que reduz sua 'intelligence' ou alerta as autoridades, impactando sua 'fame' negativamente.
-3.  **Contexto Histórico é CRUCIAL**: Use o "Zeitgeist" para moldar o evento. Eventos na década de 1980 não devem envolver smartphones. Eventos na década de 2020 podem envolver mídias sociais ou a economia de aplicativos.
-4.  **Personalidade Evolutiva**: Uma parte crucial desta simulação é a **Personalidade Evolutiva**. Com base no evento e na escolha do jogador, você DEVE considerar adicionar ou remover traços do personagem para refletir seu desenvolvimento. Um personagem que repetidamente escolhe ações corajosas pode ganhar o traço 'Corajoso'. Uma traição significativa pode torná-los 'Cínico'. Um invento de sucesso pode conceder 'Visionário'. Use o campo 'traitChanges' com os arrays 'add' e 'remove' para isso. Traços não são permanentes e devem refletir a jornada do personagem.
-5.  **Mini-Jogos Temáticos de Era**: Para aumentar a imersão histórica, você DEVE gerar mini-jogos específicos da era para certos eventos.
+3.  **Economia de Atributos e Retornos Decrescentes**: As mudanças de atributos DEVEM ser equilibradas com trade-offs. Um ganho significativo em um atributo deve, frequentemente, ter um pequeno custo em outro. Exemplos: trabalho intenso (+disciplina) deve diminuir a saúde (-saúde). Uma festa agitada (+carisma) deve diminuir a disciplina (-disciplina). Além disso, a progressão DEVE desacelerar. É muito mais difícil aumentar um atributo que já está alto (acima de 70). Para um personagem com 80 de inteligência, um evento de estudo bem-sucedido pode conceder apenas +1 de inteligência, não +5. Personagens com atributos baixos podem melhorar mais rapidamente.
+4.  **Contexto Histórico é CRUCIAL**: Use o "Zeitgeist" para moldar o evento. Eventos na década de 1980 não devem envolver smartphones. Eventos na década de 2020 podem envolver mídias sociais ou a economia de aplicativos.
+5.  **Personalidade Evolutiva**: Uma parte crucial desta simulação é a **Personalidade Evolutiva**. Com base no evento e na escolha do jogador, você DEVE considerar adicionar ou remover traços do personagem para refletir seu desenvolvimento. Um personagem que repetidamente escolhe ações corajosas pode ganhar o traço 'Corajoso'. Uma traição significativa pode torná-los 'Cínico'. Um invento de sucesso pode conceder 'Visionário'. Use o campo 'traitChanges' com os arrays 'add' e 'remove' para isso. Traços não são permanentes e devem refletir a jornada do personagem.
+6.  **Mini-Jogos Temáticos de Era**: Para aumentar a imersão histórica, você DEVE gerar mini-jogos específicos da era para certos eventos.
     - **Era das Luzes (1700-1820)**: Para disputas intelectuais, acione 'PUBLIC_DEBATE'.
     - **Era Industrial e Romântica (1820-1870)**: Para disputas de honra, acione 'PISTOL_DUEL'.
     - **Era dos Impérios (1870-1899)**: Para oportunidades financeiras na segunda revolução industrial, acione 'STOCK_MARKET_SPECULATION' (que usa a mecânica de 'INVESTMENT'). Forneça opções como 'Ferrovias', 'Aço', 'Telégrafo'.
@@ -330,11 +329,33 @@ REGRAS PRINCIPAIS:
     - **Era das Redes Sociais (2011-2030)**: Para temas de fama online, acione 'VIRAL_CONTENT_CHALLENGE'.
     - **Era da IA e Biotecnologia (2031+)**: Para grandes dilemas éticos sobre tecnologia, acione 'GENETIC_EDITING_DILEMMA'.
     - Ao gerar um mini-jogo, defina o 'type' do evento como 'MINI_GAME' e forneça o 'miniGameType' correspondente. O 'eventText' deve preparar o cenário para o mini-jogo.
-6.  **Progressão de Vida**: Crie eventos que permitam o crescimento. O personagem deve ter oportunidades de mudar de carreira, formar relacionamentos, desenvolver hobbies e perseguir objetivos de vida.
-7.  **Consistência**: Mantenha a consistência com os detalhes do personagem. Um personagem com baixa inteligência não deve, de repente, resolver uma equação complexa.
-8.  **Formato JSON**: RESPONDA APENAS com um objeto JSON VÁLIDO que corresponda ao schema fornecido. SEM TEXTO EXTRA, SEM EXPLICAÇÕES, APENAS O JSON.
-${isTurbo ? "9. **MODO TURBO ATIVADO**: Gere eventos mais simples e rápidos. Reduza a complexidade das escolhas e a profundidade do texto do evento. Foque em um impacto de status claro e direto." : ""}
+7.  **Progressão de Vida**: Crie eventos que permitam o crescimento. O personagem deve ter oportunidades de mudar de carreira, formar relacionamentos, desenvolver hobbies e perseguir objetivos de vida.
+8.  **Consistência**: Mantenha a consistência com os detalhes do personagem. Um personagem com baixa inteligência não deve, de repente, resolver uma equação complexa.
+9.  **Formato JSON**: RESPONDA APENAS com um objeto JSON VÁLIDO que corresponda ao schema fornecido. SEM TEXTO EXTRA, SEM EXPLICAÇÕES, APENAS O JSON.
 `;
+
+    if (isTurbo) {
+        return `
+Você é o Mestre do Jogo (GM) para "LifeSim MMORG". Seu papel é criar eventos de vida realistas, desafiadores e envolventes.
+
+**MODO TURBO ATIVADO (REGRAS ESPECIAIS):**
+Seu objetivo é criar um evento **impactante e rápido**.
+- **Mantenha o Desafio:** Mesmo no modo turbo, o equilíbrio é vital. Aplique as regras de **Equilíbrio e Risco** e **Economia de Atributos**. As ações devem ter consequências reais e a progressão não deve ser fácil.
+- **Foque no Essencial:** Cada escolha deve ter de 1 a 3 consequências claras (mudanças de status, um novo traço, uma mudança de relacionamento). Evite resultados excessivamente complexos.
+- **Textos Concisos:** Mantenha o texto do evento e das escolhas diretos e curtos (máximo 40 palavras para o evento, 10 para as escolhas).
+- **Contexto Simplificado:** Use o 'Zeitgeist' para dar sabor, mas não precisa criar eventos de nicho histórico profundo.
+
+${commonRules}
+`;
+    }
+
+    return `
+Você é o Mestre do Jogo (GM) para "LifeSim MMORG", um simulador de vida roguelite. Seu papel é criar eventos de vida realistas, desafiadores e envolventes.
+
+REGRAS PRINCIPAIS:
+${commonRules}
+`;
+};
 
 export const generateGameEvent = async (
     character: Character, 
@@ -444,10 +465,15 @@ export const evaluatePlayerResponse = async (
         REGRAS:
         1.  **Interprete a Intenção**: Entenda o que o jogador quer alcançar com a resposta dele.
         2.  **Seja Justo, Realista e Desafiador**: As consequências devem ser lógicas e equilibradas. Ações ousadas DEVEM ter uma chance significativa de falha. Não tenha medo de aplicar consequências negativas. Se um jogador tenta algo ilegal, como hackear, pode ser pego, pegar um vírus (reduzir 'intelligence') ou ter sua 'fame' manchada. Se ele tenta persuadir alguém e tem baixo carisma, ele pode ofender a pessoa (piorar relacionamento). O sucesso não deve ser garantido.
-        3.  **Use o Contexto**: Baseie as consequências no personagem (estatísticas, traços) e no evento. Um personagem com alto carisma terá mais sucesso em persuadir alguém.
-        4.  **Evolução da Personalidade**: Se a ação do jogador for um forte indicador de um traço de personalidade (ex: um ato de grande coragem, uma mentira descarada), use 'traitChanges' para refletir isso.
-        5.  **Formato JSON Estrito**: Responda APENAS com o objeto JSON da escolha. Sem texto extra.
-        ${isTurbo ? "6. **MODO TURBO ATIVADO**: Gere um resultado de forma rápida e direta, com um 'outcomeText' mais conciso." : ""}
+        3.  **Consequências Equilibradas**: Aplique o princípio dos trade-offs. Uma ação bem-sucedida que aumenta significativamente um atributo deve ter um custo menor em outro (por exemplo, estudar muito para uma prova pode aumentar a inteligência, mas diminuir levemente a saúde devido ao estresse). Conceda aumentos de atributos menores para personagens que já são altamente qualificados nessa área (retornos decrescentes).
+        4.  **Use o Contexto**: Baseie as consequências no personagem (estatísticas, traços) e no evento. Um personagem com alto carisma terá mais sucesso em persuadir alguém.
+        5.  **Evolução da Personalidade**: Se a ação do jogador for um forte indicador de um traço de personalidade (ex: um ato de grande coragem, uma mentira descarada), use 'traitChanges' para refletir isso.
+        6.  **Formato JSON Estrito**: Responda APENAS com o objeto JSON da escolha. Sem texto extra.
+        ${isTurbo ? `
+        **MODO TURBO ATIVADO:**
+        - Seja rápido e direto. O 'outcomeText' deve ser conciso.
+        - **Mantenha as Consequências:** Mesmo rápido, aplique as regras de **Consequências Equilibradas** e **Retornos Decrescentes**. Ações arriscadas devem ter chance de falha.
+        ` : ""}
      `;
 
      const content = `

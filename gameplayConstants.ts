@@ -1,3 +1,4 @@
+
 import { LifeStage, WeeklyChallenge, Character, RelationshipType, WeeklyFocus, HobbyType } from './types';
 
 export const MAX_FOCUS_POINTS = 3;
@@ -107,28 +108,28 @@ export const FOCUS_OPTIONS: WeeklyFocus[] = [
         name: 'Vida Social',
         description: 'Passe tempo com amigos e familiares, construindo laços.',
         iconName: 'UsersIcon',
-        statChanges: { charisma: 2, health: 1 }
+        statChanges: { charisma: 2, health: 1, wealth: -20 }
     },
     {
         id: 'health',
         name: 'Saúde e Bem-estar',
         description: 'Cuide do corpo e da mente com exercícios e descanso.',
         iconName: 'HeartPulseIcon',
-        statChanges: { health: 3, discipline: 1 }
+        statChanges: { health: 3, discipline: 1, wealth: -25 }
     },
     {
         id: 'studies',
         name: 'Estudo e Desenvolvimento',
         description: 'Aprenda novas habilidades e expanda seu conhecimento.',
         iconName: 'AcademicCapIcon',
-        statChanges: { intelligence: 3, creativity: 1 }
+        statChanges: { intelligence: 3, creativity: 1, health: -1 }
     },
      {
         id: 'hobby_art',
         name: 'Praticar Arte',
         description: 'Passe tempo pintando, desenhando ou esculpindo.',
         iconName: 'PaintBrushIcon',
-        statChanges: { creativity: 2, health: 1 },
+        statChanges: { creativity: 2, health: 1, wealth: -15 },
         hobbyType: HobbyType.ART
     },
     {
@@ -136,7 +137,7 @@ export const FOCUS_OPTIONS: WeeklyFocus[] = [
         name: 'Praticar Música',
         description: 'Toque um instrumento, componha ou ensaie com sua banda.',
         iconName: 'MusicalNoteIcon',
-        statChanges: { creativity: 1, charisma: 1, health: 1 },
+        statChanges: { creativity: 1, charisma: 1, health: 1, wealth: -15 },
         hobbyType: HobbyType.MUSIC
     },
     {
@@ -172,14 +173,14 @@ export const FOCUS_OPTIONS: WeeklyFocus[] = [
         name: 'Tempo com a Família',
         description: 'Dedique tempo de qualidade aos seus parentes mais próximos, fortalecendo os laços.',
         iconName: 'HeartIcon',
-        statChanges: { charisma: 1, health: 2 }
+        statChanges: { charisma: 1, health: 2, wealth: -10 }
     },
     {
         id: 'hobby_sports',
         name: 'Praticar Esportes',
         description: 'Treine seu corpo, participe de competições amadoras e melhore sua saúde.',
         iconName: 'TrophyIcon',
-        statChanges: { health: 3, discipline: 1 },
+        statChanges: { health: 3, discipline: 1, wealth: -20 },
         hobbyType: HobbyType.SPORTS
     },
     {
@@ -187,7 +188,7 @@ export const FOCUS_OPTIONS: WeeklyFocus[] = [
         name: 'Aprender Culinária',
         description: 'Explore novas receitas e técnicas na cozinha para impressionar amigos e família.',
         iconName: 'BeakerIcon',
-        statChanges: { creativity: 2, health: 1 },
+        statChanges: { creativity: 2, health: 1, wealth: -20 },
         hobbyType: HobbyType.COOKING
     },
     {
