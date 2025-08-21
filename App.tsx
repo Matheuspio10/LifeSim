@@ -43,6 +43,7 @@ const App: React.FC = () => {
   const [isQuotaModalOpen, setIsQuotaModalOpen] = useState<boolean>(false);
   const [lastError, setLastError] = useState<string | null>(null);
   const [showDebug, setShowDebug] = useState<boolean>(false);
+  const [previousState, setPreviousState] = useState<any | null>(null);
 
 
   // Legacy State
@@ -57,6 +58,25 @@ const App: React.FC = () => {
         setApiKey(storedKey);
     }
   }, []);
+
+  const saveForRollback = useCallback(() => {
+    const stateToSave = {
+        gameState,
+        character,
+        currentEvent,
+        lifeSummary,
+        currentYear,
+        economicClimate,
+        isMultiplayerCycle,
+        monthsRemainingInYear,
+        currentFocusContext,
+        behaviorTracker,
+        lineage,
+        legacyPoints,
+        isTurboMode,
+    };
+    setPreviousState(stateToSave);
+  }, [gameState, character, currentEvent, lifeSummary, currentYear, economicClimate, isMultiplayerCycle, monthsRemainingInYear, currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode]);
 
   // --- Save/Load Logic ---
   const loadGame = useCallback(() => {
@@ -156,6 +176,31 @@ const App: React.FC = () => {
         localStorage.removeItem(API_KEY_KEY);
         setApiKey(null);
         resetGameAndClearSave();
+    }
+  };
+
+  const handleRollback = () => {
+    if (previousState) {
+        if (window.confirm('Isso irá reverter o jogo para o estado anterior à sua última ação. Deseja continuar?')) {
+            setGameState(previousState.gameState);
+            setCharacter(previousState.character);
+            setCurrentEvent(previousState.currentEvent);
+            setLifeSummary(previousState.lifeSummary);
+            setCurrentYear(previousState.currentYear);
+            setEconomicClimate(previousState.economicClimate);
+            setIsMultiplayerCycle(previousState.isMultiplayerCycle);
+            setMonthsRemainingInYear(previousState.monthsRemainingInYear);
+            setCurrentFocusContext(previousState.currentFocusContext);
+            setBehaviorTracker(previousState.behaviorTracker);
+            setLineage(previousState.lineage);
+            setLegacyPoints(previousState.legacyPoints);
+            setIsTurboMode(previousState.isTurboMode);
+
+            setIsLoading(false);
+            setError(null);
+        }
+    } else {
+        alert("Nenhum estado anterior para reverter. Esta opção fica disponível após sua primeira ação.");
     }
   };
 
@@ -427,6 +472,7 @@ const App: React.FC = () => {
   const handleChoice = (choice: Choice): boolean => {
     if (!character || !currentEvent) return false;
     
+    saveForRollback();
     const eventBeingProcessed = currentEvent;
     setCurrentEvent(null); // Clear the event immediately to prevent re-rendering the old card
 
@@ -450,6 +496,7 @@ const App: React.FC = () => {
   
   const handleOpenResponseSubmit = async (responseText: string) => {
     if (!character || !currentEvent || !apiKey) return;
+    saveForRollback();
     setIsLoading(true);
     setError(null);
 
@@ -493,6 +540,7 @@ const App: React.FC = () => {
 
   const handleRoutineConfirm = (focuses: WeeklyFocus[]) => {
       if (!character) return;
+      saveForRollback();
       let updatedChar = { ...character };
       let focusContextText = "Focando em: ";
       focuses.forEach(focus => {
@@ -544,9 +592,9 @@ const App: React.FC = () => {
   const renderMainContent = () => {
     if (isLoading) {
         if (character) {
-            return <DowntimeActivities character={character} onMicroAction={handleMicroAction} onShowDebug={() => setShowDebug(true)} />;
+            return <DowntimeActivities character={character} onMicroAction={handleMicroAction} onShowDebug={() => setShowDebug(true)} onRollback={handleRollback} canRollback={!!previousState} />;
         }
-        return <LoadingSpinner onShowDebug={() => setShowDebug(true)} />;
+        return <LoadingSpinner onShowDebug={() => setShowDebug(true)} onRollback={handleRollback} canRollback={!!previousState} />;
     }
     if (error) {
         return (
@@ -572,9 +620,9 @@ const App: React.FC = () => {
         if (currentEvent?.type === 'MINI_GAME') {
             return character && <MiniGameHost event={currentEvent} character={character} onComplete={handleChoice} />;
         }
-        return currentEvent ? <EventCard event={currentEvent} onChoice={handleChoice} onOpenResponseSubmit={handleOpenResponseSubmit} /> : <LoadingSpinner onShowDebug={() => setShowDebug(true)} />;
+        return currentEvent ? <EventCard event={currentEvent} onChoice={handleChoice} onOpenResponseSubmit={handleOpenResponseSubmit} /> : <LoadingSpinner onShowDebug={() => setShowDebug(true)} onRollback={handleRollback} canRollback={!!previousState} />;
       case GameState.GAME_OVER:
-        return character ? <GameOverScreen finalCharacter={character} lifeSummary={lifeSummary} legacyPoints={legacyPoints} completedChallenges={completedChallenges} isMultiplayerCycle={isMultiplayerCycle} onContinueLineage={continueLineage} onStartNewLineage={startNewLineage} lineage={lineage} /> : <LoadingSpinner onShowDebug={() => setShowDebug(true)} />;
+        return character ? <GameOverScreen finalCharacter={character} lifeSummary={lifeSummary} legacyPoints={legacyPoints} completedChallenges={completedChallenges} isMultiplayerCycle={isMultiplayerCycle} onContinueLineage={continueLineage} onStartNewLineage={startNewLineage} lineage={lineage} /> : <LoadingSpinner onShowDebug={() => setShowDebug(true)} onRollback={handleRollback} canRollback={!!previousState} />;
       case GameState.LEGACY:
         return <LegacyScreen points={legacyPoints} onStart={startNextGeneration} finalCharacter={character} lineage={lineage} />;
       default:

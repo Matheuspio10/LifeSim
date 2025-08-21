@@ -12,9 +12,11 @@ interface DowntimeActivitiesProps {
     character: Character;
     onMicroAction: (result: MicroActionResult) => void;
     onShowDebug: () => void;
+    onRollback?: () => void;
+    canRollback?: boolean;
 }
 
-const DowntimeActivities: React.FC<DowntimeActivitiesProps> = ({ character, onMicroAction, onShowDebug }) => {
+const DowntimeActivities: React.FC<DowntimeActivitiesProps> = ({ character, onMicroAction, onShowDebug, onRollback, canRollback }) => {
     const [lastOutcome, setLastOutcome] = useState<string | null>(null);
     const [isCoolingDown, setIsCoolingDown] = useState<boolean>(false);
     const currentYear = character.birthYear + character.age;
@@ -188,12 +190,19 @@ const DowntimeActivities: React.FC<DowntimeActivitiesProps> = ({ character, onMi
                 )}
             </div>
 
-            <button 
-                onClick={onShowDebug} 
-                className="mt-4 px-4 py-2 text-xs bg-slate-700 text-slate-300 rounded-md hover:bg-slate-600 transition-colors"
-            >
-                Ver Informações de Depuração
-            </button>
+            <div className="flex justify-center items-center gap-2">
+                <button
+                    onClick={onShowDebug}
+                    className="mt-4 px-4 py-2 text-xs bg-slate-700 text-slate-300 rounded-md hover:bg-slate-600 transition-colors"
+                >
+                    Ver Depuração
+                </button>
+                 {onRollback && canRollback && (
+                    <button onClick={onRollback} className="mt-4 px-4 py-2 text-xs bg-yellow-800 text-yellow-200 rounded-md hover:bg-yellow-700 transition-colors">
+                        Reverter Ação
+                    </button>
+                )}
+            </div>
         </div>
     );
 };
