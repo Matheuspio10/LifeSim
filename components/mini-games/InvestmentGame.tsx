@@ -1,7 +1,7 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { GameEvent, Choice, Character } from '../../types';
-import { ChartPieIcon, CurrencyDollarIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon } from '../Icons';
+import { ChartPieIcon, CurrencyDollarIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, ExclamationTriangleIcon } from '../Icons';
 
 interface InvestmentGameProps {
   event: GameEvent;
@@ -19,16 +19,23 @@ interface InvestmentOption {
 
 const InvestmentGame: React.FC<InvestmentGameProps> = ({ event, character, onComplete }) => {
   const [selectedOption, setSelectedOption] = useState<InvestmentOption | null>(null);
-  const [investmentAmount, setInvestmentAmount] = useState<number>(Math.floor(character.wealth * 0.1));
+  const [investmentAmount, setInvestmentAmount] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
 
   const options: InvestmentOption[] = useMemo(() => event.miniGameData?.options || [], [event]);
+  
+  // Set initial investment amount only when component mounts or character wealth changes
+  useEffect(() => {
+    setInvestmentAmount(Math.max(0, Math.floor(character.wealth * 0.1)));
+  }, [character.wealth]);
+
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10);
     if (isNaN(value)) {
       setInvestmentAmount(0);
     } else {
+      // Ensure investment is not negative and not more than available wealth
       setInvestmentAmount(Math.max(0, Math.min(character.wealth, value)));
     }
   };
@@ -80,11 +87,45 @@ const InvestmentGame: React.FC<InvestmentGameProps> = ({ event, character, onCom
     onComplete(generatedChoice);
   };
   
+  const handleSkip = () => {
+    const skipChoice: Choice = {
+        choiceText: "Decidiu não investir no momento.",
+        outcomeText: "Percebendo a falta de fundos ou de opções viáveis, você decide guardar seu dinheiro e esperar por uma oportunidade melhor.",
+        statChanges: {},
+    };
+    onComplete(skipChoice);
+  };
+  
   const riskConfig = {
       low: { label: 'Baixo Risco', color: 'bg-green-600', icon: <ArrowTrendingUpIcon/> },
       medium: { label: 'Médio Risco', color: 'bg-yellow-500', icon: <ArrowTrendingUpIcon/> },
       high: { label: 'Alto Risco', color: 'bg-red-600', icon: <ArrowTrendingDownIcon/> }
   };
+  
+  // Check for blocking conditions: no money or no options
+  if (character.wealth <= 0 || !options || options.length === 0) {
+      return (
+          <div className="w-full max-w-lg bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border border-slate-700 text-center">
+              <div className="w-12 h-12 text-yellow-400 mx-auto mb-4">
+                  <ExclamationTriangleIcon />
+              </div>
+              <h2 className="text-2xl font-bold text-yellow-400 mb-2">Investimento Impossível</h2>
+              <p className="text-slate-300 mb-6">
+                  {character.wealth <= 0
+                      ? "Você não tem fundos disponíveis para investir nesta oportunidade."
+                      : "As opções de investimento para esta oportunidade não estão claras. Melhor não arriscar."}
+              </p>
+              <button
+                  onClick={handleSkip}
+                  className="w-full mt-6 text-center px-6 py-4 bg-slate-600 border border-transparent rounded-lg text-white font-semibold
+                             hover:bg-slate-500 transition-colors"
+              >
+                  Ignorar Oportunidade
+              </button>
+          </div>
+      );
+  }
+
 
   return (
     <div className="w-full max-w-lg bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border border-slate-700">
@@ -129,7 +170,7 @@ const InvestmentGame: React.FC<InvestmentGameProps> = ({ event, character, onCom
                     type="range"
                     min="0"
                     max={character.wealth}
-                    step={Math.floor(character.wealth / 100)}
+                    step={Math.max(1, Math.floor(character.wealth / 100))}
                     value={investmentAmount}
                     onChange={handleAmountChange}
                     className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
