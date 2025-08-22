@@ -1,9 +1,8 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Hobby, HobbyType, FamilyBackground, Checkpoint, Ancestor } from './types';
 import { generateGameEvent, evaluatePlayerResponse } from './services/gameService';
 import { applyChoiceToCharacter } from './services/characterService';
-import { WEEKLY_CHALLENGES, LAST_NAMES, PORTRAIT_COLORS, HEALTH_CONDITIONS, LINEAGE_TITLES, TOTAL_MONTHS_PER_YEAR } from './constants';
+import { WEEKLY_CHALLENGES, LAST_NAMES, PORTRAIT_COLORS, HEALTH_CONDITIONS, LINEAGE_TITLES, TOTAL_MONTHS_PER_YEAR, SKIN_TONES, HAIR_STYLES, ACCESSORIES } from './constants';
 import { CREST_COLORS, CREST_ICONS, CREST_SHAPES } from './lineageConstants';
 import CharacterSheet from './components/CharacterSheet';
 import EventCard from './components/EventCard';
@@ -22,6 +21,10 @@ import EmergencyRollbackModal from './components/EmergencyRollbackModal';
 import FamilyBookModal from './components/FamilyBookModal';
 
 const getRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+const getRandomKey = <T extends object>(obj: T): keyof T => {
+    const keys = Object.keys(obj) as Array<keyof T>;
+    return keys[Math.floor(Math.random() * keys.length)];
+};
 const SAVE_GAME_KEY = 'lifeSimMMORGSaveData';
 const API_KEY_KEY = 'geminiApiKey';
 
@@ -305,6 +308,11 @@ const App: React.FC = () => {
         const founderTraits: FounderTraits = {
             hairColor: getRandom(PORTRAIT_COLORS.hair),
             eyeColor: getRandom(PORTRAIT_COLORS.eyes),
+            skinTone: getRandom(SKIN_TONES),
+            hairstyle: getRandomKey(HAIR_STYLES),
+            accessories: {
+                glasses: getRandomKey(ACCESSORIES),
+            },
         };
         setLineage({
             lastName: newCharacter.lastName,
@@ -387,6 +395,9 @@ const App: React.FC = () => {
   
   const createAncestorFromCharacter = (char: Character, finalLineage: Lineage | null): Ancestor => {
     const achievements: Ancestor['achievements'] = [];
+    if (char.birthplace !== char.currentLocation) {
+        achievements.push({ text: `Viajou e viveu em ${char.currentLocation}`, icon: 'GlobeAltIcon' });
+    }
     if (char.lifeGoals.filter(g => g.completed).length > 0) {
         achievements.push({ text: `Completou ${char.lifeGoals.filter(g => g.completed).length} objetivo(s) de vida`, icon: 'CheckCircleIcon' });
     }
@@ -408,7 +419,7 @@ const App: React.FC = () => {
 
     const finalStatus = char.specialEnding || char.causeOfDeath || 'Faleceu de causas naturais.';
 
-    const narrative = `${char.name} foi um(a) ${definingTraits.join(', ')} que marcou sua época. Sua jornada foi definida por ${achievements.length > 0 ? achievements[0].text.toLowerCase() : 'uma vida de momentos simples'}. ${finalStatus}`;
+    const narrative = `${char.name} foi um(a) ${definingTraits.join(', ')} que marcou sua época. Nascido(a) em ${char.birthplace}, sua jornada o(a) levou até ${char.currentLocation}. Sua vida foi definida por ${achievements.length > 0 ? achievements[0].text.toLowerCase() : 'uma vida de momentos simples'}. ${finalStatus}`;
 
     return {
         id: `${char.generation}-${char.lastName}`,
@@ -450,7 +461,7 @@ const App: React.FC = () => {
         finalLineage = { 
             ...lineage, 
             title: newTitle, 
-            lastKnownLocation: char.birthplace, 
+            lastKnownLocation: char.currentLocation, 
             lastKnownWealthTier: wealthTier 
         };
         setLineage(finalLineage);

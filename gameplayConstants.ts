@@ -212,5 +212,19 @@ export const FOCUS_OPTIONS: WeeklyFocus[] = [
         iconName: 'CurrencyDollarIcon',
         statChanges: { wealth: -40, discipline: -2 },
         hobbyType: HobbyType.GAMBLING
+    },
+    {
+        id: 'politics',
+        name: 'Política e Lobbies',
+        description: 'Mergulhe no universo do poder, campanhas e acordos de bastidores.',
+        iconName: 'SpeakerWaveIcon',
+        statChanges: { influence: 3, charisma: 1, morality: -2, wealth: -40, health: -1 }
+    },
+    {
+        id: 'dating',
+        name: 'Aventuras Amorosas',
+        description: 'Procure por romance, de paixões passageiras a conexões profundas.',
+        iconName: 'HeartIcon',
+        statChanges: { charisma: 2, health: 2, wealth: -30, discipline: -1 }
     }
 ];

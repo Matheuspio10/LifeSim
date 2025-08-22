@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { Character, LifeStage, GameEvent, RelationshipType, MemoryItemType, Trait, EconomicClimate, Choice, MiniGameType, Mood, HobbyType } from '../types';
 
@@ -268,6 +267,7 @@ const choiceSchema = {
             description: "CRÍTICO: Use este campo SOMENTE se a escolha resultar na MORTE IMEDIATA do personagem ou em um evento que encerre sua vida ativa de forma definitiva (ex: prisão perpétua). A descrição deve ser o resumo final da vida. NÃO use para grandes conquistas que não terminem a vida."
         },
         timeCostInUnits: { type: Type.INTEGER, description: "Custo em meses (1-12). Padrão é 1 se não especificado." },
+        locationChange: { type: Type.STRING, description: "A nova cidade/localização para onde o personagem se mudou. Use APENAS se a escolha resultar em uma MUDANÇA PERMANENTE de residência. Não use para viagens curtas." },
     },
     required: ['choiceText', 'outcomeText', 'statChanges'],
 };
@@ -312,12 +312,13 @@ const evaluateResponseSchema = choiceSchema;
 
 const getBaseSystemPrompt = (isTurbo: boolean): string => {
     const commonRules = `
-1.  **Crie Eventos Realistas e Interessantes**: Gere eventos críveis baseados na idade, traços, carreira e contexto histórico do personagem. Evite clichês. Surpreenda o jogador.
+1.  **Crie Eventos Realistas e Interessantes**: Gere eventos críveis baseados na idade, traços, carreira e contexto histórico/geográfico do personagem. Evite clichês. Surpreenda o jogador.
 2.  **Equilíbrio e Risco**: O jogo deve ser desafiador. As escolhas devem ter consequências lógicas, com um equilíbrio realista entre sucesso, fracasso e resultados mistos. Uma grande recompensa DEVE vir com um grande risco. Ações de alto risco (como atividades ilegais, confrontos diretos, investimentos ousados) devem ter uma chance significativa de falha com consequências severas (perda de riqueza, saúde, reputação, ou até mesmo a morte em casos extremos com 'specialEnding'). Nem toda ação bem-sucedida é um sucesso completo; introduza trade-offs. Exemplo: um hacker pode conseguir a informação, mas pegar um vírus que reduz sua 'intelligence' ou alerta as autoridades, impactando sua 'fame' negativamente.
 3.  **Economia de Atributos e Retornos Decrescentes**: As mudanças de atributos DEVEM ser equilibradas com trade-offs. Um ganho significativo em um atributo deve, frequentemente, ter um pequeno custo em outro. Exemplos: trabalho intenso (+disciplina) deve diminuir a saúde (-saúde). Uma festa agitada (+carisma) deve diminuir a disciplina (-disciplina). Além disso, a progressão DEVE desacelerar. É muito mais difícil aumentar um atributo que já está alto (acima de 70). Para um personagem com 80 de inteligência, um evento de estudo bem-sucedido pode conceder apenas +1 de inteligência, não +5. Personagens com atributos baixos podem melhorar mais rapidamente.
-4.  **Contexto Histórico é CRUCIAL**: Use o "Zeitgeist" para moldar o evento. Eventos na década de 1980 não devem envolver smartphones. Eventos na década de 2020 podem envolver mídias sociais ou a economia de aplicativos.
-5.  **Personalidade Evolutiva**: Uma parte crucial desta simulação é a **Personalidade Evolutiva**. Com base no evento e na escolha do jogador, você DEVE considerar adicionar ou remover traços do personagem para refletir seu desenvolvimento. Um personagem que repetidamente escolhe ações corajosas pode ganhar o traço 'Corajoso'. Uma traição significativa pode torná-los 'Cínico'. Um invento de sucesso pode conceder 'Visionário'. Use o campo 'traitChanges' com os arrays 'add' e 'remove' para isso. Traços não são permanentes e devem refletir a jornada do personagem.
-6.  **Mini-Jogos Temáticos de Era**: Para aumentar a imersão histórica, você DEVE gerar mini-jogos específicos da era para certos eventos.
+4.  **Contexto Histórico e Geográfico é CRUCIAL**: Use o "Zeitgeist" e a 'currentLocation' para moldar o evento. Eventos na década de 1980 em São Paulo não devem envolver smartphones. Eventos em uma fazenda no interior são diferentes de eventos em uma metrópole.
+5.  **Viagens e Mudanças**: O mundo é grande. Crie eventos que ofereçam oportunidades para viajar ou se mudar para novos locais (ex: oferta de emprego em outra cidade, desejo de explorar, visitar família). Uma mudança permanente deve usar o campo 'locationChange' e ter custos significativos (riqueza, tempo). Mudanças também podem impactar negativamente relacionamentos existentes. Eventos subsequentes devem refletir a nova localização do personagem.
+6.  **Personalidade Evolutiva**: Uma parte crucial desta simulação é a **Personalidade Evolutiva**. Com base no evento e na escolha do jogador, você DEVE considerar adicionar ou remover traços do personagem para refletir seu desenvolvimento. Um personagem que repetidamente escolhe ações corajosas pode ganhar o traço 'Corajoso'. Uma traição significativa pode torná-los 'Cínico'. Um invento de sucesso pode conceder 'Visionário'. Use o campo 'traitChanges' com os arrays 'add' e 'remove' para isso. Traços não são permanentes e devem refletir a jornada do personagem.
+7.  **Mini-Jogos Temáticos de Era**: Para aumentar a imersão histórica, você DEVE gerar mini-jogos específicos da era para certos eventos.
     - **Era das Luzes (1700-1820)**: Para disputas intelectuais, acione 'PUBLIC_DEBATE'.
     - **Era Industrial e Romântica (1820-1870)**: Para disputas de honra, acione 'PISTOL_DUEL'.
     - **Era dos Impérios (1870-1899)**: Para oportunidades financeiras na segunda revolução industrial, acione 'STOCK_MARKET_SPECULATION' (que usa a mecânica de 'INVESTMENT'). Forneça opções como 'Ferrovias', 'Aço', 'Telégrafo'.
@@ -329,21 +330,20 @@ const getBaseSystemPrompt = (isTurbo: boolean): string => {
     - **Era das Redes Sociais (2011-2030)**: Para temas de fama online, acione 'VIRAL_CONTENT_CHALLENGE'.
     - **Era da IA e Biotecnologia (2031+)**: Para grandes dilemas éticos sobre tecnologia, acione 'GENETIC_EDITING_DILEMMA'.
     - Ao gerar um mini-jogo, defina o 'type' do evento como 'MINI_GAME' e forneça o 'miniGameType' correspondente. O 'eventText' deve preparar o cenário para o mini-jogo.
-7.  **Progressão de Vida**: Crie eventos que permitam o crescimento. O personagem deve ter oportunidades de mudar de carreira, formar relacionamentos, desenvolver hobbies e perseguir objetivos de vida.
-8.  **Consistência**: Mantenha a consistência com os detalhes do personagem. Um personagem com baixa inteligência não deve, de repente, resolver uma equação complexa.
-9.  **Formato JSON**: RESPONDA APENAS com um objeto JSON VÁLIDO que corresponda ao schema fornecido. SEM TEXTO EXTRA, SEM EXPLICAÇÕES, APENAS O JSON.
-10. **Memórias e Conquistas**: Para eventos impactantes (especialmente os 'isEpic') ou resultados que mudam a vida, você DEVE gerar uma 'memoryGained'. Se a ação cumprir um dos 'lifeGoals', use 'goalChanges' para marcá-lo como completo.
+8.  **Progressão de Vida**: Crie eventos que permitam o crescimento. O personagem deve ter oportunidades de mudar de carreira, formar relacionamentos, desenvolver hobbies e perseguir objetivos de vida.
+9.  **Consistência**: Mantenha a consistência com os detalhes do personagem. Um personagem com baixa inteligência não deve, de repente, resolver uma equação complexa.
+10. **Formato JSON**: RESPONDA APENAS com um objeto JSON VÁLIDO que corresponda ao schema fornecido. SEM TEXTO EXTRA, SEM EXPLICAÇÕES, APENAS O JSON.
+11. **Memórias e Conquistas**: Para eventos impactantes (especialmente os 'isEpic') ou resultados que mudam a vida, você DEVE gerar uma 'memoryGained'. Se a ação cumprir um dos 'lifeGoals', use 'goalChanges' para marcá-lo como completo.
 `;
 
     if (isTurbo) {
         return `
 Você é o Mestre do Jogo (GM) para "LifeSim MMORG". Seu papel é criar eventos de vida realistas, desafiadores e envolventes.
 
-**MODO BALANCEADO ATIVADO (REGRAS ESPECIAIS):**
-Seu objetivo é criar um evento **narrativo e rápido**. A velocidade é importante, mas não à custa da imersão.
-- **Narração Vívida e Detalhada:** Descreva o evento com detalhes interessantes e atmosféricos para criar um bom contexto (use o limite de 60 palavras, como no modo normal). A velocidade deve ser na geração, não na superficialidade. As escolhas, no entanto, devem ser claras e diretas (máximo 12 palavras). O texto do resultado ('outcomeText') também deve ser mais descritivo.
-- **Contexto Histórico Evocativo:** Use o 'Zeitgeist' para dar cor ao evento. Mencione um detalhe específico da época (uma tecnologia, uma notícia, uma gíria) para aumentar a imersão, sem complicar o dilema central do evento.
-- **Mantenha o Desafio e o Foco:** O equilíbrio do jogo é vital. Continue aplicando as regras de **Equilíbrio e Risco** e **Economia de Atributos**. As escolhas devem ter de 1 a 3 consequências claras e impactantes. A progressão não deve ser fácil.
+**MODO RÁPIDO E BALANCEADO:** A "temperatura" da IA está ajustada para consistência (0.8). O objetivo é criar um evento **narrativo e rápido**, mantendo a imersão.
+- **Narração Vívida e Detalhada:** Descreva o evento com detalhes interessantes e atmosféricos. As escolhas devem ser claras e diretas.
+- **Contexto Histórico Evocativo:** Use o 'Zeitgeist' para dar cor ao evento.
+- **Mantenha o Desafio e o Foco:** O equilíbrio do jogo é vital. Continue aplicando as regras de **Equilíbrio e Risco** e **Economia de Atributos**.
 
 ${commonRules}
 `;
@@ -351,6 +351,8 @@ ${commonRules}
 
     return `
 Você é o Mestre do Jogo (GM) para "LifeSim MMORG", um simulador de vida roguelite. Seu papel é criar eventos de vida realistas, desafiadores e envolventes.
+
+**MODO AVANÇADO E CRIATIVO:** A "temperatura" da IA está no máximo (1.0). Use essa liberdade para criar eventos e consequências mais diversos, inesperados e criativos. Surpreenda o jogador.
 
 REGRAS PRINCIPAIS:
 ${commonRules}
@@ -394,6 +396,8 @@ export const generateGameEvent = async (
             influence: character.influence,
         },
         mood: character.mood,
+        birthplace: character.birthplace,
+        currentLocation: character.currentLocation,
         background: character.familyBackground,
         traits: character.traits.map(t => t.name),
         profession: character.profession,
@@ -404,10 +408,34 @@ export const generateGameEvent = async (
         hobbies: character.hobbies.map(h => h.type),
     };
 
-    const isBoss = Math.random() < 0.10; // 10% de chance de um evento "chefe"
-    const eventTypePrompt = isBoss
-        ? `Este é um evento de 'Chefe' - um grande ponto de virada na vida. Use este cenário: ${getBossBattlePrompt(lifeStage)}`
-        : `Gere um evento de vida comum baseado nos focos atuais do personagem: "${currentFocus || 'vida cotidiana'}". O evento deve estar relacionado a um ou mais desses focos.`;
+    // Lógica para determinar o tipo de evento
+    const successScore = ((character.wealth + character.investments) / 10000) + 
+                         (character.intelligence + character.charisma + character.creativity + character.discipline) / 3 + 
+                         character.fame + 
+                         character.influence;
+
+    const temptationRoll = Math.random();
+    const globalEventRoll = Math.random();
+    const bossRoll = Math.random();
+    let eventTypePrompt = '';
+
+    if (successScore > 200 && temptationRoll < 0.20) { // 20% de chance se a pontuação for alta
+        eventTypePrompt = `
+            Este é um evento de 'Auto-Sabotagem'. O personagem está indo MUITO BEM. Crie uma tentação de alto risco e alta recompensa que pode levar a um sucesso espetacular ou a uma ruína total.
+            Exemplos: gastar toda a herança em um curso de NFT, aceitar participar de um reality show de baixo nível, entrar para uma banda excêntrica, investir tudo em uma criptomoeda inútil.
+            A recompensa por sucesso deve ser enorme (riqueza, fama). O fracasso deve ser catastrófico (perda massiva de riqueza, fama negativa, traços negativos, até mesmo um 'specialEnding' que arruína a vida). O evento deve ser 'isEpic: true'.
+        `;
+    } else if (globalEventRoll < 0.05) { // 5% de chance de um evento mundial bizarro
+        eventTypePrompt = `
+            Este é um 'Evento Global Absurdo'. Uma moda ou tendência bizarra está varrendo o mundo, influenciada pelo Zeitgeist atual.
+            Exemplos: a ascensão dos patinetes voadores, uma nova criptomoeda inútil (como 'MemeCoin'), uma guerra de memes online, uma dieta bizarra.
+            Crie um evento que permita ao jogador abraçar essa loucura ou resistir a ela. O sucesso deve trazer fama e fortuna. O fracasso deve torná-lo uma piada nacional (fama negativa, perda de reputação). O evento deve ser 'isWorldEvent: true'.
+        `;
+    } else if (bossRoll < 0.10) { // 10% de chance de um evento de "chefe"
+        eventTypePrompt = `Este é um evento de 'Chefe' - um grande ponto de virada na vida. Use este cenário: ${getBossBattlePrompt(lifeStage)}`;
+    } else {
+        eventTypePrompt = `Gere um evento de vida comum baseado nos focos atuais do personagem: "${currentFocus || 'vida cotidiana'}". O evento deve estar relacionado a um ou mais desses focos.`;
+    }
     
     const content = `
         **Informações do Jogo:**
@@ -437,6 +465,9 @@ export const generateGameEvent = async (
 
     if (isTurbo) {
         config.thinkingConfig = { thinkingBudget: 0 };
+        config.temperature = 0.8;
+    } else {
+        config.temperature = 1.0;
     }
 
     const response = await ai.models.generateContent({
@@ -466,14 +497,14 @@ export const evaluatePlayerResponse = async (
         1.  **Interprete a Intenção**: Entenda o que o jogador quer alcançar com a resposta dele.
         2.  **Seja Justo, Realista e Desafiador**: As consequências devem ser lógicas e equilibradas. Ações ousadas DEVEM ter uma chance significativa de falha. Não tenha medo de aplicar consequências negativas. Se um jogador tenta algo ilegal, como hackear, pode ser pego, pegar um vírus (reduzir 'intelligence') ou ter sua 'fame' manchada. Se ele tenta persuadir alguém e tem baixo carisma, ele pode ofender a pessoa (piorar relacionamento). O sucesso não deve ser garantido.
         3.  **Consequências Equilibradas**: Aplique o princípio dos trade-offs. Uma ação bem-sucedida que aumenta significativamente um atributo deve ter um custo menor em outro (por exemplo, estudar muito para uma prova pode aumentar a inteligência, mas diminuir levemente a saúde devido ao estresse). Conceda aumentos de atributos menores para personagens que já são altamente qualificados nessa área (retornos decrescentes).
-        4.  **Use o Contexto**: Baseie as consequências no personagem (estatísticas, traços) e no evento. Um personagem com alto carisma terá mais sucesso em persuadir alguém.
+        4.  **Use o Contexto**: Baseie as consequências no personagem (estatísticas, traços, localização atual) e no evento. Um personagem com alto carisma terá mais sucesso em persuadir alguém.
         5.  **Evolução da Personalidade**: Se a ação do jogador for um forte indicador de um traço de personalidade (ex: um ato de grande coragem, uma mentira descarada), use 'traitChanges' para refletir isso.
         6.  **Formato JSON Estrito**: Responda APENAS com o objeto JSON da escolha. Sem texto extra.
         ${isTurbo ? `
-        **MODO BALANCEADO ATIVADO:**
-        - **Resultado Narrativo e Rápido:** O 'outcomeText' deve ser gerado rapidamente, mas ainda assim descrever a consequência da ação de forma vívida e interessante, com bons detalhes (use o limite de 50 palavras, como no modo normal).
-        - **Mantenha as Consequências:** Continue aplicando as regras de **Consequências Equilibradas** e **Retornos Decrescentes**. Ações arriscadas devem ter chance de falha. A imersão vem da história, o desafio vem das regras.
-        ` : ""}
+        **MODO RÁPIDO E BALANCEADO:** Temperatura baixa (0.8).
+        - **Resultado Narrativo e Rápido:** O 'outcomeText' deve ser gerado rapidamente, mas ainda assim descrever a consequência da ação de forma vívida e interessante.
+        - **Mantenha as Consequências:** Continue aplicando as regras de **Consequências Equilibradas** e **Retornos Decrescentes**. Ações arriscadas devem ter chance de falha.
+        ` : `**MODO AVANÇADO E CRIATIVO:** Temperatura alta (1.0). Crie um resultado criativo e surpreendente para a ação do jogador, mantendo a lógica do personagem e do mundo.`}
      `;
 
      const content = `
@@ -484,6 +515,7 @@ export const evaluatePlayerResponse = async (
         - Traços: ${character.traits.map(t => t.name).join(', ')}
         - Estatísticas Chave: Inteligência(${character.intelligence}), Carisma(${character.charisma}), Disciplina(${character.discipline})
         - Moralidade: ${character.morality}
+        - Localização Atual: ${character.currentLocation}
         - Focos Atuais: ${currentFocus || 'Não especificado'}
 
         **Ação do Jogador:** "${playerResponse}"
@@ -503,6 +535,9 @@ export const evaluatePlayerResponse = async (
 
     if (isTurbo) {
         config.thinkingConfig = { thinkingBudget: 0 };
+        config.temperature = 0.8;
+    } else {
+        config.temperature = 1.0;
     }
 
     const response = await ai.models.generateContent({

@@ -1,4 +1,3 @@
-
 import { 
     Character, 
     Choice, 
@@ -204,6 +203,11 @@ export const applyChoiceToCharacter = (character: Character, choice: Choice, isE
                 ageOfOnset: updatedChar.age,
             };
         }
+    }
+
+    // Apply location change
+    if (choice.locationChange) {
+        updatedChar.currentLocation = choice.locationChange;
     }
 
     // Final clamping of all primary stats to ensure they are within valid ranges.

@@ -1,4 +1,3 @@
-
 export interface Trait {
     name: string;
     description: string;
@@ -121,6 +120,11 @@ export interface LifeGoal {
 export interface FounderTraits {
     hairColor: string;
     eyeColor: string;
+    skinTone: string;
+    hairstyle: string;
+    accessories: {
+        glasses?: string;
+    }
 }
 
 export interface HealthCondition {
@@ -131,6 +135,7 @@ export interface HealthCondition {
 export interface Character {
   name: string;
   lastName: string;
+  gender: string;
   generation: number;
   birthYear: number;
   age: number;
@@ -146,7 +151,9 @@ export interface Character {
   influence: number; // -100 (Inimigo Público) a 100 (Ícone Global)
   mood: Mood;
   birthplace: string;
+  currentLocation: string;
   familyBackground: FamilyBackground;
+  backstory: string;
   traits: Trait[];
   assets: string[];
   relationships: Relationship[];
@@ -233,6 +240,7 @@ export interface Choice {
   moodChange?: Mood;
   specialEnding?: string;
   timeCostInUnits?: number; // Representa meses
+  locationChange?: string;
 }
 
 export interface GameEvent {

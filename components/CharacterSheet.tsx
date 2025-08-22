@@ -1,8 +1,7 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Character, LifeStage, Lineage, Mood, HobbyType } from '../types';
 import StatDisplay from './StatDisplay';
-import { HeartIcon, BrainIcon, UserGroupIcon, CurrencyDollarIcon, LightBulbIcon, ShieldCheckIcon, PlusCircleIcon, MinusCircleIcon, GlobeAltIcon, HomeIcon, StarIcon, UsersIcon, BriefcaseIcon, ScaleIcon, BookOpenIcon, ExclamationTriangleIcon, ClipboardDocumentListIcon, SparklesIcon, CheckCircleIcon, ChartBarIcon, SpeakerWaveIcon, PixelArtPortraitIcon, FaceSmileIcon, FaceFrownIcon, FireIcon, HandThumbUpIcon, CloudIcon, PencilSquareIcon, MusicalNoteIcon, PaintBrushIcon, BeakerIcon, TrophyIcon, Cog6ToothIcon, PuzzlePieceIcon } from './Icons';
+import { HeartIcon, BrainIcon, UserGroupIcon, CurrencyDollarIcon, LightBulbIcon, ShieldCheckIcon, PlusCircleIcon, MinusCircleIcon, GlobeAltIcon, HomeIcon, StarIcon, UsersIcon, BriefcaseIcon, ScaleIcon, BookOpenIcon, ExclamationTriangleIcon, ClipboardDocumentListIcon, SparklesIcon, CheckCircleIcon, ChartBarIcon, SpeakerWaveIcon, PixelArtPortraitIcon, FaceSmileIcon, FaceFrownIcon, FireIcon, HandThumbUpIcon, CloudIcon, PencilSquareIcon, MusicalNoteIcon, PaintBrushIcon, BeakerIcon, TrophyIcon, Cog6ToothIcon, PuzzlePieceIcon, MapPinIcon } from './Icons';
 import SpectrumDisplay from './SpectrumDisplay';
 import LineageCrestDisplay from './LineageCrestDisplay';
 import { TOTAL_MONTHS_PER_YEAR } from '../constants';
@@ -252,10 +251,11 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
 
 
        <div className="mt-6 pt-4 border-t border-slate-700">
-        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Origem</h3>
+        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Origem & Localização</h3>
          <div className="space-y-2 text-sm">
             <p className="flex items-center gap-2 text-slate-300"><span className="w-5 h-5 text-slate-400"><StarIcon/></span> Nascido(a) em: {character.birthYear}</p>
-            <p className="flex items-center gap-2 text-slate-300"><span className="w-5 h-5 text-slate-400"><GlobeAltIcon/></span> Nasceu em {character.birthplace}</p>
+            <p className="flex items-center gap-2 text-slate-300"><span className="w-5 h-5 text-slate-400"><GlobeAltIcon/></span> Local de Nascimento: {character.birthplace}</p>
+            <p className="flex items-center gap-2 text-slate-300"><span className="w-5 h-5 text-cyan-400"><MapPinIcon/></span> Localização Atual: {character.currentLocation}</p>
             <p className="flex items-center gap-2 text-slate-300"><span className="w-5 h-5 text-slate-400"><HomeIcon/></span> Família de origem {character.familyBackground}</p>
          </div>
       </div>
@@ -433,7 +433,7 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
               </button>
           </div>
           <p className="text-xs text-slate-500 mt-2">
-              Ativa um modelo de IA mais complexo para gerar eventos com maior profundidade e imprevisibilidade. As respostas podem ser mais lentas.
+              Ativa um modelo de IA mais complexo para gerar eventos com maior profundidade, criatividade e imprevisibilidade. As respostas podem ser mais lentas.
           </p>
       </div>
 

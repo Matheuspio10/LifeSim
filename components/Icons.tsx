@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 const iconProps = {
@@ -194,6 +193,12 @@ export const LockClosedIcon = () => (
     </svg>
 );
 
+export const MapPinIcon = () => (
+    <svg {...iconProps}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+    </svg>
+);
 
 export const MinusCircleIcon = () => (
     <svg {...iconProps}>
@@ -318,6 +323,13 @@ export const TrophyIcon = () => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9a9 9 0 0 0 9 0Zm0 0a2.25 2.25 0 0 1 2.25 2.25v1.5a2.25 2.25 0 0 1-2.25-2.25h-9a2.25 2.25 0 0 1-2.25-2.25v-1.5A2.25 2.25 0 0 1 7.5 18.75m9-15.75h-9a9 9 0 0 0 9 0ZM7.5 3a2.25 2.25 0 0 1 2.25-2.25h4.5A2.25 2.25 0 0 1 16.5 3v1.5a2.25 2.25 0 0 1-2.25 2.25h-4.5A2.25 2.25 0 0 1 7.5 4.5v-1.5Z" />
     </svg>
 );
+
+export const UserCircleIcon = () => (
+    <svg {...iconProps} >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+    </svg>
+);
+
 
 export const UserGroupIcon = () => (
     <svg {...iconProps}>

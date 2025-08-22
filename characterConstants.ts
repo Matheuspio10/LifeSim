@@ -1,8 +1,22 @@
 import { Trait } from './types';
 
 export const FIRST_NAMES: string[] = [
+    // Nomes Masculinos
     'Miguel', 'Arthur', 'Gael', 'Heitor', 'Theo', 'Davi', 'Gabriel', 'Bernardo', 'Samuel', 'João',
-    'Helena', 'Alice', 'Laura', 'Maria', 'Valentina', 'Sophia', 'Isabella', 'Heloísa', 'Lívia', 'Júlia'
+    'Lucas', 'Pedro', 'Guilherme', 'Gustavo', 'Rafael', 'Felipe', 'Enzo', 'Nicolas', 'Matheus', 'Daniel',
+    'Antônio', 'Carlos', 'Francisco', 'Marcos', 'Paulo', 'Roberto', 'Ricardo', 'Fernando', 'Jorge', 'Luiz',
+    'André', 'Thiago', 'Marcelo', 'Bruno', 'Eduardo', 'Leonardo', 'Rodrigo', 'Diego', 'Vinicius', 'Caio',
+    'Benício', 'Joaquim', 'Vicente', 'Augusto', 'Inácio', 'Estevão', 'Cristiano', 'Domingos', 'Gonçalo', 'Vasco',
+    'Rui', 'Nuno', 'Diogo', 'Afonso', 'Tomás', 'Martim', 'Santiago', 'Lourenço', 'Simão', 'Igor',
+    'Yuri', 'Alan', 'Alex', 'Kevin', 'Bryan', 'Christian', 'David', 'Eric', 'Henry', 'Ivan',
+    // Nomes Femininos
+    'Helena', 'Alice', 'Laura', 'Maria', 'Valentina', 'Sophia', 'Isabella', 'Heloísa', 'Lívia', 'Júlia',
+    'Manuela', 'Luiza', 'Giovanna', 'Beatriz', 'Mariana', 'Yasmin', 'Gabriela', 'Rafaela', 'Isadora', 'Lorena',
+    'Ana', 'Clara', 'Cecília', 'Elisa', 'Ester', 'Rebeca', 'Sarah', 'Amanda', 'Bianca', 'Carolina',
+    'Fernanda', 'Letícia', 'Bruna', 'Camila', 'Juliana', 'Patrícia', 'Vanessa', 'Aline', 'Débora', 'Tainá',
+    'Benedita', 'Catarina', 'Madalena', 'Francisca', 'Antónia', 'Inês', 'Leonor', 'Matilde', 'Margarida', 'Constança',
+    'Sofia', 'Diana', 'Joana', 'Mafalda', 'Rita', 'Sara', 'Emily', 'Evelyn', 'Jessica', 'Jennifer',
+    'Kelly', 'Kimberly', 'Melissa', 'Nicole', 'Olivia', 'Vitória', 'Larissa', 'Natália', 'Renata', 'Talita'
 ];
 
 export const LAST_NAMES: string[] = [

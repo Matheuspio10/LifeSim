@@ -1,7 +1,6 @@
-
 import React, { useState, useMemo } from 'react';
 import { Ancestor } from '../types';
-import { PixelArtPortraitIcon, TrophyIcon, CrownIcon, CurrencyDollarIcon, ShieldExclamationIcon, AcademicCapIcon, HeartIcon, BriefcaseIcon, LockClosedIcon } from './Icons';
+import { PixelArtPortraitIcon, TrophyIcon, CrownIcon, CurrencyDollarIcon, ShieldExclamationIcon, AcademicCapIcon, HeartIcon, BriefcaseIcon, LockClosedIcon, GlobeAltIcon, CheckCircleIcon, StarIcon } from './Icons';
 
 interface FamilyBookModalProps {
   isOpen: boolean;
@@ -18,6 +17,9 @@ const iconMap: { [key: string]: React.ReactNode } = {
   AcademicCapIcon: <AcademicCapIcon />,
   HeartIcon: <HeartIcon />,
   BriefcaseIcon: <BriefcaseIcon />,
+  GlobeAltIcon: <GlobeAltIcon />,
+  CheckCircleIcon: <CheckCircleIcon />,
+  StarIcon: <StarIcon />,
 };
 
 const FamilyBookModal: React.FC<FamilyBookModalProps> = ({ isOpen, onClose, ancestors, lastName }) => {
@@ -40,6 +42,17 @@ const FamilyBookModal: React.FC<FamilyBookModalProps> = ({ isOpen, onClose, ance
       >
         {/* Book Spine */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-full bg-slate-900 border-x-2 border-amber-900/80"></div>
+
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center bg-amber-800/50 rounded-full text-amber-100 hover:bg-amber-700 hover:text-white transition-colors z-20"
+          aria-label="Fechar Livro da Família"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+          </svg>
+        </button>
 
         {/* Book Content */}
         <div className="w-full h-full flex z-10">
@@ -121,13 +134,6 @@ const FamilyBookModal: React.FC<FamilyBookModalProps> = ({ isOpen, onClose, ance
             )}
           </div>
         </div>
-
-        <button 
-          onClick={onClose}
-          className="absolute bottom-6 right-6 px-6 py-2 bg-amber-800 text-white font-bold rounded-lg border-2 border-amber-900 hover:bg-amber-700 transition-colors shadow-lg"
-        >
-          Fechar Livro
-        </button>
       </div>
     </div>
   );
