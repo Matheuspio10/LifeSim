@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Hobby, FamilyBackground, Checkpoint, Ancestor } from './types';
+import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Skill, FamilyBackground, Checkpoint, Ancestor } from './types';
 import { generateGameEvent, evaluatePlayerResponse } from './services/gameService';
 import { applyChoiceToCharacter } from './services/characterService';
 import { WEEKLY_CHALLENGES, LAST_NAMES, PORTRAIT_COLORS, HEALTH_CONDITIONS, LINEAGE_TITLES, TOTAL_MONTHS_PER_YEAR, SKIN_TONES, HAIR_STYLES, ACCESSORIES } from './constants';
@@ -60,6 +60,25 @@ const App: React.FC = () => {
   const [legacyBonuses, setLegacyBonuses] = useState<LegacyBonuses | null>(null);
   const [completedChallenges, setCompletedChallenges] = useState<{ name: string; reward: number }[]>([]);
   
+  // --- Game Balancing Helpers ---
+  const getScaledStatChange = (currentValue: number, change: number): number => {
+    if (change <= 0) {
+        return Math.floor(change); // Apply losses fully to maintain challenge
+    }
+
+    let multiplier = 1.0;
+    if (currentValue >= 90) {
+        multiplier = 0.25;
+    } else if (currentValue >= 75) {
+        multiplier = 0.5;
+    } else if (currentValue >= 50) {
+        multiplier = 0.75;
+    }
+
+    const scaledChange = change * multiplier;
+    return Math.round(scaledChange);
+  };
+
   useEffect(() => {
     const storedKey = localStorage.getItem(API_KEY_KEY);
     if (storedKey) {
@@ -525,7 +544,20 @@ const App: React.FC = () => {
     if (newMonthsRemaining <= 0) {
         // --- End of Year Logic ---
         let updatedChar = { ...characterAfterChoice, age: characterAfterChoice.age + 1 };
-        updatedChar.mood = Mood.CONTENT; // Mood resets each year
+        
+        // Passive stat changes per year
+        if (updatedChar.stress > 75) {
+            updatedChar.health = Math.max(0, updatedChar.health - 2);
+            updatedChar.happiness = Math.max(0, updatedChar.happiness - 5);
+        }
+        if (updatedChar.stress < 50) { // Stress slowly decreases if not high
+            updatedChar.stress = Math.max(0, updatedChar.stress - 3);
+        }
+        // Happiness tends to normalize towards 60
+        updatedChar.happiness += Math.round((60 - updatedChar.happiness) / 10);
+        // Energy is partially restored at the start of a new year
+        updatedChar.energy = Math.min(100, updatedChar.energy + 40);
+
 
         // Economic Phase
         if (Math.random() < 0.25) { // 25% chance of economic shift per year
@@ -651,52 +683,61 @@ const App: React.FC = () => {
           // Apply stat changes
           for(const key in focus.statChanges) {
               const stat = key as keyof typeof focus.statChanges;
-              (updatedChar[stat] as number) = (updatedChar[stat] as number) + (focus.statChanges[stat] || 0);
+              const change = focus.statChanges[stat] || 0;
+
+              // Apply scaling ONLY to core attributes
+              if (['health', 'intelligence', 'charisma', 'creativity', 'discipline'].includes(stat)) {
+                  const currentValue = updatedChar[stat as keyof Character] as number;
+                  (updatedChar[stat] as number) += getScaledStatChange(currentValue, change);
+              } else {
+                  (updatedChar[stat] as number) += change;
+              }
           }
 
-          // Apply hobby changes
-          if (focus.hobbyName) {
-              let hobbies = [...updatedChar.hobbies];
-              const hobbyIndex = hobbies.findIndex(h => h.name === focus.hobbyName);
+          // Apply skill changes
+          if (focus.skillName) {
+              let skills = [...updatedChar.skills];
+              const skillIndex = skills.findIndex(s => s.name === focus.skillName);
 
-              if (hobbyIndex > -1) {
-                  // Hobby exists, level it up
-                  const currentLevel = hobbies[hobbyIndex].level;
+              if (skillIndex > -1) {
+                  // Skill exists, level it up
+                  const currentLevel = skills[skillIndex].level;
                   const newLevel = Math.min(100, currentLevel + 5); // +5 level for a year's focus
-                  hobbies[hobbyIndex].level = newLevel;
+                  skills[skillIndex].level = newLevel;
                   
                   // Update description based on level
-                  if (newLevel > 70) hobbies[hobbyIndex].description = 'Especialista';
-                  else if (newLevel > 40) hobbies[hobbyIndex].description = 'Intermediário';
-                  else if (newLevel > 15) hobbies[hobbyIndex].description = 'Amador';
+                  if (newLevel > 70) skills[skillIndex].description = 'Especialista';
+                  else if (newLevel > 40) skills[skillIndex].description = 'Intermediário';
+                  else if (newLevel > 15) skills[skillIndex].description = 'Amador';
 
               } else {
-                  // Hobby doesn't exist, add it
-                  hobbies.push({
-                      name: focus.hobbyName,
+                  // Skill doesn't exist, add it
+                  skills.push({
+                      name: focus.skillName,
                       level: 5,
                       description: 'Iniciante'
                   });
               }
-              updatedChar.hobbies = hobbies;
+              updatedChar.skills = skills;
           }
       });
       
       setCurrentFocusContext(focuses.map(f => f.name).join(', '));
-      setCharacter(updatedChar);
-      processNextDecision(updatedChar);
+      const finalChar = applyChoiceToCharacter(updatedChar, {choiceText: '', outcomeText: '', statChanges: {}});
+      setCharacter(finalChar);
+      processNextDecision(finalChar);
   };
   
   const handleMicroAction = (result: MicroActionResult) => {
       if(!character) return;
-      let updatedChar = { ...character };
-      if (result.statChanges) {
-        for (const key in result.statChanges) {
-            const stat = key as keyof typeof result.statChanges;
-            (updatedChar[stat] as number) = (updatedChar[stat] as number) + (result.statChanges[stat] || 0);
-        }
-      }
-      if(result.moodChange) updatedChar.mood = result.moodChange;
+      
+      const choice: Choice = {
+          choiceText: 'Downtime action',
+          outcomeText: result.outcomeText,
+          statChanges: result.statChanges,
+      };
+
+      const updatedChar = applyChoiceToCharacter(character, choice);
       setCharacter(updatedChar);
   };
   

@@ -4,7 +4,6 @@ import { StatChanges, Mood, Character } from '../types';
 export interface MicroActionResult {
     statChanges: StatChanges;
     outcomeText: string;
-    moodChange?: Mood;
 }
 
 interface DowntimeActivitiesProps {
@@ -40,65 +39,65 @@ const DowntimeActivities: React.FC<DowntimeActivitiesProps> = ({ character, onMi
     
     // Timeless Actions
     const snackActions: MicroActionResult[] = [
-        { outcomeText: 'O café quente e forte te deixa mais focado(a).', statChanges: { discipline: 1 } },
-        { outcomeText: 'Um lanche rápido e saudável te dá um pouco de energia.', statChanges: { health: 1 } },
-        { outcomeText: 'O doce é delicioso, mas você se sente um pouco culpado(a).', statChanges: { health: 1, discipline: -1 } },
-        { outcomeText: 'Você experimenta um chá exótico que acalma seus nervos.', statChanges: { health: 2 }, moodChange: Mood.CONTENT },
-        { outcomeText: 'Você derruba café na sua roupa. Que desastre!', statChanges: { health: -1 }, moodChange: Mood.STRESSED },
+        { outcomeText: 'O café quente e forte te deixa mais focado(a).', statChanges: { discipline: 1, energy: 2 } },
+        { outcomeText: 'Um lanche rápido e saudável te dá um pouco de energia.', statChanges: { health: 1, energy: 3 } },
+        { outcomeText: 'O doce é delicioso, mas você se sente um pouco culpado(a).', statChanges: { health: 1, discipline: -1, happiness: 2 } },
+        { outcomeText: 'Você experimenta um chá exótico que acalma seus nervos.', statChanges: { health: 2, stress: -3 } },
+        { outcomeText: 'Você derruba café na sua roupa. Que desastre!', statChanges: { health: -1, stress: 2 } },
     ];
     const windowActions: MicroActionResult[] = [
-        { outcomeText: 'Observar as nuvens passando te dá uma sensação de paz.', statChanges: {}, moodChange: Mood.CONTENT },
+        { outcomeText: 'Observar as nuvens passando te dá uma sensação de paz.', statChanges: { stress: -2 } },
         { outcomeText: 'Você vê uma cena curiosa na rua que te faz pensar sobre a vida.', statChanges: { intelligence: 1 } },
-        { outcomeText: 'O dia cinzento lá fora te deixa um pouco melancólico(a).', statChanges: {}, moodChange: Mood.SAD },
+        { outcomeText: 'O dia cinzento lá fora te deixa um pouco melancólico(a).', statChanges: { happiness: -2 } },
     ];
     const meditateActions: MicroActionResult[] = [
-        { outcomeText: 'Você se sente mais calmo(a) e centrado(a) após alguns minutos de meditação.', statChanges: { health: 1, discipline: 1 }, moodChange: Mood.CONTENT },
-        { outcomeText: 'Sua mente divaga e você não consegue se concentrar. Que frustrante.', statChanges: { discipline: -1 }, moodChange: Mood.STRESSED },
+        { outcomeText: 'Você se sente mais calmo(a) e centrado(a) após alguns minutos de meditação.', statChanges: { health: 1, discipline: 1, stress: -3 } },
+        { outcomeText: 'Sua mente divaga e você não consegue se concentrar. Que frustrante.', statChanges: { discipline: -1, stress: 1 } },
         { outcomeText: 'Uma ideia brilhante para um projeto pessoal surge enquanto você refletia.', statChanges: { creativity: 1 } },
     ];
     const doodleActions: MicroActionResult[] = [
         { outcomeText: 'Um rabisco aleatório se transforma em um desenho interessante.', statChanges: { creativity: 2 } },
-        { outcomeText: 'Você apenas faz alguns traços sem sentido, mas foi relaxante.', statChanges: { health: 1 } },
-        { outcomeText: 'Você tenta desenhar algo, mas não gosta do resultado e amassa o papel.', statChanges: { creativity: -1 }, moodChange: Mood.ANGRY },
+        { outcomeText: 'Você apenas faz alguns traços sem sentido, mas foi relaxante.', statChanges: { health: 1, stress: -1 } },
+        { outcomeText: 'Você tenta desenhar algo, mas não gosta do resultado e amassa o papel.', statChanges: { creativity: -1, stress: 2 } },
     ];
 
     // Era-Specific Action Definitions
     const phoneActions: MicroActionResult[] = [
-        { outcomeText: 'Uma mensagem de um amigo te faz sorrir.', statChanges: { health: 1 }, moodChange: Mood.HAPPY },
-        { outcomeText: 'As notícias no seu feed são desanimadoras.', statChanges: { health: -1 }, moodChange: Mood.SAD },
-        { outcomeText: 'Você perde a noção do tempo navegando nas redes sociais.', statChanges: { discipline: -1 } },
+        { outcomeText: 'Uma mensagem de um amigo te faz sorrir.', statChanges: { happiness: 3 } },
+        { outcomeText: 'As notícias no seu feed são desanimadoras.', statChanges: { happiness: -2, stress: 1 } },
+        { outcomeText: 'Você perde a noção do tempo navegando nas redes sociais.', statChanges: { discipline: -1, energy: -2 } },
         { outcomeText: 'Você aprende um fato interessante em um vídeo curto.', statChanges: { intelligence: 1 } },
-        { outcomeText: 'Você entra em uma discussão inútil nos comentários e se sente esgotado(a).', statChanges: { charisma: -1 }, moodChange: Mood.ANGRY },
+        { outcomeText: 'Você entra em uma discussão inútil nos comentários e se sente esgotado(a).', statChanges: { charisma: -1, stress: 3, energy: -3 } },
     ];
     const pcActions: MicroActionResult[] = [
-        { outcomeText: 'Você se conecta à internet discada. O som nostálgico te irrita um pouco.', statChanges: { discipline: -1 }, moodChange: Mood.STRESSED },
+        { outcomeText: 'Você se conecta à internet discada. O som nostálgico te irrita um pouco.', statChanges: { discipline: -1, stress: 1 } },
         { outcomeText: 'Você descobre um fórum online sobre seu hobby e aprende algo novo.', statChanges: { intelligence: 1 } },
-        { outcomeText: 'Você joga uma partida de Campo Minado para relaxar.', statChanges: { health: 1 } },
+        { outcomeText: 'Você joga uma partida de Campo Minado para relaxar.', statChanges: { health: 1, stress: -1 } },
         { outcomeText: 'Você recebe um e-mail de um "príncipe nigeriano" e o apaga sabiamente.', statChanges: { intelligence: 1, discipline: 1 } },
     ];
     const landlinePhoneActions: MicroActionResult[] = [
-        { outcomeText: 'Você liga para um amigo para colocar o papo em dia.', statChanges: { charisma: 1 }, moodChange: Mood.CONTENT },
-        { outcomeText: 'Ninguém atende. Você se sente um pouco solitário(a).', statChanges: {}, moodChange: Mood.SAD },
+        { outcomeText: 'Você liga para um amigo para colocar o papo em dia.', statChanges: { charisma: 1, happiness: 2 } },
+        { outcomeText: 'Ninguém atende. Você se sente um pouco solitário(a).', statChanges: { happiness: -2 } },
         { outcomeText: 'A linha está ocupada. Você terá que tentar mais tarde.', statChanges: { discipline: -1 } },
-        { outcomeText: 'Você recebe uma ligação com um trote e desliga irritado(a).', statChanges: { health: -1 }, moodChange: Mood.ANGRY },
+        { outcomeText: 'Você recebe uma ligação com um trote e desliga irritado(a).', statChanges: { health: -1, stress: 2 } },
     ];
     const letterActions: MicroActionResult[] = [
-        { outcomeText: 'Você escreve para um parente distante, contando as novidades.', statChanges: { charisma: 1 }, moodChange: Mood.CONTENT },
-        { outcomeText: 'Você tenta escrever um poema, mas acaba frustrado(a) com o resultado.', statChanges: { creativity: -1 }, moodChange: Mood.STRESSED },
-        { outcomeText: 'Você relê uma carta antiga de um ente querido e sente uma onda de nostalgia.', statChanges: { health: 1 }, moodChange: Mood.SAD },
-        { outcomeText: 'Escrever sobre seus sentimentos em um diário te ajuda a clarear a mente.', statChanges: { intelligence: 1 } },
+        { outcomeText: 'Você escreve para um parente distante, contando as novidades.', statChanges: { charisma: 1, happiness: 1 } },
+        { outcomeText: 'Você tenta escrever um poema, mas acaba frustrado(a) com o resultado.', statChanges: { creativity: -1, stress: 1 } },
+        { outcomeText: 'Você relê uma carta antiga de um ente querido e sente uma onda de nostalgia.', statChanges: { health: 1, happiness: -2 } },
+        { outcomeText: 'Escrever sobre seus sentimentos em um diário te ajuda a clarear a mente.', statChanges: { intelligence: 1, stress: -1 } },
     ];
     const radioActions: MicroActionResult[] = [
-        { outcomeText: 'Uma música nostálgica toca no rádio, trazendo boas lembranças.', statChanges: {}, moodChange: Mood.CONTENT },
-        { outcomeText: 'Um debate político acalorado no rádio te deixa irritado(a).', statChanges: {}, moodChange: Mood.ANGRY },
+        { outcomeText: 'Uma música nostálgica toca no rádio, trazendo boas lembranças.', statChanges: { happiness: 2 } },
+        { outcomeText: 'Um debate político acalorado no rádio te deixa irritado(a).', statChanges: { stress: 3 } },
         { outcomeText: 'Você ouve uma dica de investimento interessante em um programa de finanças.', statChanges: { intelligence: 1 } },
-        { outcomeText: 'Você ganha um pequeno prêmio em um concurso da rádio!', statChanges: { wealth: 25 }, moodChange: Mood.HAPPY },
+        { outcomeText: 'Você ganha um pequeno prêmio em um concurso da rádio!', statChanges: { wealth: 25, happiness: 5 } },
     ];
     const newspaperActions: MicroActionResult[] = [
-        { outcomeText: 'Uma notícia sobre a economia local te deixa preocupado(a).', statChanges: { intelligence: 1 }, moodChange: Mood.STRESSED },
-        { outcomeText: 'Você lê uma história inspiradora sobre superação nos classificados.', statChanges: { health: 1 }, moodChange: Mood.HAPPY },
-        { outcomeText: 'As tirinhas de quadrinhos te fazem rir.', statChanges: { health: 1 } },
-        { outcomeText: 'Você se perde em um artigo longo e complexo sobre política internacional.', statChanges: { intelligence: 1 } },
+        { outcomeText: 'Uma notícia sobre a economia local te deixa preocupado(a).', statChanges: { intelligence: 1, stress: 2 } },
+        { outcomeText: 'Você lê uma história inspiradora sobre superação nos classificados.', statChanges: { health: 1, happiness: 2 } },
+        { outcomeText: 'As tirinhas de quadrinhos te fazem rir.', statChanges: { health: 1, happiness: 1 } },
+        { outcomeText: 'Você se perde em um artigo longo e complexo sobre política internacional.', statChanges: { intelligence: 1, energy: -1 } },
     ];
 
 

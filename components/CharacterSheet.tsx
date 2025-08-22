@@ -39,7 +39,17 @@ const RelationshipBar: React.FC<{ intimacy: number }> = ({ intimacy }) => {
     );
 };
 
-const MoodDisplay: React.FC<{ mood: Mood }> = ({ mood }) => {
+const getMood = (happiness: number, stress: number): Mood => {
+    if (stress > 75) return Mood.STRESSED;
+    if (stress > 60 && happiness < 50) return Mood.ANGRY;
+    if (happiness < 25) return Mood.SAD;
+    if (happiness > 80) return Mood.HAPPY;
+    return Mood.CONTENT;
+};
+
+const MoodDisplay: React.FC<{ happiness: number, stress: number }> = ({ happiness, stress }) => {
+    const mood = getMood(happiness, stress);
+
     const moodConfig = {
         [Mood.HAPPY]: { icon: <FaceSmileIcon />, color: 'text-green-400', label: 'Feliz' },
         [Mood.CONTENT]: { icon: <HandThumbUpIcon />, color: 'text-cyan-400', label: 'Contente' },
@@ -48,7 +58,7 @@ const MoodDisplay: React.FC<{ mood: Mood }> = ({ mood }) => {
         [Mood.ANGRY]: { icon: <FireIcon />, color: 'text-red-500', label: 'Irritado(a)' },
     };
     
-    const config = moodConfig[mood] || moodConfig[Mood.CONTENT];
+    const config = moodConfig[mood];
 
     return (
         <div className="mt-6 pt-6 border-t border-slate-700">
@@ -73,7 +83,7 @@ const CareerBar: React.FC<{ level: number }> = ({ level }) => {
     );
 }
 
-const HobbyBar: React.FC<{ level: number, color: string }> = ({ level, color }) => {
+const SkillBar: React.FC<{ level: number, color: string }> = ({ level, color }) => {
     return (
         <div className="w-full bg-slate-700 rounded-full h-1.5 mt-1">
             <div
@@ -92,7 +102,7 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
   const displayName = lineage?.title ? `${lineage.title} dos ${character.lastName}` : `${character.name} ${character.lastName}`;
   const currentMonth = Math.max(1, TOTAL_MONTHS_PER_YEAR - monthsRemainingInYear + 1);
   
-  const hobbyConfig: Record<string, { icon: React.ReactNode; color: string; }> = {
+  const skillConfig: Record<string, { icon: React.ReactNode; color: string; }> = {
       'Arte': { icon: <PaintBrushIcon />, color: 'bg-purple-500' },
       'Música': { icon: <MusicalNoteIcon />, color: 'bg-yellow-500' },
       'Culinária': { icon: <BeakerIcon />, color: 'bg-orange-500' },
@@ -186,16 +196,26 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
 
       <div className="space-y-4">
         <StatDisplay label="Saúde" value={character.health} icon={<HeartIcon />} color="bg-red-500" />
+        <StatDisplay label="Felicidade" value={character.happiness} icon={<FaceSmileIcon />} color="bg-yellow-400" />
+        <StatDisplay label="Energia" value={character.energy} icon={<FireIcon />} color="bg-orange-500" />
+        <StatDisplay label="Estresse" value={character.stress} icon={<CloudIcon />} color="bg-purple-600" />
+        <StatDisplay label="Sorte" value={character.luck} icon={<SparklesIcon />} color="bg-teal-400" />
+      </div>
+      
+      <div className="space-y-4 mt-4 pt-4 border-t border-slate-700/50">
         <StatDisplay label="Inteligência" value={character.intelligence} icon={<BrainIcon />} color="bg-blue-500" />
         <StatDisplay label="Carisma" value={character.charisma} icon={<UserGroupIcon />} color="bg-yellow-500" />
         <StatDisplay label="Criatividade" value={character.creativity} icon={<LightBulbIcon />} color="bg-purple-500" />
         <StatDisplay label="Disciplina" value={character.discipline} icon={<ShieldCheckIcon />} color="bg-green-500" />
+      </div>
+
+       <div className="space-y-4 mt-4 pt-4 border-t border-slate-700/50">
         <StatDisplay label="Riqueza" value={character.wealth} icon={<CurrencyDollarIcon />} isCurrency={true} />
         {character.investments > 0 && 
             <StatDisplay label="Investimentos" value={character.investments} icon={<ChartBarIcon />} isCurrency={true} />
         }
         {character.favors > 0 &&
-            <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-700/50">
+            <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
                     <span className="text-purple-400 w-5 h-5"><PuzzlePieceIcon /></span>
                     <span className="font-semibold text-slate-300">Favores da Família</span>
@@ -217,7 +237,7 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
         </div>
       )}
       
-      <MoodDisplay mood={character.mood} />
+      <MoodDisplay happiness={character.happiness} stress={character.stress} />
 
       <div className="space-y-4 mt-6 pt-6 border-t border-slate-700">
         <SpectrumDisplay
@@ -303,12 +323,15 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
             Carreira
         </h3>
         {character.profession ? (
-          <div>
-            <div className="flex justify-between items-baseline">
-                <p className="text-sm font-medium text-slate-200">{character.jobTitle}</p>
+          <div className="space-y-2">
+            <div>
+                <div className="flex justify-between items-baseline">
+                    <p className="text-sm font-medium text-slate-200">{character.jobTitle}</p>
+                </div>
+                <p className="text-xs text-slate-400 mb-1">{character.profession}</p>
+                <CareerBar level={character.careerLevel} />
             </div>
-            <p className="text-xs text-slate-400 mb-1">{character.profession}</p>
-            <CareerBar level={character.careerLevel} />
+             <StatDisplay label="Satisfação" value={character.jobSatisfaction} icon={<HandThumbUpIcon />} color="bg-green-500" />
           </div>
         ) : (
           <p className="text-sm text-slate-500 italic">Desempregado(a)</p>
@@ -329,29 +352,29 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
         </div>
       </div>
        <div className="mt-4 pt-4 border-t border-slate-700">
-        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Hobbies</h3>
-        {character.hobbies.length > 0 ? (
+        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Habilidades</h3>
+        {character.skills.length > 0 ? (
             <div className="space-y-3">
-            {character.hobbies.map((hobby) => {
-                const config = hobbyConfig[hobby.name];
+            {character.skills.map((skill) => {
+                const config = skillConfig[skill.name];
                 const icon = config?.icon || <PuzzlePieceIcon />;
                 const color = config?.color || 'bg-slate-500';
                 return (
-                    <div key={hobby.name}>
+                    <div key={skill.name}>
                         <div className="flex justify-between items-baseline">
                            <div className="flex items-center gap-2">
                                <span className="w-5 h-5 text-cyan-400">{icon}</span>
-                               <p className="text-sm font-medium text-slate-200">{hobby.name}</p>
+                               <p className="text-sm font-medium text-slate-200">{skill.name}</p>
                            </div>
-                           <p className="text-xs text-slate-400">{hobby.description}</p>
+                           <p className="text-xs text-slate-400">{skill.description}</p>
                         </div>
-                        <HobbyBar level={hobby.level} color={color} />
+                        <SkillBar level={skill.level} color={color} />
                     </div>
                 );
             })}
             </div>
         ) : (
-            <p className="text-sm text-slate-500 italic">Nenhum hobby desenvolvido.</p>
+            <p className="text-sm text-slate-500 italic">Nenhuma habilidade desenvolvida.</p>
         )}
       </div>
 

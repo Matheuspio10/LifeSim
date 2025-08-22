@@ -4,19 +4,60 @@ import {
     StatChanges,
     AssetChanges,
     RelationshipChanges,
-    HobbyChanges,
+    SkillChanges,
     CareerChange,
     TraitChanges,
     GoalChanges,
     CraftedItemChanges,
     MemoryItem,
-    Hobby,
+    Skill,
     Relationship,
     Trait
 } from '../types';
 
 // Helper to ensure a stat stays within a given min/max range.
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
+
+const getScaledStatChange = (currentValue: number, change: number): number => {
+    if (change <= 0) {
+        return Math.floor(change); // Apply losses fully to maintain challenge
+    }
+
+    let multiplier = 1.0;
+    if (currentValue >= 90) {
+        multiplier = 0.25;
+    } else if (currentValue >= 75) {
+        multiplier = 0.5;
+    } else if (currentValue >= 50) {
+        multiplier = 0.75;
+    }
+
+    const scaledChange = change * multiplier;
+    return Math.round(scaledChange);
+};
+
+const getReputationScaledStatChange = (currentValue: number, change: number): number => {
+    if (change <= 0) {
+        return Math.floor(change); // Apply losses fully to maintain challenge
+    }
+
+    const absValue = Math.abs(currentValue);
+    let multiplier = 1.0;
+
+    if (absValue >= 90) {
+        multiplier = 0.1; // 90% reduction
+    } else if (absValue >= 75) {
+        multiplier = 0.25; // 75% reduction
+    } else if (absValue >= 50) {
+        multiplier = 0.5; // 50% reduction
+    } else if (absValue >= 25) {
+        multiplier = 0.75; // 25% reduction
+    }
+
+    const scaledChange = change * multiplier;
+    return Math.round(scaledChange);
+};
+
 
 /**
  * Applies all effects of a player's choice to a character object.
@@ -33,7 +74,17 @@ export const applyChoiceToCharacter = (character: Character, choice: Choice, isE
     if (choice.statChanges) {
         for (const key in choice.statChanges) {
             const stat = key as keyof StatChanges;
-            (updatedChar[stat] as number) += (choice.statChanges[stat] || 0);
+            const change = choice.statChanges[stat] || 0;
+
+            if (['health', 'intelligence', 'charisma', 'creativity', 'discipline'].includes(stat)) {
+                const currentValue = updatedChar[stat as keyof Character] as number;
+                (updatedChar[stat] as number) += getScaledStatChange(currentValue, change);
+            } else if (['fame', 'influence'].includes(stat)) {
+                const currentValue = updatedChar[stat as keyof Character] as number;
+                (updatedChar[stat] as number) += getReputationScaledStatChange(currentValue, change);
+            } else {
+                (updatedChar[stat] as number) += change;
+            }
         }
     }
 
@@ -51,11 +102,6 @@ export const applyChoiceToCharacter = (character: Character, choice: Choice, isE
             yearAcquired: updatedChar.age 
         };
         updatedChar.memories = [...updatedChar.memories, newMemory];
-    }
-
-    // Change mood
-    if (choice.moodChange) {
-        updatedChar.mood = choice.moodChange;
     }
     
     // Apply relationship changes
@@ -97,45 +143,51 @@ export const applyChoiceToCharacter = (character: Character, choice: Choice, isE
         updatedChar.relationships = relationships;
     }
 
-    // Apply hobby changes
-    if (choice.hobbyChanges) {
-        let hobbies = [...updatedChar.hobbies];
+    // Apply skill changes
+    if (choice.skillChanges) {
+        let skills = [...updatedChar.skills];
         // Add new
-        if (choice.hobbyChanges.add) {
-            choice.hobbyChanges.add.forEach(newHobby => {
-                if (!hobbies.some(h => h.name === newHobby.name)) {
-                    hobbies.push(newHobby);
+        if (choice.skillChanges.add) {
+            choice.skillChanges.add.forEach(newSkill => {
+                if (!skills.some(h => h.name === newSkill.name)) {
+                    skills.push(newSkill);
                 }
             });
         }
         // Update existing
-        if (choice.hobbyChanges.update) {
-            choice.hobbyChanges.update.forEach(updateInfo => {
-                const hobbyIndex = hobbies.findIndex(h => h.name === updateInfo.name);
-                if (hobbyIndex > -1) {
-                    hobbies[hobbyIndex].level = clamp(hobbies[hobbyIndex].level + updateInfo.levelChange, 0, 100);
+        if (choice.skillChanges.update) {
+            choice.skillChanges.update.forEach(updateInfo => {
+                const skillIndex = skills.findIndex(h => h.name === updateInfo.name);
+                if (skillIndex > -1) {
+                    skills[skillIndex].level = clamp(skills[skillIndex].level + updateInfo.levelChange, 0, 100);
                     if (updateInfo.description) {
-                        hobbies[hobbyIndex].description = updateInfo.description;
+                        skills[skillIndex].description = updateInfo.description;
+                    }
+                    if (updateInfo.newName) { // Logic for evolving skill name
+                        skills[skillIndex].name = updateInfo.newName;
                     }
                 } else {
-                    // If hobby doesn't exist, add it
-                    hobbies.push({
-                        name: updateInfo.name,
+                    // If skill doesn't exist, add it
+                    skills.push({
+                        name: updateInfo.newName || updateInfo.name,
                         level: clamp(updateInfo.levelChange, 0, 100),
-                        description: updateInfo.description || `Iniciante em ${updateInfo.name}`
+                        description: updateInfo.description || `Iniciante em ${updateInfo.newName || updateInfo.name}`
                     });
                 }
             });
         }
-        updatedChar.hobbies = hobbies;
+        updatedChar.skills = skills;
     }
 
     // Apply career changes
     if (choice.careerChange) {
         if (choice.careerChange.profession !== undefined) {
-            updatedChar.profession = choice.careerChange.profession === "" ? null : choice.careerChange.profession;
-            if (updatedChar.profession === null) {
+            if (choice.careerChange.profession === "") {
+                updatedChar.profession = null;
                 updatedChar.jobTitle = null; // Also clear job title when unemployed
+                updatedChar.jobSatisfaction = 0; // Reset satisfaction
+            } else {
+                updatedChar.profession = choice.careerChange.profession;
             }
         }
         if (choice.careerChange.jobTitle !== undefined) {
@@ -158,6 +210,18 @@ export const applyChoiceToCharacter = (character: Character, choice: Choice, isE
         }
         if (choice.traitChanges.remove) {
             traits = traits.filter(t => !choice.traitChanges!.remove!.includes(t.name));
+        }
+        if (choice.traitChanges.update) {
+            choice.traitChanges.update.forEach(updateInfo => {
+                const traitIndex = traits.findIndex(t => t.name === updateInfo.name);
+                if (traitIndex > -1) {
+                    const currentLevel = traits[traitIndex].level || 1;
+                    traits[traitIndex].level = currentLevel + updateInfo.levelChange;
+                    if (updateInfo.description) {
+                        traits[traitIndex].description = updateInfo.description;
+                    }
+                }
+            });
         }
         updatedChar.traits = traits;
     }
@@ -219,6 +283,12 @@ export const applyChoiceToCharacter = (character: Character, choice: Choice, isE
     updatedChar.morality = clamp(updatedChar.morality, -100, 100);
     updatedChar.fame = clamp(updatedChar.fame, -100, 100);
     updatedChar.influence = clamp(updatedChar.influence, -100, 100);
+    updatedChar.happiness = clamp(updatedChar.happiness, 0, 100);
+    updatedChar.energy = clamp(updatedChar.energy, 0, 100);
+    updatedChar.stress = clamp(updatedChar.stress, 0, 100);
+    updatedChar.luck = clamp(updatedChar.luck, 0, 100);
+    updatedChar.jobSatisfaction = clamp(updatedChar.jobSatisfaction, 0, 100);
+
 
     return updatedChar;
 };

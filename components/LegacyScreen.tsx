@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { LegacyBonuses, Trait, Character, Lineage, RelationshipType, Relationship, Hobby } from '../types';
+import { LegacyBonuses, Trait, Character, Lineage, RelationshipType, Relationship, Skill } from '../types';
 import { LINEAGE_TITLES, POSITIVE_TRAITS, NEGATIVE_TRAITS } from '../constants';
 import { 
     CrownIcon, 
@@ -89,8 +89,8 @@ const mergeBonuses = (b1: LegacyBonuses, b2: LegacyBonuses): LegacyBonuses => {
             case 'addTraits':
                 merged.addTraits = [...(merged.addTraits || []), ...(b2.addTraits || [])];
                 break;
-            case 'addHobbies':
-                merged.addHobbies = [...(merged.addHobbies || []), ...(b2.addHobbies || [])];
+            case 'addSkills':
+                merged.addSkills = [...(merged.addSkills || []), ...(b2.addSkills || [])];
                 break;
             case 'addAssets':
                 merged.addAssets = [...(merged.addAssets || []), ...(b2.addAssets || [])];
@@ -246,7 +246,7 @@ const LegacyScreen: React.FC<LegacyScreenProps> = ({ points, onStart, finalChara
     };
     
     const handleStart = () => {
-        let finalBonuses: LegacyBonuses = { addTraits: [], addHobbies: [], addAssets: [], addRelationships: [] };
+        let finalBonuses: LegacyBonuses = { addTraits: [], addSkills: [], addAssets: [], addRelationships: [] };
 
         if (lineageTitleBonus?.bonus) {
             finalBonuses = mergeBonuses(finalBonuses, lineageTitleBonus.bonus);
@@ -348,7 +348,7 @@ const LegacyScreen: React.FC<LegacyScreenProps> = ({ points, onStart, finalChara
                                         {renderTraitEffect(bonus.bonus.addTraits?.filter(t => t?.type === 'positive'))}
                                         {renderSecretEffect(bonus.bonus.inheritedSecret)}
                                         {renderGenericEffect(bonus.bonus.addAssets?.[0], <PlusCircleIcon />)}
-                                        {renderGenericEffect(bonus.bonus.addHobbies?.[0]?.name, <PlusCircleIcon />)}
+                                        {renderGenericEffect(bonus.bonus.addSkills?.[0]?.name, <TrophyIcon />)}
                                         {renderGenericEffect(bonus.bonus.addRelationships?.[0]?.name, <UsersIcon />)}
 
                                         <div className="font-semibold text-red-400 pt-1">Contras:</div>

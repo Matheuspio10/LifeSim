@@ -27,7 +27,7 @@ export const generateRandomCharacter = (lineage: Lineage | null, legacyBonuses: 
         influence: (lineageBonus.influence || 0) + (purchasedBonuses.influence || 0),
         favors: (lineageBonus.favors || 0) + (purchasedBonuses.favors || 0),
         addTraits: [...(lineageBonus.addTraits || []), ...(purchasedBonuses.addTraits || [])].filter(t => t),
-        addHobbies: [...(lineageBonus.addHobbies || []), ...(purchasedBonuses.addHobbies || [])].filter(h => h),
+        addSkills: [...(lineageBonus.addSkills || []), ...(purchasedBonuses.addSkills || [])].filter(h => h),
         addAssets: [...(lineageBonus.addAssets || []), ...(purchasedBonuses.addAssets || [])].filter(a => a),
         addRelationships: [...(lineageBonus.addRelationships || []), ...(purchasedBonuses.addRelationships || [])].filter(r => r),
         inheritedSecret: purchasedBonuses.inheritedSecret || lineageBonus.inheritedSecret || ''
@@ -76,12 +76,15 @@ export const generateRandomCharacter = (lineage: Lineage | null, legacyBonuses: 
         charisma: baseStat + distributedPoints[1] + allBonuses.charisma,
         creativity: baseStat + distributedPoints[2] + allBonuses.creativity,
         discipline: baseStat + distributedPoints[3] + allBonuses.discipline,
+        happiness: getRandomInt(60, 80),
+        energy: getRandomInt(70, 90),
+        stress: getRandomInt(5, 20),
+        luck: getRandomInt(30, 70),
         wealth: startingWealth + allBonuses.wealth,
         investments: 0,
         morality: 0,
         fame: allBonuses.fame,
         influence: allBonuses.influence,
-        mood: Mood.CONTENT,
         birthplace: birthplace,
         currentLocation: birthplace,
         familyBackground: family,
@@ -96,7 +99,7 @@ export const generateRandomCharacter = (lineage: Lineage | null, legacyBonuses: 
         memories: [],
         craftedItems: [],
         lifeGoals: [{ description: getRandom(LIFE_GOALS), completed: false }],
-        hobbies: [...allBonuses.addHobbies],
+        skills: [...allBonuses.addSkills],
         healthCondition: null,
         founderTraits,
         favors: allBonuses.favors,
@@ -104,6 +107,7 @@ export const generateRandomCharacter = (lineage: Lineage | null, legacyBonuses: 
         profession: null,
         jobTitle: null,
         careerLevel: 0,
+        jobSatisfaction: 0,
     };
     
     Object.keys(newChar).forEach(keyStr => {

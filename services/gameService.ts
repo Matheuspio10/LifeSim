@@ -19,12 +19,13 @@ const cleanAndParseJson = <T,>(responseText: string): T => {
         }
     }
     
-    // Sanitize extremely large numbers that might break JSON.parse.
-    // It looks for a number (positive or negative) with 16 or more digits and caps it to MAX_SAFE_INTEGER.
-    jsonText = jsonText.replace(/:(\s*)(-?\d{16,})/g, (match, space, number) => {
+    // Sanitize extremely large numbers that might break JSON.parse or game balance.
+    // It looks for a number (positive or negative) with 10 or more digits and caps it.
+    jsonText = jsonText.replace(/:(\s*)(-?\d{10,})/g, (match, space, number) => {
         const isNegative = number.startsWith('-');
-        console.warn(`Número grande detectado da API e limitado: ${number}`);
-        const cappedNumber = isNegative ? '-9007199254740991' : '9007199254740991'; // Number.MAX_SAFE_INTEGER
+        console.warn(`Número excessivamente grande detectado da API e limitado: ${number}`);
+        // Cap at +/- 999,999,999 as a hard limit to prevent breaking the game economy.
+        const cappedNumber = isNegative ? '-999999999' : '999999999';
         return `:${space}${cappedNumber}`;
     });
 
@@ -88,17 +89,13 @@ const memoryItemTypeSchema = {
     enum: Object.values(MemoryItemType),
 };
 
-const moodTypeSchema = {
-    type: Type.STRING,
-    enum: Object.values(Mood),
-};
-
 const traitSchema = {
     type: Type.OBJECT,
     properties: {
         name: { type: Type.STRING },
         description: { type: Type.STRING },
         type: { type: Type.STRING, enum: ['positive', 'negative'] },
+        level: { type: Type.INTEGER, description: "Opcional. O nível do traço, indicando sua força. Use para traços que podem evoluir." }
     },
     required: ['name', 'description', 'type']
 };
@@ -111,11 +108,16 @@ const statChangesSchema = {
         charisma: { type: Type.INTEGER, description: "Mudança no carisma. Geralmente um valor pequeno, como 1 a 5." },
         creativity: { type: Type.INTEGER, description: "Mudança na criatividade. Geralmente um valor pequeno, como 1 a 5." },
         discipline: { type: Type.INTEGER, description: "Mudança na disciplina. Geralmente um valor pequeno, como 1 a 5." },
-        wealth: { type: Type.INTEGER, description: "Mudança na riqueza. Pode ser negativo (custo). Para eventos normais, use valores entre -500 e 500. Para eventos de grande impacto financeiro, o valor pode chegar a 50000, mas NUNCA use números com mais de 9 dígitos. Números muito grandes quebram o jogo." },
+        happiness: { type: Type.INTEGER, description: "Mudança na felicidade (0-100). Influenciada por socialização, lazer, conquistas. Baixa felicidade aumenta o estresse." },
+        energy: { type: Type.INTEGER, description: "Mudança na energia (0-100). Consumida por trabalho, estresse. Restaurada com descanso. Baixa energia afeta a saúde." },
+        stress: { type: Type.INTEGER, description: "Mudança no estresse (0-100). Aumentado por trabalho, problemas. Diminuído por lazer. Alto estresse afeta negativamente saúde e felicidade." },
+        luck: { type: Type.INTEGER, description: "Mudança na sorte (0-100). Stat base que influencia resultados. Mude APENAS em eventos épicos ou sobrenaturais." },
+        jobSatisfaction: { type: Type.INTEGER, description: "Mudança na satisfação com o trabalho (0-100). Afetada por eventos de carreira. Baixa satisfação aumenta estresse." },
+        wealth: { type: Type.INTEGER, description: "Mudança na riqueza. Aderir ESTRITAMENTE a estas regras: Eventos comuns: -500 a +1,000. Promoções/bônus de carreira: +500 a +50,000. Eventos de sorte GRANDE (ganhar loteria, herança): +100,000 a +2,000,000. Eventos ÉPICOS que mudam a vida (vender patente, achar tesouro): MÁXIMO de +10,000,000. Custo de itens de luxo: -20,000 a -500,000. NUNCA gere valores acima de 8 dígitos." },
         investments: { type: Type.INTEGER, description: "Mudança no valor dos investimentos. Use valores realistas, geralmente na casa das centenas ou poucos milhares, no máximo 9 dígitos." },
         morality: { type: Type.INTEGER, description: "Mudança na moralidade (-100 a 100). Ações comuns causam mudanças de -10 a 10." },
-        fame: { type: Type.INTEGER, description: "Mudança na fama (-100 a 100). Ações comuns causam mudanças de -10 a 10." },
-        influence: { type: Type.INTEGER, description: "Mudança na influência (-100 a 100). Ações comuns causam mudanças de -10 a 10." },
+        fame: { type: Type.INTEGER, description: "Mudança na fama (-100 a 100). Ações comuns causam mudanças de -5 a 5. Ações Raras/Épicas podem causar até +15, mas use com extrema moderação. Alcançar o topo é uma jornada de uma vida inteira." },
+        influence: { type: Type.INTEGER, description: "Mudança na influência (-100 a 100). Ações comuns causam mudanças de -5 a 5. Ações Raras/Épicas podem causar até +15, mas use com extrema moderação. Alcançar o topo é uma jornada de uma vida inteira." },
     },
 };
 
@@ -195,8 +197,21 @@ const choiceSchema = {
         traitChanges: {
             type: Type.OBJECT,
             properties: {
-                add: { type: Type.ARRAY, items: traitSchema, description: "Adiciona um novo traço que o personagem não possui." },
+                add: { type: Type.ARRAY, items: traitSchema, description: "Adiciona um novo traço que o personagem não possui. USE COM MUITA MODERAÇÃO." },
                 remove: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Remove um traço pelo seu nome exato." },
+                update: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            name: { type: Type.STRING, description: "Nome EXATO do traço existente a ser evoluído." },
+                            levelChange: { type: Type.INTEGER, description: "A mudança no nível do traço (ex: 1 para subir de nível)." },
+                            description: { type: Type.STRING, description: "Opcional. Uma nova descrição para o traço evoluído." }
+                        },
+                        required: ['name', 'levelChange']
+                    },
+                    description: "Evolui um traço existente em vez de adicionar um novo. PREFIRA ISTO."
+                }
             },
         },
         healthConditionChange: {
@@ -227,7 +242,7 @@ const choiceSchema = {
                 remove: { type: Type.ARRAY, items: { type: Type.STRING } },
             },
         },
-        hobbyChanges: {
+        skillChanges: {
             type: Type.OBJECT,
             properties: {
                 add: {
@@ -235,9 +250,9 @@ const choiceSchema = {
                     items: {
                         type: Type.OBJECT,
                         properties: {
-                           name: { type: Type.STRING, description: "Nome do novo hobby (ex: 'Boxe', 'Entomologia')." },
+                           name: { type: Type.STRING, description: "Nome da nova habilidade (ex: 'Boxe', 'Programação')." },
                            level: { type: Type.INTEGER },
-                           description: { type: Type.STRING, description: "Descrição do nível do hobby (ex: 'Iniciante')." },
+                           description: { type: Type.STRING, description: "Descrição do nível da habilidade (ex: 'Iniciante')." },
                         },
                         required: ['name', 'level', 'description']
                     }
@@ -247,16 +262,16 @@ const choiceSchema = {
                     items: {
                         type: Type.OBJECT,
                         properties: {
-                           name: { type: Type.STRING, description: "Nome EXATO do hobby a ser atualizado." },
+                           name: { type: Type.STRING, description: "Nome EXATO da habilidade a ser atualizada." },
                            levelChange: { type: Type.INTEGER },
                            description: { type: Type.STRING, description: "Nova descrição do nível (ex: 'Amador')." },
+                           newName: { type: Type.STRING, description: "Opcional. Use para EVOLUIR a habilidade para um nome mais avançado (ex: de 'Radioamadorismo' para 'Engenharia de Rádio')." }
                         },
                         required: ['name', 'levelChange']
                     }
                 }
             }
        },
-        moodChange: moodTypeSchema,
         specialEnding: {
             type: Type.STRING,
             description: "CRÍTICO: Use este campo SOMENTE se a escolha resultar na MORTE IMEDIATA do personagem ou em um evento que encerre sua vida ativa de forma definitiva (ex: prisão perpétua). A descrição deve ser o resumo final da vida. NÃO use para grandes conquistas que não terminem a vida."
@@ -308,29 +323,27 @@ const evaluateResponseSchema = choiceSchema;
 const getBaseSystemPrompt = (isTurbo: boolean): string => {
     const commonRules = `
 1.  **Crie Eventos Realistas e Interessantes**: Gere eventos críveis baseados na idade, traços, carreira e contexto histórico/geográfico do personagem. Evite clichês. Surpreenda o jogador.
-2.  **Equilíbrio e Risco**: O jogo deve ser desafiador. As escolhas devem ter consequências lógicas, com um equilíbrio realista entre sucesso, fracasso e resultados mistos. Uma grande recompensa DEVE vir com um grande risco. Ações de alto risco (como atividades ilegais, confrontos diretos, investimentos ousados) devem ter uma chance significativa de falha com consequências severas (perda de riqueza, saúde, reputação, ou até mesmo a morte em casos extremos com 'specialEnding'). Nem toda ação bem-sucedida é um sucesso completo; introduza trade-offs. Exemplo: um hacker pode conseguir a informação, mas pegar um vírus que reduz sua 'intelligence' ou alerta as autoridades, impactando sua 'fame' negativamente.
-3.  **Economia de Atributos e Retornos Decrescentes**: As mudanças de atributos DEVEM ser equilibradas com trade-offs. Um ganho significativo em um atributo deve, frequentemente, ter um pequeno custo em outro. Exemplos: trabalho intenso (+disciplina) deve diminuir a saúde (-saúde). Uma festa agitada (+carisma) deve diminuir a disciplina (-disciplina). Além disso, a progressão DEVE desacelerar. É muito mais difícil aumentar um atributo que já está alto (acima de 70). Para um personagem com 80 de inteligência, um evento de estudo bem-sucedido pode conceder apenas +1 de inteligência, não +5. Personagens com atributos baixos podem melhorar mais rapidamente.
-4.  **Contexto Histórico e Geográfico é CRUCIAL**: Use o "Zeitgeist" e a 'currentLocation' para moldar o evento. Eventos na década de 1980 em São Paulo não devem envolver smartphones. Eventos em uma fazenda no interior são diferentes de eventos em uma metrópole.
-5.  **Viagens e Mudanças**: O mundo é grande. Crie eventos que ofereçam oportunidades para viajar ou se mudar para novos locais (ex: oferta de emprego em outra cidade, desejo de explorar, visitar família). Uma mudança permanente deve usar o campo 'locationChange' e ter custos significativos (riqueza, tempo). Mudanças também podem impactar negativamente relacionamentos existentes. Eventos subsequentes devem refletir a nova localização do personagem.
-6.  **Personalidade Evolutiva**: Uma parte crucial desta simulação é a **Personalidade Evolutiva**. Com base no evento e na escolha do jogador, você DEVE considerar adicionar ou remover traços do personagem para refletir seu desenvolvimento. Um personagem que repetidamente escolhe ações corajosas pode ganhar o traço 'Corajoso'. Uma traição significativa pode torná-los 'Cínico'. Um invento de sucesso pode conceder 'Visionário'. Use o campo 'traitChanges' com os arrays 'add' e 'remove' para isso. Traços não são permanentes e devem refletir a jornada do personagem.
-7.  **Hobbies Criativos e Específicos**: Com base nas ações do jogador, crie hobbies específicos em vez de genéricos. Se um personagem começa a praticar boxe, adicione o hobby 'Boxe', não 'Esportes'. Se ele começa a colecionar borboletas, crie 'Entomologia' ou 'Colecionador de Insetos'. Use o campo 'hobbyChanges' para adicionar ou evoluir esses hobbies.
-8.  **Mini-Jogos Temáticos de Era**: Para aumentar a imersão histórica, você DEVE gerar mini-jogos específicos da era para certos eventos.
-    - **Era das Luzes (1700-1820)**: Para disputas intelectuais, acione 'PUBLIC_DEBATE'.
-    - **Era Industrial e Romântica (1820-1870)**: Para disputas de honra, acione 'PISTOL_DUEL'.
-    - **Era dos Impérios (1870-1899)**: Para oportunidades financeiras na segunda revolução industrial, acione 'STOCK_MARKET_SPECULATION' (que usa a mecânica de 'INVESTMENT'). Forneça opções como 'Ferrovias', 'Aço', 'Telégrafo'.
-    - **Era das Grandes Guerras (1900-1929)**: Durante a Lei Seca (Prohibition), para eventos de crime ou oportunidade, acione 'SPEAKEASY_SMUGGLING'.
-    - **Era da Incerteza (1930-1945)**: Em tempos de crise e guerra, para dilemas morais sobre recursos, acione 'BLACK_MARKET_TRADING'.
-    - **Era Atômica (1946-1979)**: Para temas de Guerra Fria e intriga, acione 'COLD_WAR_ESPIONAGE'.
-    - **Era Analógica Tardia (1980-1995)**: Com o advento dos computadores pessoais, para oportunidades de negócio, acione 'GARAGE_STARTUP'.
-    - **Era da Internet Pioneira (1996-2010)**: Durante a bolha da internet, para investimentos de alto risco, acione 'DOTCOM_DAY_TRADING' (que usa a mecânica de 'INVESTMENT'). Forneça opções como 'PetShop.com', 'Webvan', 'GeoCities'.
-    - **Era das Redes Sociais (2011-2030)**: Para temas de fama online, acione 'VIRAL_CONTENT_CHALLENGE'.
-    - **Era da IA e Biotecnologia (2031+)**: Para grandes dilemas éticos sobre tecnologia, acione 'GENETIC_EDITING_DILEMMA'.
-    - Ao gerar um mini-jogo, defina o 'type' do evento como 'MINI_GAME' e forneça o 'miniGameType' correspondente. O 'eventText' deve preparar o cenário para o mini-jogo.
-    - **Para QUALQUER mini-jogo de investimento** ('INVESTMENT', 'STOCK_MARKET_SPECULATION', 'DOTCOM_DAY_TRADING'), o campo 'miniGameData' com um array de 'options' é **OBRIGATÓRIO**. Para um 'INVESTMENT' genérico, crie 3 opções plausíveis para a era e o local (ex: 'Imóveis na Cidade', 'Obrigações do Governo', 'Startup Local de Tecnologia'), com riscos e retornos variados.
-9.  **Progressão de Vida**: Crie eventos que permitam o crescimento. O personagem deve ter oportunidades de mudar de carreira, formar relacionamentos, desenvolver hobbies e perseguir objetivos de vida.
-10. **Consistência**: Mantenha a consistência com os detalhes do personagem. Um personagem com baixa inteligência não deve, de repente, resolver uma equação complexa.
-11. **Formato JSON**: RESPONDA APENAS com um objeto JSON VÁLIDO que corresponda ao schema fornecido. SEM TEXTO EXTRA, SEM EXPLICAÇÕES, APENAS O JSON.
-12. **Memórias e Conquistas**: Para eventos impactantes (especialmente os 'isEpic') ou resultados que mudam a vida, você DEVE gerar uma 'memoryGained'. Se a ação cumprir um dos 'lifeGoals', use 'goalChanges' para marcá-lo como completo.
+2.  **Equilíbrio e Risco**: O jogo deve ser desafiador. As escolhas devem ter consequências lógicas, com um equilíbrio realista entre sucesso, fracasso e resultados mistos. Uma grande recompensa DEVE vir com um grande risco. Ações de alto risco (como atividades ilegais, confrontos diretos, investimentos ousados) devem ter uma chance significativa de falha com consequências severas (perda de riqueza, saúde, reputação, ou até mesmo a morte em casos extremos com 'specialEnding'). Nem toda ação bem-sucedida é um sucesso completo; introduza trade-offs.
+3.  **Economia de Traços e Raridade (REGRA CRÍTICA)**: Traços são a essência da personalidade e devem ser raros e significativos. NÃO adicione um novo traço a cada pequena decisão.
+    - **Seja Seletivo**: Conceda um novo traço SOMENTE quando uma escolha, evento ou experiência for REALMENTE marcante e representar uma transformação significativa.
+    - **Qualidade, Não Quantidade**: Um personagem jovem adulto (18-25 anos) deve ter no máximo entre 3 a 7 traços definidores. Evite listas extensas que diluem o impacto.
+    - **Evolua, Não Acumule**: Antes de adicionar um novo traço, verifique os existentes. Se um evento reforça um traço que o personagem já possui (ex: um ato corajoso para alguém com o traço 'Corajoso'), use 'traitChanges.update' para aumentar o 'level' desse traço em vez de adicionar um novo. A evolução é preferível à acumulação.
+4.  **Novas Mecânicas Vitais (Felicidade, Energia, Estresse)**: Estas três estatísticas são interligadas.
+    - **Estresse Alto (>75)** DEVE causar uma perda passiva de **Felicidade** e **Energia**. Gere eventos de 'burnout' ou problemas de saúde.
+    - **Felicidade Baixa (<25)** DEVE aumentar o **Estresse** e gerar eventos de depressão ou apatia.
+    - **Energia Baixa (<25)** DEVE reduzir a eficácia no trabalho (menores ganhos de 'careerLevel') e na disciplina, e pode causar pequenos problemas de saúde.
+    - **Equilíbrio é Chave**: Focar excessivamente em 'Carreira' deve aumentar o **Estresse** e diminuir a **Energia** e **Felicidade**. Focar em 'Lazer' ou 'Vida Social' deve fazer o oposto. Suas escolhas DEVEM refletir esses trade-offs.
+5.  **Sorte**: A sorte do personagem influencia a probabilidade de resultados positivos. Um personagem com 'luck' alta pode ter sucesso onde outros falhariam. Você raramente deve alterar o valor da 'luck'; isso só deve acontecer em eventos que mudam a vida.
+6.  **Satisfação Profissional**: Este stat reflete a felicidade do personagem com sua carreira. Promoções e projetos bem-sucedidos a aumentam. Conflitos e estagnação a diminuem. Baixa satisfação (<30) é uma fonte primária de **Estresse** e deve levar a eventos onde o personagem contempla mudar de emprego.
+7.  **Economia de Atributos e Retornos Decrescentes**: As mudanças de atributos DEVEM ser equilibradas com trade-offs e a progressão DEVE ser difícil. Aumentar um atributo que já está alto é EXTREMAMENTE difícil. Regra geral: acima de 75, os ganhos são drasticamente reduzidos (raramente mais que +1). Acima de 90, os ganhos são quase impossíveis (apenas +1 para eventos 'isEpic').
+8.  **Contexto Histórico e Geográfico é CRUCIAL**: Use o "Zeitgeist" e a 'currentLocation' para moldar o evento. Eventos na década de 1980 em São Paulo não devem envolver smartphones. Eventos em uma fazenda no interior são diferentes de eventos em uma metrópole.
+9.  **Consolidação e Evolução de Habilidades (REGRA CRÍTICA)**: Em vez de criar habilidades redundantes (ex: 'Radioamadorismo' e 'Engenharia de Rádio'), evolua a habilidade existente. Use 'skillChanges.update' para aumentar o nível. Em um evento transformador, use 'newName' para evoluir o nome da habilidade para algo mais avançado, refletindo maestria (ex: 'Radioamadorismo' se torna 'Engenharia de Rádio'). Use o campo 'skillChanges' para adicionar ou evoluir essas habilidades.
+10. **Mini-Jogos Temáticos de Era**: Para aumentar a imersão histórica, você DEVE gerar mini-jogos específicos da era para certos eventos. Para QUALQUER mini-jogo de investimento, o campo 'miniGameData' com um array de 'options' é **OBRIGATÓRIO**.
+11. **Fama e Influência são Conquistas de Fim de Jogo (REGRA CRÍTICA)**: Esses atributos devem crescer MUITO lentamente.
+    - **Escala de Poder**: Valores entre 25-50 significam reconhecimento local ou regional. 50-75 é fama nacional. Acima de 80 é para ícones globais, algo que um personagem jovem raramente (ou nunca) deveria alcançar.
+    - **Ganhos Mínimos**: Gere pequenos ganhos (+1 a +3) para a maioria dos eventos. Ganhos maiores (+10 ou mais) devem ser reservados para eventos 'isEpic' que definem uma vida e que só acontecem algumas vezes por geração.
+12. **Imersão Total - Sem Placeholders (REGRA CRÍTICA)**: Para manter a imersão, é ESTRITAMENTE PROIBIDO o uso de placeholders ou textos genéricos como '[Nome]', '[Nome do Deputado]', '[Amigo]', '[Empresa]', etc. Você DEVE inventar nomes específicos, concretos e criativos para todas as pessoas, lugares e organizações. Por exemplo, em vez de 'um político chamado [Nome]', crie 'o vereador Jonas Medeiros'. Em vez de 'uma empresa de tecnologia', crie 'a startup InovaTech'.
+13. **Formato JSON**: RESPONDA APENAS com um objeto JSON VÁLIDO que corresponda ao schema fornecido. SEM TEXTO EXTRA, SEM EXPLICAÇÕES, APENAS O JSON.
 `;
 
     if (isTurbo) {
@@ -376,7 +389,13 @@ export const generateGameEvent = async (
         name: character.name,
         generation: character.generation,
         age: character.age,
-        health: character.health,
+        vitals: {
+            health: character.health,
+            happiness: character.happiness,
+            energy: character.energy,
+            stress: character.stress,
+            luck: character.luck,
+        },
         stats: {
             intelligence: character.intelligence,
             charisma: character.charisma,
@@ -392,17 +411,18 @@ export const generateGameEvent = async (
             fame: character.fame,
             influence: character.influence,
         },
-        mood: character.mood,
-        birthplace: character.birthplace,
-        currentLocation: character.currentLocation,
+        location: character.currentLocation,
         background: character.familyBackground,
         traits: character.traits.map(t => t.name),
-        profession: character.profession,
-        jobTitle: character.jobTitle,
-        careerLevel: character.careerLevel,
+        career: {
+            profession: character.profession,
+            jobTitle: character.jobTitle,
+            careerLevel: character.careerLevel,
+            jobSatisfaction: character.jobSatisfaction,
+        },
         relationships: character.relationships.map(r => ({ name: r.name, type: r.type, intimacy: r.intimacy })),
         lifeGoals: character.lifeGoals,
-        hobbies: character.hobbies.map(h => h.name),
+        skills: character.skills.map(s => s.name),
     };
 
     // Lógica para determinar o tipo de evento
@@ -418,15 +438,11 @@ export const generateGameEvent = async (
 
     if (successScore > 200 && temptationRoll < 0.20) { // 20% de chance se a pontuação for alta
         eventTypePrompt = `
-            Este é um evento de 'Auto-Sabotagem'. O personagem está indo MUITO BEM. Crie uma tentação de alto risco e alta recompensa que pode levar a um sucesso espetacular ou a uma ruína total.
-            Exemplos: gastar toda a herança em um curso de NFT, aceitar participar de um reality show de baixo nível, entrar para uma banda excêntrica, investir tudo em uma criptomoeda inútil.
-            A recompensa por sucesso deve ser enorme (riqueza, fama). O fracasso deve ser catastrófico (perda massiva de riqueza, fama negativa, traços negativos, até mesmo um 'specialEnding' que arruína a vida). O evento deve ser 'isEpic: true'.
+            Este é um evento de 'Auto-Sabotagem'. O personagem está indo MUITO BEM. Crie uma tentação de alto risco e alta recompensa que pode levar a um sucesso espetacular ou a uma ruína total. O evento deve ser 'isEpic: true'.
         `;
     } else if (globalEventRoll < 0.05) { // 5% de chance de um evento mundial bizarro
         eventTypePrompt = `
-            Este é um 'Evento Global Absurdo'. Uma moda ou tendência bizarra está varrendo o mundo, influenciada pelo Zeitgeist atual.
-            Exemplos: a ascensão dos patinetes voadores, uma nova criptomoeda inútil (como 'MemeCoin'), uma guerra de memes online, uma dieta bizarra.
-            Crie um evento que permita ao jogador abraçar essa loucura ou resistir a ela. O sucesso deve trazer fama e fortuna. O fracasso deve torná-lo uma piada nacional (fama negativa, perda de reputação). O evento deve ser 'isWorldEvent: true'.
+            Este é um 'Evento Global Absurdo'. Uma moda ou tendência bizarra está varrendo o mundo, influenciada pelo Zeitgeist atual. O evento deve ser 'isWorldEvent: true'.
         `;
     } else if (bossRoll < 0.10) { // 10% de chance de um evento de "chefe"
         eventTypePrompt = `Este é um evento de 'Chefe' - um grande ponto de virada na vida. Use este cenário: ${getBossBattlePrompt(lifeStage)}`;
@@ -442,7 +458,6 @@ export const generateGameEvent = async (
         - Título da Linhagem: ${lineageTitle || 'Nenhum'}
         - Foco Atual do Personagem: ${currentFocus || 'Nenhum foco específico, gere um evento geral da vida.'}
         - Estágio da Vida: ${lifeStage}
-        - Comportamentos Recentes (contagem de ações): ${JSON.stringify(behaviorTracker)}
 
         **Dados do Personagem:**
         ${JSON.stringify(characterSummary, null, 2)}
@@ -492,11 +507,12 @@ export const evaluatePlayerResponse = async (
 
         REGRAS:
         1.  **Interprete a Intenção**: Entenda o que o jogador quer alcançar com a resposta dele.
-        2.  **Seja Justo, Realista e Desafiador**: As consequências devem ser lógicas e equilibradas. Ações ousadas DEVEM ter uma chance significativa de falha. Não tenha medo de aplicar consequências negativas. Se um jogador tenta algo ilegal, como hackear, pode ser pego, pegar um vírus (reduzir 'intelligence') ou ter sua 'fame' manchada. Se ele tenta persuadir alguém e tem baixo carisma, ele pode ofender a pessoa (piorar relacionamento). O sucesso não deve ser garantido.
-        3.  **Consequências Equilibradas**: Aplique o princípio dos trade-offs. Uma ação bem-sucedida que aumenta significativamente um atributo deve ter um custo menor em outro (por exemplo, estudar muito para uma prova pode aumentar a inteligência, mas diminuir levemente a saúde devido ao estresse). Conceda aumentos de atributos menores para personagens que já são altamente qualificados nessa área (retornos decrescentes).
-        4.  **Use o Contexto**: Baseie as consequências no personagem (estatísticas, traços, localização atual) e no evento. Um personagem com alto carisma terá mais sucesso em persuadir alguém.
-        5.  **Evolução da Personalidade**: Se a ação do jogador for um forte indicador de um traço de personalidade (ex: um ato de grande coragem, uma mentira descarada), use 'traitChanges' para refletir isso.
-        6.  **Formato JSON Estrito**: Responda APENAS com o objeto JSON da escolha. Sem texto extra.
+        2.  **Seja Justo, Realista e Desafiador**: As consequências devem ser lógicas e equilibradas. Ações ousadas DEVEM ter uma chance significativa de falha. Não tenha medo de aplicar consequências negativas. O sucesso não deve ser garantido.
+        3.  **Consequências Equilibradas e Realistas (REGRA CRÍTICA)**: Siga RÍGIDAMENTE as regras de Retornos Decrescentes e Trade-offs, e a interação entre os novos status (Felicidade, Energia, Estresse).
+        4.  **Use o Contexto**: Baseie as consequências no personagem (estatísticas, traços, localização atual) e no evento.
+        5.  **Evolução da Personalidade**: Se a ação do jogador for um forte indicador de um traço de personalidade, use 'traitChanges' para refletir isso.
+        6.  **Imersão Total - Sem Placeholders (REGRA CRÍTICA)**: Ao criar novos personagens ou locais como parte do resultado, DÊ um nome específico e criativo. NÃO use placeholders como '[Nome do Amigo]' ou '[Nome da Cidade]'.
+        7.  **Formato JSON Estrito**: Responda APENAS com o objeto JSON da escolha. Sem texto extra.
         ${isTurbo ? `
         **MODO RÁPIDO E BALANCEADO:** Temperatura baixa (0.8).
         - **Resultado Narrativo e Rápido:** O 'outcomeText' deve ser gerado rapidamente, mas ainda assim descrever a consequência da ação de forma vívida e interessante.
@@ -510,6 +526,7 @@ export const evaluatePlayerResponse = async (
         **Dados do Personagem:**
         - Idade: ${character.age}
         - Traços: ${character.traits.map(t => t.name).join(', ')}
+        - Vitals: Felicidade(${character.happiness}), Energia(${character.energy}), Estresse(${character.stress}), Sorte(${character.luck})
         - Estatísticas Chave: Inteligência(${character.intelligence}), Carisma(${character.charisma}), Disciplina(${character.discipline})
         - Moralidade: ${character.morality}
         - Localização Atual: ${character.currentLocation}

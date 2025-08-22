@@ -79,7 +79,7 @@ export enum Mood {
     ANGRY = 'Irritado(a)',
 }
 
-export interface Hobby {
+export interface Skill {
     name: string;
     level: number; // 0-100
     description: string; // e.g., "Pintor Amador", "Virtuoso do Violão"
@@ -131,38 +131,50 @@ export interface Character {
   generation: number;
   birthYear: number;
   age: number;
+  // Core Attributes
   health: number; // 0-100
   intelligence: number; // 0-100
   charisma: number; // 0-100
   creativity: number; // 0-100
   discipline: number; // 0-100
+  // New Vitals
+  happiness: number; // 0-100
+  energy: number; // 0-100
+  stress: number; // 0-100
+  luck: number; // 0-100
+  // Financial
   wealth: number; // Pode ser negativo
   investments: number; // Valor do portfólio de investimentos
+  // Social/Reputation
   morality: number; // -100 (Antiético) a 100 (Ético)
   fame: number; // -100 (Infame) a 100 (Famoso)
   influence: number; // -100 (Inimigo Público) a 100 (Ícone Global)
-  mood: Mood;
+  // Contextual Info
   birthplace: string;
   currentLocation: string;
   familyBackground: FamilyBackground;
   backstory: string;
+  // Collections
   traits: Trait[];
   assets: string[];
   relationships: Relationship[];
   memories: MemoryItem[];
   craftedItems: CraftedItem[];
   lifeGoals: LifeGoal[];
-  hobbies: Hobby[];
+  skills: Skill[];
+  // Health & Ending
   healthCondition: HealthCondition | null;
   specialEnding?: string;
-  founderTraits: FounderTraits;
   causeOfDeath?: string;
+  // Lineage & Special
+  founderTraits: FounderTraits;
   favors: number;
   inheritedSecret?: string | null;
   // Career
   profession: string | null;
   jobTitle: string | null;
   careerLevel: number; // 0-100, represents seniority/progress
+  jobSatisfaction: number; // 0-100
 }
 
 export interface StatChanges {
@@ -176,6 +188,11 @@ export interface StatChanges {
   morality?: number;
   fame?: number;
   influence?: number;
+  happiness?: number;
+  energy?: number;
+  stress?: number;
+  luck?: number;
+  jobSatisfaction?: number;
 }
 
 export interface AssetChanges {
@@ -195,9 +212,9 @@ export interface RelationshipChanges {
     updateHistory?: { name: string; memory: string }[];
 }
 
-export interface HobbyChanges {
-    add?: Hobby[];
-    update?: { name: string; levelChange: number; description?: string; }[];
+export interface SkillChanges {
+    add?: Skill[];
+    update?: { name: string; levelChange: number; description?: string; newName?: string; }[];
 }
 
 export interface CareerChange {
@@ -209,6 +226,7 @@ export interface CareerChange {
 export interface TraitChanges {
     add?: Trait[];
     remove?: string[]; // array of trait names to remove
+    update?: { name: string; levelChange: number; description?: string; }[];
 }
 
 export interface GoalChanges {
@@ -228,8 +246,7 @@ export interface Choice {
   healthConditionChange?: string | null;
   goalChanges?: GoalChanges;
   craftedItemChanges?: CraftedItemChanges;
-  hobbyChanges?: HobbyChanges;
-  moodChange?: Mood;
+  skillChanges?: SkillChanges;
   specialEnding?: string;
   timeCostInUnits?: number; // Representa meses
   locationChange?: string;
@@ -264,7 +281,7 @@ export interface LegacyBonuses {
     favors?: number;
     addTraits?: Trait[];
     inheritedSecret?: string;
-    addHobbies?: Hobby[];
+    addSkills?: Skill[];
     addAssets?: string[];
     addRelationships?: Relationship[];
 }
@@ -308,7 +325,7 @@ export interface WeeklyFocus {
     description: string;
     iconName: string;
     statChanges: StatChanges;
-    hobbyName?: string;
+    skillName?: string;
 }
 
 export interface Checkpoint {
