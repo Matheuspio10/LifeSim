@@ -1,5 +1,5 @@
 
-import { LifeStage, WeeklyChallenge, Character, RelationshipType, WeeklyFocus, HobbyType } from './types';
+import { LifeStage, WeeklyChallenge, Character, RelationshipType, WeeklyFocus } from './types';
 
 export const MAX_FOCUS_POINTS = 3;
 export const TOTAL_MONTHS_PER_YEAR = 12;
@@ -130,7 +130,7 @@ export const FOCUS_OPTIONS: WeeklyFocus[] = [
         description: 'Passe tempo pintando, desenhando ou esculpindo.',
         iconName: 'PaintBrushIcon',
         statChanges: { creativity: 2, health: 1, wealth: -15 },
-        hobbyType: HobbyType.ART
+        hobbyName: 'Arte'
     },
     {
         id: 'hobby_music',
@@ -138,7 +138,7 @@ export const FOCUS_OPTIONS: WeeklyFocus[] = [
         description: 'Toque um instrumento, componha ou ensaie com sua banda.',
         iconName: 'MusicalNoteIcon',
         statChanges: { creativity: 1, charisma: 1, health: 1, wealth: -15 },
-        hobbyType: HobbyType.MUSIC
+        hobbyName: 'Música'
     },
     {
         id: 'leisure',
@@ -181,7 +181,7 @@ export const FOCUS_OPTIONS: WeeklyFocus[] = [
         description: 'Treine seu corpo, participe de competições amadoras e melhore sua saúde.',
         iconName: 'TrophyIcon',
         statChanges: { health: 3, discipline: 1, wealth: -20 },
-        hobbyType: HobbyType.SPORTS
+        hobbyName: 'Esportes'
     },
     {
         id: 'hobby_cooking',
@@ -189,7 +189,7 @@ export const FOCUS_OPTIONS: WeeklyFocus[] = [
         description: 'Explore novas receitas e técnicas na cozinha para impressionar amigos e família.',
         iconName: 'BeakerIcon',
         statChanges: { creativity: 2, health: 1, wealth: -20 },
-        hobbyType: HobbyType.COOKING
+        hobbyName: 'Culinária'
     },
     {
         id: 'illegal_schemes',
@@ -211,7 +211,7 @@ export const FOCUS_OPTIONS: WeeklyFocus[] = [
         description: 'Arrisque seu dinheiro em jogos de azar, com a chance de ganhar ou perder tudo.',
         iconName: 'CurrencyDollarIcon',
         statChanges: { wealth: -40, discipline: -2 },
-        hobbyType: HobbyType.GAMBLING
+        hobbyName: 'Jogos de Azar'
     },
     {
         id: 'politics',

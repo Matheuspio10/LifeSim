@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Hobby, HobbyType, FamilyBackground, Checkpoint, Ancestor } from './types';
+import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Hobby, FamilyBackground, Checkpoint, Ancestor } from './types';
 import { generateGameEvent, evaluatePlayerResponse } from './services/gameService';
 import { applyChoiceToCharacter } from './services/characterService';
 import { WEEKLY_CHALLENGES, LAST_NAMES, PORTRAIT_COLORS, HEALTH_CONDITIONS, LINEAGE_TITLES, TOTAL_MONTHS_PER_YEAR, SKIN_TONES, HAIR_STYLES, ACCESSORIES } from './constants';
@@ -591,7 +591,7 @@ const App: React.FC = () => {
     
     let timeCost = choice.timeCostInUnits || eventBeingProcessed.timeCostInUnits || 1;
     
-    if (updatedChar.age <= 12) {
+    if (updatedChar.age <= 16) {
         timeCost *= 2;
     }
     
@@ -646,12 +646,39 @@ const App: React.FC = () => {
       if (!character) return;
       saveForRollback();
       let updatedChar = { ...character };
-      let focusContextText = "Focando em: ";
+      
       focuses.forEach(focus => {
-          focusContextText += focus.name + " ";
+          // Apply stat changes
           for(const key in focus.statChanges) {
               const stat = key as keyof typeof focus.statChanges;
               (updatedChar[stat] as number) = (updatedChar[stat] as number) + (focus.statChanges[stat] || 0);
+          }
+
+          // Apply hobby changes
+          if (focus.hobbyName) {
+              let hobbies = [...updatedChar.hobbies];
+              const hobbyIndex = hobbies.findIndex(h => h.name === focus.hobbyName);
+
+              if (hobbyIndex > -1) {
+                  // Hobby exists, level it up
+                  const currentLevel = hobbies[hobbyIndex].level;
+                  const newLevel = Math.min(100, currentLevel + 5); // +5 level for a year's focus
+                  hobbies[hobbyIndex].level = newLevel;
+                  
+                  // Update description based on level
+                  if (newLevel > 70) hobbies[hobbyIndex].description = 'Especialista';
+                  else if (newLevel > 40) hobbies[hobbyIndex].description = 'Intermediário';
+                  else if (newLevel > 15) hobbies[hobbyIndex].description = 'Amador';
+
+              } else {
+                  // Hobby doesn't exist, add it
+                  hobbies.push({
+                      name: focus.hobbyName,
+                      level: 5,
+                      description: 'Iniciante'
+                  });
+              }
+              updatedChar.hobbies = hobbies;
           }
       });
       

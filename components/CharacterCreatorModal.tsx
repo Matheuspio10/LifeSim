@@ -6,7 +6,7 @@ import {
     ATTRIBUTE_POOL, ATTRIBUTE_BASE, ATTRIBUTE_MIN, ATTRIBUTE_MAX, FAMILY_BACKGROUNDS 
 } from '../characterCreatorConstants';
 import CustomizableAvatar from './CustomizableAvatar';
-import { UserCircleIcon, SparklesIcon, PlusCircleIcon, MinusCircleIcon } from './Icons';
+import { UserCircleIcon, SparklesIcon, PlusCircleIcon, MinusCircleIcon, GlobeAltIcon, ClipboardDocumentListIcon } from './Icons';
 import { generateRandomCharacter } from '../services/characterCreationService';
 
 interface CharacterCreatorModalProps {
@@ -203,6 +203,31 @@ const CharacterCreatorModal: React.FC<CharacterCreatorModalProps> = ({ isOpen, o
                                 ))}
                              </div>
                         </div>
+
+                        <div className="p-4 bg-slate-900/50 rounded-lg border border-slate-700">
+                             <h3 className="text-lg font-semibold text-cyan-400 mb-3">Origem & Localização</h3>
+                             <div>
+                                 <label className="block text-sm text-slate-300 mb-1">Local de Nascimento</label>
+                                 <select value={character.birthplace || ''} onChange={e => handleUpdate('birthplace', e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
+                                     {BIRTHPLACES.map(place => <option key={place} value={place}>{place}</option>)}
+                                 </select>
+                             </div>
+                        </div>
+
+                        <div className="p-4 bg-slate-900/50 rounded-lg border border-slate-700">
+                             <h3 className="text-lg font-semibold text-cyan-400 mb-3">Meta de Vida Inicial</h3>
+                             <div>
+                                 <label className="block text-sm text-slate-300 mb-1">Escolha um objetivo que guiará seus primeiros passos.</label>
+                                 <select 
+                                    value={character.lifeGoals?.[0]?.description || ''} 
+                                    onChange={e => handleUpdate('lifeGoals', [{ description: e.target.value, completed: false }])} 
+                                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white"
+                                >
+                                     {LIFE_GOALS.map(goal => <option key={goal} value={goal}>{goal}</option>)}
+                                 </select>
+                             </div>
+                        </div>
+
                     </div>
                 </div>
                 {/* Right Panel - Preview & Actions */}
@@ -219,6 +244,17 @@ const CharacterCreatorModal: React.FC<CharacterCreatorModalProps> = ({ isOpen, o
                         </div>
                         <h3 className="text-2xl font-bold text-white">{character.name || 'Nome'} {character.lastName || 'Sobrenome'}</h3>
                         <p className="text-slate-400">Riqueza Inicial: ${character.wealth?.toLocaleString()}</p>
+                        
+                        <div className="mt-4 text-left w-full max-w-xs space-y-2">
+                             <div className="flex items-start gap-2 text-sm text-slate-300">
+                                <span className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5"><GlobeAltIcon /></span>
+                                <p><span className="font-semibold text-slate-400">De:</span> {character.birthplace}</p>
+                            </div>
+                            <div className="flex items-start gap-2 text-sm text-slate-300">
+                                <span className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5"><ClipboardDocumentListIcon /></span>
+                                <p><span className="font-semibold text-slate-400">Meta:</span> {character.lifeGoals?.[0]?.description}</p>
+                            </div>
+                        </div>
                     </div>
                     <div className="space-y-3 mt-6">
                         <button onClick={randomizeCharacter} className="w-full py-3 bg-amber-600 text-white font-bold rounded-lg flex items-center justify-center gap-2 hover:bg-amber-500 transition-colors"><SparklesIcon/> Personagem Aleatório</button>

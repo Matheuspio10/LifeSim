@@ -79,16 +79,8 @@ export enum Mood {
     ANGRY = 'Irritado(a)',
 }
 
-export enum HobbyType {
-    ART = 'Arte',
-    MUSIC = 'Música',
-    COOKING = 'Culinária',
-    SPORTS = 'Esportes',
-    GAMBLING = 'Jogos de Azar',
-}
-
 export interface Hobby {
-    type: HobbyType;
+    name: string;
     level: number; // 0-100
     description: string; // e.g., "Pintor Amador", "Virtuoso do Violão"
 }
@@ -205,7 +197,7 @@ export interface RelationshipChanges {
 
 export interface HobbyChanges {
     add?: Hobby[];
-    update?: { type: HobbyType; levelChange: number; description?: string; }[];
+    update?: { name: string; levelChange: number; description?: string; }[];
 }
 
 export interface CareerChange {
@@ -316,7 +308,7 @@ export interface WeeklyFocus {
     description: string;
     iconName: string;
     statChanges: StatChanges;
-    hobbyType?: HobbyType;
+    hobbyName?: string;
 }
 
 export interface Checkpoint {

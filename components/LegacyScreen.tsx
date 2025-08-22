@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { LegacyBonuses, Trait, Character, Lineage, HobbyType, RelationshipType, Relationship, Hobby } from '../types';
+import { LegacyBonuses, Trait, Character, Lineage, RelationshipType, Relationship, Hobby } from '../types';
 import { LINEAGE_TITLES, POSITIVE_TRAITS, NEGATIVE_TRAITS } from '../constants';
 import { 
     CrownIcon, 
@@ -348,7 +348,7 @@ const LegacyScreen: React.FC<LegacyScreenProps> = ({ points, onStart, finalChara
                                         {renderTraitEffect(bonus.bonus.addTraits?.filter(t => t?.type === 'positive'))}
                                         {renderSecretEffect(bonus.bonus.inheritedSecret)}
                                         {renderGenericEffect(bonus.bonus.addAssets?.[0], <PlusCircleIcon />)}
-                                        {renderGenericEffect(bonus.bonus.addHobbies?.[0]?.type, <PlusCircleIcon />)}
+                                        {renderGenericEffect(bonus.bonus.addHobbies?.[0]?.name, <PlusCircleIcon />)}
                                         {renderGenericEffect(bonus.bonus.addRelationships?.[0]?.name, <UsersIcon />)}
 
                                         <div className="font-semibold text-red-400 pt-1">Contras:</div>

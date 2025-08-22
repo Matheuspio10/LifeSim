@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Character, LifeStage, Lineage, Mood, HobbyType } from '../types';
+import { Character, LifeStage, Lineage, Mood } from '../types';
 import StatDisplay from './StatDisplay';
 import { HeartIcon, BrainIcon, UserGroupIcon, CurrencyDollarIcon, LightBulbIcon, ShieldCheckIcon, PlusCircleIcon, MinusCircleIcon, GlobeAltIcon, HomeIcon, StarIcon, UsersIcon, BriefcaseIcon, ScaleIcon, BookOpenIcon, ExclamationTriangleIcon, ClipboardDocumentListIcon, SparklesIcon, CheckCircleIcon, ChartBarIcon, SpeakerWaveIcon, PixelArtPortraitIcon, FaceSmileIcon, FaceFrownIcon, FireIcon, HandThumbUpIcon, CloudIcon, PencilSquareIcon, MusicalNoteIcon, PaintBrushIcon, BeakerIcon, TrophyIcon, Cog6ToothIcon, PuzzlePieceIcon, MapPinIcon } from './Icons';
 import SpectrumDisplay from './SpectrumDisplay';
@@ -90,13 +90,13 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
   const displayName = lineage?.title ? `${lineage.title} dos ${character.lastName}` : `${character.name} ${character.lastName}`;
   const currentMonth = Math.max(1, TOTAL_MONTHS_PER_YEAR - monthsRemainingInYear + 1);
   
-  const hobbyConfig = {
-      [HobbyType.ART]: { icon: <PaintBrushIcon />, color: 'bg-purple-500' },
-      [HobbyType.MUSIC]: { icon: <MusicalNoteIcon />, color: 'bg-yellow-500' },
-      [HobbyType.COOKING]: { icon: <BeakerIcon />, color: 'bg-orange-500' },
-      [HobbyType.SPORTS]: { icon: <TrophyIcon />, color: 'bg-green-500' },
-      [HobbyType.GAMBLING]: { icon: <CurrencyDollarIcon />, color: 'bg-red-600' },
-  }
+  const hobbyConfig: Record<string, { icon: React.ReactNode; color: string; }> = {
+      'Arte': { icon: <PaintBrushIcon />, color: 'bg-purple-500' },
+      'Música': { icon: <MusicalNoteIcon />, color: 'bg-yellow-500' },
+      'Culinária': { icon: <BeakerIcon />, color: 'bg-orange-500' },
+      'Esportes': { icon: <TrophyIcon />, color: 'bg-green-500' },
+      'Jogos de Azar': { icon: <CurrencyDollarIcon />, color: 'bg-red-600' },
+  };
   
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -319,17 +319,19 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
         {character.hobbies.length > 0 ? (
             <div className="space-y-3">
             {character.hobbies.map((hobby) => {
-                const config = hobbyConfig[hobby.type];
+                const config = hobbyConfig[hobby.name];
+                const icon = config?.icon || <PuzzlePieceIcon />;
+                const color = config?.color || 'bg-slate-500';
                 return (
-                    <div key={hobby.type}>
+                    <div key={hobby.name}>
                         <div className="flex justify-between items-baseline">
                            <div className="flex items-center gap-2">
-                               <span className="w-5 h-5 text-cyan-400">{config?.icon}</span>
-                               <p className="text-sm font-medium text-slate-200">{hobby.type}</p>
+                               <span className="w-5 h-5 text-cyan-400">{icon}</span>
+                               <p className="text-sm font-medium text-slate-200">{hobby.name}</p>
                            </div>
                            <p className="text-xs text-slate-400">{hobby.description}</p>
                         </div>
-                        <HobbyBar level={hobby.level} color={config?.color || 'bg-slate-500'} />
+                        <HobbyBar level={hobby.level} color={color} />
                     </div>
                 );
             })}

@@ -103,7 +103,7 @@ export const applyChoiceToCharacter = (character: Character, choice: Choice, isE
         // Add new
         if (choice.hobbyChanges.add) {
             choice.hobbyChanges.add.forEach(newHobby => {
-                if (!hobbies.some(h => h.type === newHobby.type)) {
+                if (!hobbies.some(h => h.name === newHobby.name)) {
                     hobbies.push(newHobby);
                 }
             });
@@ -111,7 +111,7 @@ export const applyChoiceToCharacter = (character: Character, choice: Choice, isE
         // Update existing
         if (choice.hobbyChanges.update) {
             choice.hobbyChanges.update.forEach(updateInfo => {
-                const hobbyIndex = hobbies.findIndex(h => h.type === updateInfo.type);
+                const hobbyIndex = hobbies.findIndex(h => h.name === updateInfo.name);
                 if (hobbyIndex > -1) {
                     hobbies[hobbyIndex].level = clamp(hobbies[hobbyIndex].level + updateInfo.levelChange, 0, 100);
                     if (updateInfo.description) {
@@ -120,9 +120,9 @@ export const applyChoiceToCharacter = (character: Character, choice: Choice, isE
                 } else {
                     // If hobby doesn't exist, add it
                     hobbies.push({
-                        type: updateInfo.type,
+                        name: updateInfo.name,
                         level: clamp(updateInfo.levelChange, 0, 100),
-                        description: updateInfo.description || `Iniciante em ${updateInfo.type}`
+                        description: updateInfo.description || `Iniciante em ${updateInfo.name}`
                     });
                 }
             });

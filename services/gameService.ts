@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { Character, LifeStage, GameEvent, RelationshipType, MemoryItemType, Trait, EconomicClimate, Choice, MiniGameType, Mood, HobbyType } from '../types';
+import { Character, LifeStage, GameEvent, RelationshipType, MemoryItemType, Trait, EconomicClimate, Choice, MiniGameType, Mood } from '../types';
 
 // Helper function to robustly parse JSON from the model's text response
 const cleanAndParseJson = <T,>(responseText: string): T => {
@@ -92,11 +92,6 @@ const moodTypeSchema = {
     type: Type.STRING,
     enum: Object.values(Mood),
 };
-
-const hobbyTypeSchema = {
-    type: Type.STRING,
-    enum: Object.values(HobbyType),
-}
 
 const traitSchema = {
     type: Type.OBJECT,
@@ -233,34 +228,34 @@ const choiceSchema = {
             },
         },
         hobbyChanges: {
-             type: Type.OBJECT,
-             properties: {
-                 add: {
-                     type: Type.ARRAY,
-                     items: {
-                         type: Type.OBJECT,
-                         properties: {
-                            type: hobbyTypeSchema,
-                            level: { type: Type.INTEGER },
-                            description: { type: Type.STRING },
-                         },
-                         required: ['type', 'level', 'description']
-                     }
-                 },
-                 update: {
-                     type: Type.ARRAY,
-                     items: {
-                         type: Type.OBJECT,
-                         properties: {
-                            type: hobbyTypeSchema,
-                            levelChange: { type: Type.INTEGER },
-                            description: { type: Type.STRING },
-                         },
-                         required: ['type', 'levelChange']
-                     }
-                 }
-             }
-        },
+            type: Type.OBJECT,
+            properties: {
+                add: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                           name: { type: Type.STRING, description: "Nome do novo hobby (ex: 'Boxe', 'Entomologia')." },
+                           level: { type: Type.INTEGER },
+                           description: { type: Type.STRING, description: "Descrição do nível do hobby (ex: 'Iniciante')." },
+                        },
+                        required: ['name', 'level', 'description']
+                    }
+                },
+                update: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                           name: { type: Type.STRING, description: "Nome EXATO do hobby a ser atualizado." },
+                           levelChange: { type: Type.INTEGER },
+                           description: { type: Type.STRING, description: "Nova descrição do nível (ex: 'Amador')." },
+                        },
+                        required: ['name', 'levelChange']
+                    }
+                }
+            }
+       },
         moodChange: moodTypeSchema,
         specialEnding: {
             type: Type.STRING,
@@ -318,7 +313,8 @@ const getBaseSystemPrompt = (isTurbo: boolean): string => {
 4.  **Contexto Histórico e Geográfico é CRUCIAL**: Use o "Zeitgeist" e a 'currentLocation' para moldar o evento. Eventos na década de 1980 em São Paulo não devem envolver smartphones. Eventos em uma fazenda no interior são diferentes de eventos em uma metrópole.
 5.  **Viagens e Mudanças**: O mundo é grande. Crie eventos que ofereçam oportunidades para viajar ou se mudar para novos locais (ex: oferta de emprego em outra cidade, desejo de explorar, visitar família). Uma mudança permanente deve usar o campo 'locationChange' e ter custos significativos (riqueza, tempo). Mudanças também podem impactar negativamente relacionamentos existentes. Eventos subsequentes devem refletir a nova localização do personagem.
 6.  **Personalidade Evolutiva**: Uma parte crucial desta simulação é a **Personalidade Evolutiva**. Com base no evento e na escolha do jogador, você DEVE considerar adicionar ou remover traços do personagem para refletir seu desenvolvimento. Um personagem que repetidamente escolhe ações corajosas pode ganhar o traço 'Corajoso'. Uma traição significativa pode torná-los 'Cínico'. Um invento de sucesso pode conceder 'Visionário'. Use o campo 'traitChanges' com os arrays 'add' e 'remove' para isso. Traços não são permanentes e devem refletir a jornada do personagem.
-7.  **Mini-Jogos Temáticos de Era**: Para aumentar a imersão histórica, você DEVE gerar mini-jogos específicos da era para certos eventos.
+7.  **Hobbies Criativos e Específicos**: Com base nas ações do jogador, crie hobbies específicos em vez de genéricos. Se um personagem começa a praticar boxe, adicione o hobby 'Boxe', não 'Esportes'. Se ele começa a colecionar borboletas, crie 'Entomologia' ou 'Colecionador de Insetos'. Use o campo 'hobbyChanges' para adicionar ou evoluir esses hobbies.
+8.  **Mini-Jogos Temáticos de Era**: Para aumentar a imersão histórica, você DEVE gerar mini-jogos específicos da era para certos eventos.
     - **Era das Luzes (1700-1820)**: Para disputas intelectuais, acione 'PUBLIC_DEBATE'.
     - **Era Industrial e Romântica (1820-1870)**: Para disputas de honra, acione 'PISTOL_DUEL'.
     - **Era dos Impérios (1870-1899)**: Para oportunidades financeiras na segunda revolução industrial, acione 'STOCK_MARKET_SPECULATION' (que usa a mecânica de 'INVESTMENT'). Forneça opções como 'Ferrovias', 'Aço', 'Telégrafo'.
@@ -330,10 +326,11 @@ const getBaseSystemPrompt = (isTurbo: boolean): string => {
     - **Era das Redes Sociais (2011-2030)**: Para temas de fama online, acione 'VIRAL_CONTENT_CHALLENGE'.
     - **Era da IA e Biotecnologia (2031+)**: Para grandes dilemas éticos sobre tecnologia, acione 'GENETIC_EDITING_DILEMMA'.
     - Ao gerar um mini-jogo, defina o 'type' do evento como 'MINI_GAME' e forneça o 'miniGameType' correspondente. O 'eventText' deve preparar o cenário para o mini-jogo.
-8.  **Progressão de Vida**: Crie eventos que permitam o crescimento. O personagem deve ter oportunidades de mudar de carreira, formar relacionamentos, desenvolver hobbies e perseguir objetivos de vida.
-9.  **Consistência**: Mantenha a consistência com os detalhes do personagem. Um personagem com baixa inteligência não deve, de repente, resolver uma equação complexa.
-10. **Formato JSON**: RESPONDA APENAS com um objeto JSON VÁLIDO que corresponda ao schema fornecido. SEM TEXTO EXTRA, SEM EXPLICAÇÕES, APENAS O JSON.
-11. **Memórias e Conquistas**: Para eventos impactantes (especialmente os 'isEpic') ou resultados que mudam a vida, você DEVE gerar uma 'memoryGained'. Se a ação cumprir um dos 'lifeGoals', use 'goalChanges' para marcá-lo como completo.
+    - **Para QUALQUER mini-jogo de investimento** ('INVESTMENT', 'STOCK_MARKET_SPECULATION', 'DOTCOM_DAY_TRADING'), o campo 'miniGameData' com um array de 'options' é **OBRIGATÓRIO**. Para um 'INVESTMENT' genérico, crie 3 opções plausíveis para a era e o local (ex: 'Imóveis na Cidade', 'Obrigações do Governo', 'Startup Local de Tecnologia'), com riscos e retornos variados.
+9.  **Progressão de Vida**: Crie eventos que permitam o crescimento. O personagem deve ter oportunidades de mudar de carreira, formar relacionamentos, desenvolver hobbies e perseguir objetivos de vida.
+10. **Consistência**: Mantenha a consistência com os detalhes do personagem. Um personagem com baixa inteligência não deve, de repente, resolver uma equação complexa.
+11. **Formato JSON**: RESPONDA APENAS com um objeto JSON VÁLIDO que corresponda ao schema fornecido. SEM TEXTO EXTRA, SEM EXPLICAÇÕES, APENAS O JSON.
+12. **Memórias e Conquistas**: Para eventos impactantes (especialmente os 'isEpic') ou resultados que mudam a vida, você DEVE gerar uma 'memoryGained'. Se a ação cumprir um dos 'lifeGoals', use 'goalChanges' para marcá-lo como completo.
 `;
 
     if (isTurbo) {
@@ -405,7 +402,7 @@ export const generateGameEvent = async (
         careerLevel: character.careerLevel,
         relationships: character.relationships.map(r => ({ name: r.name, type: r.type, intimacy: r.intimacy })),
         lifeGoals: character.lifeGoals,
-        hobbies: character.hobbies.map(h => h.type),
+        hobbies: character.hobbies.map(h => h.name),
     };
 
     // Lógica para determinar o tipo de evento
