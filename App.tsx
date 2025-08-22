@@ -722,10 +722,9 @@ const App: React.FC = () => {
 
   const renderMainContent = () => {
     if (isLoading) {
-        if (character) {
-            return <DowntimeActivities character={character} onMicroAction={handleMicroAction} onShowDebug={() => setShowDebug(true)} onRollback={handleOpenRollbackModal} canRollback={history.length > 0} />;
-        }
-        return <LoadingSpinner onShowDebug={() => setShowDebug(true)} onRollback={handleOpenRollbackModal} canRollback={history.length > 0} />;
+        return character 
+            ? <DowntimeActivities character={character} onMicroAction={handleMicroAction} onShowDebug={() => setShowDebug(true)} />
+            : <LoadingSpinner onShowDebug={() => setShowDebug(true)} />;
     }
     if (error) {
         return (
@@ -751,9 +750,9 @@ const App: React.FC = () => {
         if (currentEvent?.type === 'MINI_GAME') {
             return character && <MiniGameHost event={currentEvent} character={character} onComplete={handleChoice} />;
         }
-        return currentEvent ? <EventCard event={currentEvent} onChoice={handleChoice} onOpenResponseSubmit={handleOpenResponseSubmit} /> : <LoadingSpinner onShowDebug={() => setShowDebug(true)} onRollback={handleOpenRollbackModal} canRollback={history.length > 0} />;
+        return currentEvent ? <EventCard event={currentEvent} onChoice={handleChoice} onOpenResponseSubmit={handleOpenResponseSubmit} /> : <LoadingSpinner onShowDebug={() => setShowDebug(true)} />;
       case GameState.GAME_OVER:
-        return character ? <GameOverScreen finalCharacter={character} lifeSummary={lifeSummary} legacyPoints={legacyPoints} completedChallenges={completedChallenges} isMultiplayerCycle={isMultiplayerCycle} onContinueLineage={continueLineage} onStartNewLineage={startNewLineage} lineage={lineage} /> : <LoadingSpinner onShowDebug={() => setShowDebug(true)} onRollback={handleOpenRollbackModal} canRollback={history.length > 0} />;
+        return character ? <GameOverScreen finalCharacter={character} lifeSummary={lifeSummary} legacyPoints={legacyPoints} completedChallenges={completedChallenges} isMultiplayerCycle={isMultiplayerCycle} onContinueLineage={continueLineage} onStartNewLineage={startNewLineage} lineage={lineage} /> : <LoadingSpinner onShowDebug={() => setShowDebug(true)} />;
       case GameState.LEGACY:
         return <LegacyScreen points={legacyPoints} onStart={startNextGeneration} finalCharacter={character} lineage={lineage} />;
       default:
@@ -771,7 +770,7 @@ const App: React.FC = () => {
 
   return (
     <main className="min-h-screen flex flex-col md:flex-row items-start justify-center gap-8 p-4 md:p-8 bg-slate-900 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]">
-        {character && <CharacterSheet character={character} lifeStage={getCurrentLifeStage(character.age)} lineage={lineage} isTurboMode={isTurboMode} onToggleTurboMode={handleToggleTurboMode} onChangeApiKey={handleChangeApiKey} onFullReset={handleFullReset} monthsRemainingInYear={monthsRemainingInYear} onOpenFamilyBook={() => setIsFamilyBookOpen(true)} />}
+        {character && <CharacterSheet character={character} lifeStage={getCurrentLifeStage(character.age)} lineage={lineage} isTurboMode={isTurboMode} onToggleTurboMode={handleToggleTurboMode} onChangeApiKey={handleChangeApiKey} onFullReset={handleFullReset} monthsRemainingInYear={monthsRemainingInYear} onOpenFamilyBook={() => setIsFamilyBookOpen(true)} onRollback={handleOpenRollbackModal} canRollback={history.length > 0} />}
         <div className="flex-grow flex items-center justify-center w-full">
             {renderMainContent()}
         </div>

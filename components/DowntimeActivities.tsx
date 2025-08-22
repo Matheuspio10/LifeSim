@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { StatChanges, Mood, Character } from '../types';
 
@@ -12,11 +11,9 @@ interface DowntimeActivitiesProps {
     character: Character;
     onMicroAction: (result: MicroActionResult) => void;
     onShowDebug: () => void;
-    onRollback?: () => void;
-    canRollback?: boolean;
 }
 
-const DowntimeActivities: React.FC<DowntimeActivitiesProps> = ({ character, onMicroAction, onShowDebug, onRollback, canRollback }) => {
+const DowntimeActivities: React.FC<DowntimeActivitiesProps> = ({ character, onMicroAction, onShowDebug }) => {
     const [lastOutcome, setLastOutcome] = useState<string | null>(null);
     const [isCoolingDown, setIsCoolingDown] = useState<boolean>(false);
     const currentYear = character.birthYear + character.age;
@@ -197,11 +194,6 @@ const DowntimeActivities: React.FC<DowntimeActivitiesProps> = ({ character, onMi
                 >
                     Ver Depuração
                 </button>
-                 {onRollback && canRollback && (
-                    <button onClick={onRollback} className="mt-4 px-4 py-2 text-xs bg-yellow-800 text-yellow-200 rounded-md hover:bg-yellow-700 transition-colors">
-                        Restaurar Jogo
-                    </button>
-                )}
             </div>
         </div>
     );
