@@ -12,7 +12,8 @@ import {
     MemoryItem,
     Skill,
     Relationship,
-    Trait
+    Trait,
+    RelationshipType
 } from '../types';
 
 // Helper to ensure a stat stays within a given min/max range.
@@ -56,6 +57,74 @@ const getReputationScaledStatChange = (currentValue: number, change: number): nu
 
     const scaledChange = change * multiplier;
     return Math.round(scaledChange);
+};
+
+/**
+ * Checks all active life goals against the character's current state and marks them as complete if conditions are met.
+ * @param character - The character object to check.
+ * @returns A new character object with updated goal statuses.
+ */
+export const checkLifeGoals = (character: Character): Character => {
+    const updatedGoals = character.lifeGoals.map(goal => {
+        if (goal.completed) {
+            return goal;
+        }
+
+        let isCompleted = false;
+        const description = goal.description.toLowerCase();
+
+        // Location-based goals
+        if (description.includes('imigrar para os eua') || description.includes('mudar para os estados unidos')) {
+            if (character.currentLocation.toLowerCase().includes('estados unidos') || character.currentLocation.toLowerCase().includes('eua')) {
+                isCompleted = true;
+            }
+        }
+        if (description.includes('viajar por diferentes países')) {
+            if (character.birthplace !== character.currentLocation) {
+                 isCompleted = true; // Simple check: any move from birthplace counts.
+            }
+        }
+
+        // Financial goals
+        if (description.includes('viver livre de preocupações financeiras')) {
+            if (character.wealth > 250000 && character.investments > 100000) {
+                isCompleted = true;
+            }
+        }
+        if (description.includes('fundar um negócio próprio')) {
+            if (character.profession && (character.profession.toLowerCase().includes('empreendedor') || character.profession.toLowerCase().includes('empresário'))) {
+                isCompleted = true;
+            }
+        }
+
+        // Career/Skill goals
+        if (description.includes('dominar um instrumento musical')) {
+            if (character.skills.some(s => s.name === 'Música' && s.level >= 80)) {
+                isCompleted = true;
+            }
+        }
+        if (description.includes('grande artista')) {
+             if (character.fame >= 60 && (character.skills.some(s => s.name === 'Arte' && s.level >= 70) || character.skills.some(s => s.name === 'Música' && s.level >= 70))) {
+                isCompleted = true;
+            }
+        }
+        if (description.includes('escrever um livro')) {
+            if (character.craftedItems.some(item => item.name.toLowerCase().includes('livro') || item.name.toLowerCase().includes('romance'))) {
+                isCompleted = true;
+            }
+        }
+
+        // Relationship goals
+        if (description.includes('construir uma família') || description.includes('encontrar o amor verdadeiro')) {
+            if (character.relationships.some(r => r.type === RelationshipType.ROMANTIC && r.intimacy >= 90)) {
+                isCompleted = true;
+            }
+        }
+
+        return { ...goal, completed: isCompleted || goal.completed };
+    });
+
+    return { ...character, lifeGoals: updatedGoals };
 };
 
 

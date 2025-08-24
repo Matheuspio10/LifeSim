@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Skill, FamilyBackground, Checkpoint, Ancestor } from './types';
 import { generateGameEvent, evaluatePlayerResponse } from './services/gameService';
-import { applyChoiceToCharacter } from './services/characterService';
+import { applyChoiceToCharacter, checkLifeGoals } from './services/characterService';
 import { WEEKLY_CHALLENGES, LAST_NAMES, PORTRAIT_COLORS, HEALTH_CONDITIONS, LINEAGE_TITLES, TOTAL_MONTHS_PER_YEAR, SKIN_TONES, HAIR_STYLES, ACCESSORIES } from './constants';
 import { CREST_COLORS, CREST_ICONS, CREST_SHAPES } from './lineageConstants';
 import CharacterSheet from './components/CharacterSheet';
@@ -612,7 +612,8 @@ const App: React.FC = () => {
     const eventBeingProcessed = currentEvent;
     setCurrentEvent(null); // Clear the event immediately to prevent re-rendering the old card
 
-    const updatedChar = applyChoiceToCharacter(character, choice, eventBeingProcessed.isEpic);
+    let updatedChar = applyChoiceToCharacter(character, choice, eventBeingProcessed.isEpic);
+    updatedChar = checkLifeGoals(updatedChar);
 
     setLifeSummary(prev => [...prev, { text: choice.outcomeText, isEpic: eventBeingProcessed.isEpic || false }]);
     
