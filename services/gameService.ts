@@ -141,8 +141,8 @@ const statChangesSchema = {
         stress: { type: Type.INTEGER, description: "Mudança no estresse (0-100). Aumentado por trabalho, problemas. Diminuído por lazer. Alto estresse afeta negativamente saúde e felicidade." },
         luck: { type: Type.INTEGER, description: "Mudança na sorte (0-100). Stat base que influencia resultados. Mude APENAS em eventos épicos ou sobrenaturais." },
         jobSatisfaction: { type: Type.INTEGER, description: "Mudança na satisfação com o trabalho (0-100). Afetada por eventos de carreira. Baixa satisfação aumenta estresse." },
-        wealth: { type: Type.INTEGER, description: "Mudança na riqueza. Aderir ESTRITAMENTE a estas regras: Eventos comuns: -500 a +1,000. Promoções/bônus de carreira: +500 a +50,000. Eventos de sorte GRANDE (ganhar loteria, herança): +100,000 a +2,000,000. Eventos ÉPICOS que mudam a vida (vender patente, achar tesouro): MÁXIMO de +10,000,000. Custo de itens de luxo: -20,000 a -500,000. NUNCA gere valores acima de 8 dígitos." },
-        investments: { type: Type.INTEGER, description: "Mudança no valor dos investimentos. Use valores realistas, geralmente na casa das centenas ou poucos milhares, no máximo 9 dígitos." },
+        wealth: { type: Type.INTEGER, description: "Mudança na riqueza. Para eventos comuns, use valores pequenos (ex: -500 a +1000). Para eventos de vida importantes, os valores podem ser maiores. Evite números excessivamente grandes." },
+        investments: { type: Type.INTEGER, description: "Mudança no valor dos investimentos. Use valores realistas, geralmente na casa das centenas ou poucos milhares. Evite números excessivamente grandes." },
         morality: { type: Type.INTEGER, description: "Mudança na moralidade (-100 a 100). Ações comuns causam mudanças de -10 a 10." },
         fame: { type: Type.INTEGER, description: "Mudança na fama (-100 a 100). Ações comuns causam mudanças de -5 a 5. Ações Raras/Épicas podem causar até +15, mas use com extrema moderação. Alcançar o topo é uma jornada de uma vida inteira." },
         influence: { type: Type.INTEGER, description: "Mudança na influência (-100 a 100). Semelhante à fama, mudanças pequenas são a norma." },
@@ -377,7 +377,7 @@ const gameEventSchema = {
     required: ['eventText', 'type']
 };
 
-const systemInstruction = `Você é um mestre de jogo para um simulador de vida. Sua principal diretriz é SEMPRE retornar uma resposta JSON válida que corresponda ao schema fornecido, sem exceções. Se uma solicitação for ambígua, insegura ou impossível, em vez de recusar ou gerar um erro, crie um evento de vida alternativo, seguro e mundano que se encaixe na história do personagem. Nunca, em hipótese alguma, retorne um texto que não seja um JSON válido.`;
+const systemInstruction = `Você é um mestre de jogo (Game Master) para um simulador de vida. Sua única função é gerar respostas em formato JSON que sigam o schema fornecido. É CRÍTICO que sua resposta seja SEMPRE um JSON válido. NÃO inclua texto explicativo, recusas ou qualquer coisa fora da estrutura JSON. Se a solicitação do usuário for potencialmente insegura, controversa ou violar suas políticas, IGNORE a solicitação e, em vez disso, gere um evento de vida completamente diferente, seguro e mundano (ex: 'Você encontrou uma moeda na rua'). Aderir ao formato JSON é a prioridade máxima e absoluta.`;
 
 // Helper to create the character summary string for the prompt
 const getCharacterSummary = (character: Character) => {
@@ -443,6 +443,7 @@ export const generateGameEvent = async (
       7. Mantenha as mudanças de stats (statChanges) pequenas e realistas para eventos comuns. Eventos épicos ('isEpic: true') podem ter mudanças maiores.
       8. O evento deve ser consistente com a idade, traços e situação de vida do personagem. Evite eventos muito genéricos.
       9. Use o 'behaviorTracker' para evitar repetição: ${JSON.stringify(behaviorTracker)}. Tente gerar um evento diferente dos anteriores.
+      10. Lembre-se: Sua única saída DEVE ser um JSON válido. Se não puder gerar um evento com base no solicitado, gere um evento simples e seguro, como encontrar um objeto perdido ou ter uma conversa trivial.
     `;
 
     const response = await ai.models.generateContent({
@@ -492,7 +493,8 @@ export const evaluatePlayerResponse = async (
       3. Crie um 'outcomeText' que descreva o resultado da ação de forma narrativa. ${creativityInstruction}
       4. Determine as 'statChanges' e outras consequências (assetChanges, relationshipChanges, etc.) que resultam da ação. Mantenha as mudanças de stats pequenas e realistas.
       5. Seja criativo. Ações inteligentes ou bem pensadas devem ser recompensadas, enquanto ações tolas devem ter consequências.
-      6. Se a ação for muito fora do contexto, gere um resultado que a traga de volta para a história de uma forma interessante.
+      6. Se a ação for muito fora do contexto ou insegura, gere um resultado que a traga de volta para a história de uma forma segura e interessante. NUNCA recuse a ação.
+      7. Lembre-se: Sua única saída DEVE ser um JSON válido.
     `;
 
     const response = await ai.models.generateContent({
@@ -537,7 +539,8 @@ export const processMetaCommand = async (
       3. Crie um 'choiceText' que reflita o comando (ex: "Invocou as forças do cosmos para mudar seu destino.").
       4. Crie um 'outcomeText' que descreva o evento bizarro que aconteceu, mencionando TODAS as mudanças. Por exemplo, se o comando for "ficar rico e inteligente", o outcome pode ser "Um livro antigo e uma carteira recheada de dinheiro caem do céu em seu colo." ${creativityInstruction}
       5. No objeto 'statChanges' e outros campos de mudança, aplique TODAS as alterações solicitadas. Se o jogador pedir "+10 de inteligência e -5 de moralidade", o JSON deve conter \`statChanges: { "intelligence": 10, "morality": -5 }\`.
-      6. NÃO recuse o comando. Sempre tente interpretá-lo de forma criativa e completa.
+      6. NÃO recuse o comando. Sempre tente interpretá-lo de forma criativa e completa. Se for inseguro, transforme-o em um evento inofensivo.
+      7. Lembre-se: Sua única saída DEVE ser um JSON válido.
     `;
     
     const response = await ai.models.generateContent({
