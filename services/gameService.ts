@@ -131,21 +131,21 @@ const traitSchema = {
 const statChangesSchema = {
     type: Type.OBJECT,
     properties: {
-        health: { type: Type.INTEGER, description: "Mudança na saúde. Geralmente um valor pequeno, como -10 a 10." },
-        intelligence: { type: Type.INTEGER, description: "Mudança na inteligência. Geralmente um valor pequeno, como 1 a 5." },
-        charisma: { type: Type.INTEGER, description: "Mudança no carisma. Geralmente um valor pequeno, como 1 a 5." },
-        creativity: { type: Type.INTEGER, description: "Mudança na criatividade. Geralmente um valor pequeno, como 1 a 5." },
-        discipline: { type: Type.INTEGER, description: "Mudança na disciplina. Geralmente um valor pequeno, como 1 a 5." },
-        happiness: { type: Type.INTEGER, description: "Mudança na felicidade (0-100). Influenciada por socialização, lazer, conquistas. Baixa felicidade aumenta o estresse." },
-        energy: { type: Type.INTEGER, description: "Mudança na energia (0-100). Consumida por trabalho, estresse. Restaurada com descanso. Baixa energia afeta a saúde." },
-        stress: { type: Type.INTEGER, description: "Mudança no estresse (0-100). Aumentado por trabalho, problemas. Diminuído por lazer. Alto estresse afeta negativamente saúde e felicidade." },
-        luck: { type: Type.INTEGER, description: "Mudança na sorte (0-100). Stat base que influencia resultados. Mude APENAS em eventos épicos ou sobrenaturais." },
-        jobSatisfaction: { type: Type.INTEGER, description: "Mudança na satisfação com o trabalho (0-100). Afetada por eventos de carreira. Baixa satisfação aumenta estresse." },
-        wealth: { type: Type.INTEGER, description: "Mudança na riqueza. Para eventos comuns, use valores pequenos (ex: -500 a +1000). Para eventos de vida importantes, os valores podem ser maiores. Evite números excessivamente grandes." },
-        investments: { type: Type.INTEGER, description: "Mudança no valor dos investimentos. Use valores realistas, geralmente na casa das centenas ou poucos milhares. Evite números excessivamente grandes." },
-        morality: { type: Type.INTEGER, description: "Mudança na moralidade (-100 a 100). Ações comuns causam mudanças de -10 a 10." },
-        fame: { type: Type.INTEGER, description: "Mudança na fama (-100 a 100). Ações comuns causam mudanças de -5 a 5. Ações Raras/Épicas podem causar até +15, mas use com extrema moderação. Alcançar o topo é uma jornada de uma vida inteira." },
-        influence: { type: Type.INTEGER, description: "Mudança na influência (-100 a 100). Semelhante à fama, mudanças pequenas são a norma." },
+        health: { type: Type.INTEGER, description: "Mudança na saúde. Geralmente -10 a 10." },
+        intelligence: { type: Type.INTEGER, description: "Mudança na inteligência. Geralmente 1 a 5." },
+        charisma: { type: Type.INTEGER, description: "Mudança no carisma. Geralmente 1 a 5." },
+        creativity: { type: Type.INTEGER, description: "Mudança na criatividade. Geralmente 1 a 5." },
+        discipline: { type: Type.INTEGER, description: "Mudança na disciplina. Geralmente 1 a 5." },
+        happiness: { type: Type.INTEGER, description: "Mudança na felicidade (0-100)." },
+        energy: { type: Type.INTEGER, description: "Mudança na energia (0-100)." },
+        stress: { type: Type.INTEGER, description: "Mudança no estresse (0-100)." },
+        luck: { type: Type.INTEGER, description: "Mudança na sorte (0-100). Mude APENAS em eventos épicos." },
+        jobSatisfaction: { type: Type.INTEGER, description: "Mudança na satisfação com o trabalho (0-100)." },
+        wealth: { type: Type.INTEGER, description: "Mudança na riqueza. Valores realistas. Evite números enormes." },
+        investments: { type: Type.INTEGER, description: "Mudança no valor dos investimentos. Valores realistas." },
+        morality: { type: Type.INTEGER, description: "Mudança na moralidade (-100 a 100). Ações comuns causam -10 a 10." },
+        fame: { type: Type.INTEGER, description: "Mudança na fama (-100 a 100). Ações comuns causam -5 a 5." },
+        influence: { type: Type.INTEGER, description: "Mudança na influência (-100 a 100). Ações comuns causam -5 a 5." },
     },
 };
 
@@ -456,14 +456,20 @@ export const generateGameEvent = async (
       10. Lembre-se: Sua única saída DEVE ser um JSON válido. Se não puder gerar um evento com base no solicitado, gere um evento simples e seguro, como encontrar um objeto perdido ou ter uma conversa trivial.
     `;
 
+    const config: any = {
+        responseMimeType: "application/json",
+        responseSchema: gameEventSchema,
+        systemInstruction
+    };
+
+    if (isTurboMode) {
+        config.thinkingConfig = { thinkingBudget: 0 };
+    }
+
     const response = await ai.models.generateContent({
         model,
         contents: prompt,
-        config: {
-            responseMimeType: "application/json",
-            responseSchema: gameEventSchema,
-            systemInstruction
-        }
+        config
     });
 
     return cleanAndParseJson<GameEvent>(response.text);
@@ -507,14 +513,20 @@ export const evaluatePlayerResponse = async (
       7. Lembre-se: Sua única saída DEVE ser um JSON válido.
     `;
 
+    const config: any = {
+        responseMimeType: "application/json",
+        responseSchema: choiceSchema,
+        systemInstruction
+    };
+
+    if (isTurboMode) {
+        config.thinkingConfig = { thinkingBudget: 0 };
+    }
+
     const response = await ai.models.generateContent({
         model,
         contents: prompt,
-        config: {
-            responseMimeType: "application/json",
-            responseSchema: choiceSchema,
-            systemInstruction
-        }
+        config
     });
 
     return cleanAndParseJson<Choice>(response.text);
@@ -553,14 +565,20 @@ export const processMetaCommand = async (
       7. Lembre-se: Sua única saída DEVE ser um JSON válido.
     `;
     
+    const config: any = {
+        responseMimeType: "application/json",
+        responseSchema: choiceSchema,
+        systemInstruction
+    };
+
+    if (isTurboMode) {
+        config.thinkingConfig = { thinkingBudget: 0 };
+    }
+
     const response = await ai.models.generateContent({
         model,
         contents: prompt,
-        config: {
-            responseMimeType: "application/json",
-            responseSchema: choiceSchema,
-            systemInstruction
-        }
+        config
     });
 
     return cleanAndParseJson<Choice>(response.text);
