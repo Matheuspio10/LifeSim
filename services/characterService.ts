@@ -74,24 +74,19 @@ export const checkLifeGoals = (character: Character): Character => {
         const description = goal.description.toLowerCase();
 
         // Location-based goals
-        if (description.includes('imigrar para os eua') || description.includes('mudar para os estados unidos')) {
-            if (character.currentLocation.toLowerCase().includes('estados unidos') || character.currentLocation.toLowerCase().includes('eua')) {
-                isCompleted = true;
-            }
-        }
-        if (description.includes('viajar por diferentes países')) {
+        if (description.includes('viajar por diferentes países') || description.includes('conhecer') && description.includes('mundo')) {
             if (character.birthplace !== character.currentLocation) {
-                 isCompleted = true; // Simple check: any move from birthplace counts.
+                 isCompleted = true;
             }
         }
-
+        
         // Financial goals
-        if (description.includes('viver livre de preocupações financeiras')) {
+        if (description.includes('viver livre de preocupações financeiras') || description.includes('construir um império financeiro')) {
             if (character.wealth > 250000 && character.investments > 100000) {
                 isCompleted = true;
             }
         }
-        if (description.includes('fundar um negócio próprio')) {
+        if (description.includes('fundar um negócio próprio') || description.includes('abrir um restaurante')) {
             if (character.profession && (character.profession.toLowerCase().includes('empreendedor') || character.profession.toLowerCase().includes('empresário'))) {
                 isCompleted = true;
             }
@@ -113,10 +108,20 @@ export const checkLifeGoals = (character: Character): Character => {
                 isCompleted = true;
             }
         }
+        if (description.match(/ser eleito|prefeito|governador|presidente|vereador|deputado/)) {
+            if(character.jobTitle?.match(/prefeito|governador|presidente|vereador|deputado/i)) {
+                isCompleted = true;
+            }
+        }
 
         // Relationship goals
-        if (description.includes('construir uma família') || description.includes('encontrar o amor verdadeiro')) {
-            if (character.relationships.some(r => r.type === RelationshipType.ROMANTIC && r.intimacy >= 90)) {
+        if (description.includes('construir uma família') || description.includes('encontrar o amor verdadeiro') || description.includes('casar')) {
+            if (character.relationships.some(r => r.status === 'Married')) {
+                isCompleted = true;
+            }
+        }
+        if (description.includes('ter filho') || description.includes('ser pai') || description.includes('ser mãe')) {
+            if (character.children && character.children.length > 0) {
                 isCompleted = true;
             }
         }
@@ -189,7 +194,14 @@ export const applyChoiceToCharacter = (character: Character, choice: Choice, isE
             relationships = relationships.map(rel => {
                 const updateInfo = choice.relationshipChanges!.update!.find(u => u.name === rel.name);
                 if (updateInfo) {
-                    return { ...rel, intimacy: clamp(rel.intimacy + updateInfo.intimacyChange, -100, 100) };
+                    const updatedRel = { ...rel };
+                    if (updateInfo.intimacyChange) {
+                        updatedRel.intimacy = clamp(rel.intimacy + updateInfo.intimacyChange, -100, 100);
+                    }
+                    if (updateInfo.status) {
+                        updatedRel.status = updateInfo.status;
+                    }
+                    return updatedRel;
                 }
                 return rel;
             });
@@ -342,6 +354,38 @@ export const applyChoiceToCharacter = (character: Character, choice: Choice, isE
     if (choice.locationChange) {
         updatedChar.currentLocation = choice.locationChange;
     }
+    
+    // Apply plot changes
+    if (choice.plotChanges) {
+        let plots = [...(updatedChar.ongoingPlots || [])];
+        if (choice.plotChanges.add) {
+            plots.push(...choice.plotChanges.add);
+            // Remove duplicates
+            plots = [...new Set(plots)];
+        }
+        if (choice.plotChanges.remove) {
+            plots = plots.filter(p => !choice.plotChanges!.remove!.includes(p));
+        }
+        updatedChar.ongoingPlots = plots;
+    }
+
+    // Handle pregnancy change
+    if (choice.isPregnantChange !== undefined) {
+        updatedChar.isPregnant = choice.isPregnantChange;
+    }
+
+    // Handle birth
+    if (choice.childBorn) {
+        const children = [...(updatedChar.children || [])];
+        children.push({
+            name: choice.childBorn.name,
+            gender: choice.childBorn.gender,
+            age: 0
+        });
+        updatedChar.children = children;
+        updatedChar.isPregnant = false; // Birth ends pregnancy
+    }
+
 
     // Final clamping of all primary stats to ensure they are within valid ranges.
     updatedChar.health = clamp(updatedChar.health, 0, 100);

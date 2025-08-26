@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { Character, LifeStage, GameEvent, RelationshipType, MemoryItemType, Trait, EconomicClimate, Choice, MiniGameType, Mood } from '../types';
 
@@ -84,6 +85,11 @@ const relationshipTypeSchema = {
     enum: Object.values(RelationshipType),
 };
 
+const relationshipStatusSchema = {
+    type: Type.STRING,
+    enum: ['Dating', 'Engaged', 'Married', 'Divorced', 'Widowed'],
+};
+
 const memoryItemTypeSchema = {
     type: Type.STRING,
     enum: Object.values(MemoryItemType),
@@ -117,75 +123,165 @@ const statChangesSchema = {
         investments: { type: Type.INTEGER, description: "Mudança no valor dos investimentos. Use valores realistas, geralmente na casa das centenas ou poucos milhares, no máximo 9 dígitos." },
         morality: { type: Type.INTEGER, description: "Mudança na moralidade (-100 a 100). Ações comuns causam mudanças de -10 a 10." },
         fame: { type: Type.INTEGER, description: "Mudança na fama (-100 a 100). Ações comuns causam mudanças de -5 a 5. Ações Raras/Épicas podem causar até +15, mas use com extrema moderação. Alcançar o topo é uma jornada de uma vida inteira." },
-        influence: { type: Type.INTEGER, description: "Mudança na influência (-100 a 100). Ações comuns causam mudanças de -5 a 5. Ações Raras/Épicas podem causar até +15, mas use com extrema moderação. Alcançar o topo é uma jornada de uma vida inteira." },
+        influence: { type: Type.INTEGER, description: "Mudança na influência (-100 a 100). Semelhante à fama, mudanças pequenas são a norma." },
+    },
+};
+
+const assetChangesSchema = {
+    type: Type.OBJECT,
+    properties: {
+        add: { type: Type.ARRAY, items: { type: Type.STRING } },
+        remove: { type: Type.ARRAY, items: { type: Type.STRING } },
+    },
+};
+
+const relationshipChangesSchema = {
+    type: Type.OBJECT,
+    properties: {
+        add: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    name: { type: Type.STRING },
+                    type: relationshipTypeSchema,
+                    intimacy: { type: Type.INTEGER },
+                    status: relationshipStatusSchema,
+                    history: { type: Type.ARRAY, items: { type: Type.STRING } },
+                },
+                required: ['name', 'type', 'intimacy']
+            }
+        },
+        update: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    name: { type: Type.STRING },
+                    intimacyChange: { type: Type.INTEGER },
+                    status: relationshipStatusSchema,
+                },
+                required: ['name']
+            }
+        },
+        remove: { type: Type.ARRAY, items: { type: Type.STRING } },
+        updateHistory: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    name: { type: Type.STRING },
+                    memory: { type: Type.STRING },
+                },
+                required: ['name', 'memory']
+            }
+        },
+    },
+};
+
+const skillChangesSchema = {
+    type: Type.OBJECT,
+    properties: {
+        add: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    name: { type: Type.STRING },
+                    level: { type: Type.INTEGER },
+                    description: { type: Type.STRING },
+                },
+                required: ['name', 'level', 'description'],
+            }
+        },
+        update: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    name: { type: Type.STRING },
+                    levelChange: { type: Type.INTEGER },
+                    description: { type: Type.STRING },
+                    newName: { type: Type.STRING },
+                },
+                required: ['name', 'levelChange'],
+            }
+        },
+    },
+};
+
+const careerChangeSchema = {
+    type: Type.OBJECT,
+    properties: {
+        profession: { type: Type.STRING, description: 'Se for uma string vazia "", o personagem se torna desempregado.' },
+        jobTitle: { type: Type.STRING },
+        levelChange: { type: Type.INTEGER },
+    },
+};
+
+const traitChangesSchema = {
+    type: Type.OBJECT,
+    properties: {
+        add: { type: Type.ARRAY, items: traitSchema },
+        remove: { type: Type.ARRAY, items: { type: Type.STRING } },
+        update: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    name: { type: Type.STRING },
+                    levelChange: { type: Type.INTEGER },
+                    description: { type: Type.STRING },
+                },
+                required: ['name', 'levelChange']
+            }
+        }
+    },
+};
+
+const goalChangesSchema = {
+    type: Type.OBJECT,
+    properties: {
+        add: { type: Type.ARRAY, items: { type: Type.STRING } },
+        complete: { type: Type.ARRAY, items: { type: Type.STRING } },
+    },
+};
+
+const craftedItemChangesSchema = {
+    type: Type.OBJECT,
+    properties: {
+        add: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    name: { type: Type.STRING },
+                    description: { type: Type.STRING },
+                },
+                required: ['name', 'description'],
+            }
+        },
+        remove: { type: Type.ARRAY, items: { type: Type.STRING } },
+    },
+};
+
+const plotChangesSchema = {
+    type: Type.OBJECT,
+    properties: {
+        add: { type: Type.ARRAY, items: { type: Type.STRING } },
+        remove: { type: Type.ARRAY, items: { type: Type.STRING } },
     },
 };
 
 const choiceSchema = {
     type: Type.OBJECT,
     properties: {
-        choiceText: { type: Type.STRING, description: "Texto da escolha (máximo 12 palavras)." },
-        outcomeText: { type: Type.STRING, description: "Descrição do que acontece após a escolha (máximo 50 palavras)." },
+        choiceText: { type: Type.STRING },
+        outcomeText: { type: Type.STRING },
         statChanges: statChangesSchema,
-        assetChanges: {
-            type: Type.OBJECT,
-            properties: {
-                add: { type: Type.ARRAY, items: { type: Type.STRING } },
-                remove: { type: Type.ARRAY, items: { type: Type.STRING } },
-            }
-        },
-        relationshipChanges: {
-            type: Type.OBJECT,
-            properties: {
-                add: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            name: { type: Type.STRING },
-                            type: relationshipTypeSchema,
-                            intimacy: { type: Type.INTEGER },
-                            history: { type: Type.ARRAY, items: {type: Type.STRING } },
-                        },
-                        required: ['name', 'type', 'intimacy', 'history']
-                    }
-                },
-                update: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            name: { type: Type.STRING, description: "Nome EXATO do relacionamento a ser atualizado." },
-                            intimacyChange: { type: Type.INTEGER },
-                        },
-                        required: ['name', 'intimacyChange']
-                    }
-                },
-                remove: {
-                    type: Type.ARRAY,
-                    items: { type: Type.STRING, description: "Nome EXATO do relacionamento a ser removido." }
-                },
-                updateHistory: {
-                     type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            name: { type: Type.STRING, description: "Nome EXATO do relacionamento para adicionar ao histórico." },
-                            memory: { type: Type.STRING, description: "Uma breve memória da interação (máximo 20 palavras)." },
-                        },
-                        required: ['name', 'memory']
-                    }
-                }
-            }
-        },
-        careerChange: {
-            type: Type.OBJECT,
-            properties: {
-                profession: { type: Type.STRING, description: "Nova profissão. Use uma string vazia '' para desempregado." },
-                jobTitle: { type: Type.STRING, description: "Novo cargo." },
-                levelChange: { type: Type.INTEGER, description: "Mudança no nível da carreira." },
-            },
-        },
+        assetChanges: assetChangesSchema,
+        relationshipChanges: relationshipChangesSchema,
+        careerChange: careerChangeSchema,
         memoryGained: {
             type: Type.OBJECT,
             properties: {
@@ -193,376 +289,232 @@ const choiceSchema = {
                 description: { type: Type.STRING },
                 type: memoryItemTypeSchema,
             },
+            required: ['name', 'description', 'type']
         },
-        traitChanges: {
+        traitChanges: traitChangesSchema,
+        healthConditionChange: { type: Type.STRING, description: "Nome da condição de saúde ou 'null' para remover." },
+        goalChanges: goalChangesSchema,
+        craftedItemChanges: craftedItemChangesSchema,
+        skillChanges: skillChangesSchema,
+        plotChanges: plotChangesSchema,
+        childBorn: {
             type: Type.OBJECT,
             properties: {
-                add: { type: Type.ARRAY, items: traitSchema, description: "Adiciona um novo traço que o personagem não possui. USE COM MUITA MODERAÇÃO." },
-                remove: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Remove um traço pelo seu nome exato." },
-                update: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            name: { type: Type.STRING, description: "Nome EXATO do traço existente a ser evoluído." },
-                            levelChange: { type: Type.INTEGER, description: "A mudança no nível do traço (ex: 1 para subir de nível)." },
-                            description: { type: Type.STRING, description: "Opcional. Uma nova descrição para o traço evoluído." }
-                        },
-                        required: ['name', 'levelChange']
-                    },
-                    description: "Evolui um traço existente em vez de adicionar um novo. PREFIRA ISTO."
-                }
-            },
-        },
-        healthConditionChange: {
-            type: Type.STRING,
-            description: "Nome de uma nova condição de saúde adquirida. Use null se uma condição foi curada.",
-        },
-        goalChanges: {
-            type: Type.OBJECT,
-            properties: {
-                add: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Adiciona um novo objetivo de vida." },
-                complete: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Marca um objetivo de vida existente como completo pelo seu nome exato." },
-            },
-        },
-        craftedItemChanges: {
-            type: Type.OBJECT,
-            properties: {
-                add: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            name: { type: Type.STRING },
-                            description: { type: Type.STRING },
-                        },
-                        required: ['name', 'description']
-                    }
-                },
-                remove: { type: Type.ARRAY, items: { type: Type.STRING } },
-            },
-        },
-        skillChanges: {
-            type: Type.OBJECT,
-            properties: {
-                add: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                           name: { type: Type.STRING, description: "Nome da nova habilidade (ex: 'Boxe', 'Programação')." },
-                           level: { type: Type.INTEGER },
-                           description: { type: Type.STRING, description: "Descrição do nível da habilidade (ex: 'Iniciante')." },
-                        },
-                        required: ['name', 'level', 'description']
-                    }
-                },
-                update: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                           name: { type: Type.STRING, description: "Nome EXATO da habilidade a ser atualizada." },
-                           levelChange: { type: Type.INTEGER },
-                           description: { type: Type.STRING, description: "Nova descrição do nível (ex: 'Amador')." },
-                           newName: { type: Type.STRING, description: "Opcional. Use para EVOLUIR a habilidade para um nome mais avançado (ex: de 'Radioamadorismo' para 'Engenharia de Rádio')." }
-                        },
-                        required: ['name', 'levelChange']
-                    }
-                }
+                name: { type: Type.STRING },
+                gender: { type: Type.STRING },
             }
-       },
-        specialEnding: {
-            type: Type.STRING,
-            description: "CRÍTICO: Use este campo SOMENTE se a escolha resultar na MORTE IMEDIATA do personagem ou em um evento que encerre sua vida ativa de forma definitiva (ex: prisão perpétua). A descrição deve ser o resumo final da vida. NÃO use para grandes conquistas que não terminem a vida."
         },
-        timeCostInUnits: { type: Type.INTEGER, description: "Custo em meses (1-12). Padrão é 1 se não especificado." },
-        locationChange: { type: Type.STRING, description: "A nova cidade/localização para onde o personagem se mudou. Use APENAS se a escolha resultar em uma MUDANÇA PERMANENTE de residência. Não use para viagens curtas." },
+        isPregnantChange: { type: Type.BOOLEAN },
+        specialEnding: { type: Type.STRING },
+        timeCostInUnits: { type: Type.INTEGER, description: 'Número de meses que a ação leva. 1-12. O padrão é 1.' },
+        locationChange: { type: Type.STRING },
     },
-    required: ['choiceText', 'outcomeText', 'statChanges'],
+    required: ['choiceText', 'outcomeText', 'statChanges']
 };
 
-const eventSchema = {
-  type: Type.OBJECT,
-  properties: {
-    eventText: { type: Type.STRING, description: "Descrição do evento principal (máximo 60 palavras)." },
-    choices: { type: Type.ARRAY, items: choiceSchema },
-    isEpic: { type: Type.BOOLEAN, description: "Este é um evento raro e impactante?" },
-    isWorldEvent: { type: Type.BOOLEAN, description: "Este é um evento global que afeta a todos?" },
-    type: { type: Type.STRING, enum: ['MULTIPLE_CHOICE', 'OPEN_RESPONSE', 'MINI_GAME'], description: "Tipo de evento. Use OPEN_RESPONSE para que o jogador escreva sua ação." },
-    placeholderText: { type: Type.STRING, description: "Texto de exemplo para a caixa de resposta aberta." },
-    miniGameType: { type: Type.STRING, enum: Object.values(MiniGameType), description: "Se o tipo for MINI_GAME, especifique qual." },
-    miniGameData: {
-        type: Type.OBJECT,
-        description: "Dados para o minijogo (ex: opções de investimento). Obrigatório para tipos de investimento.",
-        properties: {
-            options: {
-                type: Type.ARRAY,
-                description: "Lista de opções para o minijogo, tipicamente para jogos de investimento.",
-                items: {
-                    type: Type.OBJECT,
-                    properties: {
-                        name: { type: Type.STRING },
-                        description: { type: Type.STRING },
-                        riskLevel: { type: Type.STRING, enum: ['low', 'medium', 'high'] },
-                        potentialReturnMultiplier: { type: Type.NUMBER, description: "Ex: 1.5 para 50% de lucro." },
-                        failureLossMultiplier: { type: Type.NUMBER, description: "Ex: 0.5 para 50% de perda." },
-                    },
-                    required: ['name', 'description', 'riskLevel', 'potentialReturnMultiplier', 'failureLossMultiplier']
-                }
-            }
-        }
-    },
-    timeCostInUnits: { type: Type.INTEGER, description: "Custo base em meses (1-12) para o evento. Padrão é 1." },
-  },
-  required: ['eventText', 'type'],
+const miniGameTypeSchema = {
+    type: Type.STRING,
+    enum: Object.values(MiniGameType),
 };
 
-const evaluateResponseSchema = choiceSchema;
+const investmentOptionSchema = {
+    type: Type.OBJECT,
+    properties: {
+        name: { type: Type.STRING },
+        description: { type: Type.STRING },
+        riskLevel: { type: Type.STRING, enum: ['low', 'medium', 'high'] },
+        potentialReturnMultiplier: { type: Type.NUMBER, description: "Ex: 1.5 para um retorno de 50%." },
+        failureLossMultiplier: { type: Type.NUMBER, description: "Ex: 0.5 para uma perda de 50%." }
+    },
+    required: ['name', 'description', 'riskLevel', 'potentialReturnMultiplier', 'failureLossMultiplier']
+};
 
-const getBaseSystemPrompt = (isTurbo: boolean): string => {
-    const commonRules = `
-1.  **Crie Eventos Realistas e Interessantes**: Gere eventos críveis baseados na idade, traços, carreira e contexto histórico/geográfico do personagem. Evite clichês. Surpreenda o jogador.
-2.  **Equilíbrio e Risco**: O jogo deve ser desafiador. As escolhas devem ter consequências lógicas, com um equilíbrio realista entre sucesso, fracasso e resultados mistos. Uma grande recompensa DEVE vir com um grande risco. Ações de alto risco (como atividades ilegais, confrontos diretos, investimentos ousados) devem ter uma chance significativa de falha com consequências severas (perda de riqueza, saúde, reputação, ou até mesmo a morte em casos extremos com 'specialEnding'). Nem toda ação bem-sucedida é um sucesso completo; introduza trade-offs.
-3.  **Economia de Traços e Raridade (REGRA CRÍTICA)**: Traços são a essência da personalidade e devem ser raros e significativos. NÃO adicione um novo traço a cada pequena decisão.
-    - **Seja Seletivo**: Conceda um novo traço SOMENTE quando uma escolha, evento ou experiência for REALMENTE marcante e representar uma transformação significativa.
-    - **Qualidade, Não Quantidade**: Um personagem jovem adulto (18-25 anos) deve ter no máximo entre 3 a 7 traços definidores. Evite listas extensas que diluem o impacto.
-    - **Evolua, Não Acumule**: Antes de adicionar um novo traço, verifique os existentes. Se um evento reforça um traço que o personagem já possui (ex: um ato corajoso para alguém com o traço 'Corajoso'), use 'traitChanges.update' para aumentar o 'level' desse traço em vez de adicionar um novo. A evolução é preferível à acumulação.
-4.  **Novas Mecânicas Vitais (Felicidade, Energia, Estresse)**: Estas três estatísticas são interligadas.
-    - **Estresse Alto (>75)** DEVE causar uma perda passiva de **Felicidade** e **Energia**. Gere eventos de 'burnout' ou problemas de saúde.
-    - **Felicidade Baixa (<25)** DEVE aumentar o **Estresse** e gerar eventos de depressão ou apatia.
-    - **Energia Baixa (<25)** DEVE reduzir a eficácia no trabalho (menores ganhos de 'careerLevel') e na disciplina, e pode causar pequenos problemas de saúde.
-    - **Equilíbrio é Chave**: Focar excessivamente em 'Carreira' deve aumentar o **Estresse** e diminuir a **Energia** e **Felicidade**. Focar em 'Lazer' ou 'Vida Social' deve fazer o oposto. Suas escolhas DEVEM refletir esses trade-offs.
-5.  **Sorte**: A sorte do personagem influencia a probabilidade de resultados positivos. Um personagem com 'luck' alta pode ter sucesso onde outros falhariam. Você raramente deve alterar o valor da 'luck'; isso só deve acontecer em eventos que mudam a vida.
-6.  **Satisfação Profissional**: Este stat reflete a felicidade do personagem com sua carreira. Promoções e projetos bem-sucedidos a aumentam. Conflitos e estagnação a diminuem. Baixa satisfação (<30) é uma fonte primária de **Estresse** e deve levar a eventos onde o personagem contempla mudar de emprego.
-7.  **Economia de Atributos e Retornos Decrescentes**: As mudanças de atributos DEVEM ser equilibradas com trade-offs e a progressão DEVE ser difícil. Aumentar um atributo que já está alto é EXTREMAMENTE difícil. Regra geral: acima de 75, os ganhos são drasticamente reduzidos (raramente mais que +1). Acima de 90, os ganhos são quase impossíveis (apenas +1 para eventos 'isEpic').
-8.  **Contexto Histórico e Geográfico é CRUCIAL (REGRA CRÍTICA)**: O evento DEVE OBRIGATORIAMENTE se passar no 'Ano Atual' fornecido no prompt. NÃO invente um ano diferente. Use o "Zeitgeist" e a 'currentLocation' para dar cor e contexto ao evento, mas o ano da ação deve ser o 'Ano Atual'. Eventos na década de 1980 em São Paulo não devem envolver smartphones. Eventos em uma fazenda no interior são diferentes de eventos em uma metrópole.
-9.  **Consolidação e Evolução de Habilidades (REGRA CRÍTICA)**: Em vez de criar habilidades redundantes (ex: 'Radioamadorismo' e 'Engenharia de Rádio'), evolua a habilidade existente. Use 'skillChanges.update' para aumentar o nível. Em um evento transformador, use 'newName' para evoluir o nome da habilidade para algo mais avançado, refletindo maestria (ex: 'Radioamadorismo' se torna 'Engenharia de Rádio'). Use o campo 'skillChanges' para adicionar ou evoluir essas habilidades.
-10. **Mini-Jogos Temáticos de Era**: Para aumentar a imersão histórica, você DEVE gerar mini-jogos específicos da era para certos eventos. Para QUALQUER mini-jogo de investimento, o campo 'miniGameData' com um array de 'options' é **OBRIGATÓRIO**.
-11. **Fama e Influência são Conquistas de Fim de Jogo (REGRA CRÍTICA)**: Esses atributos devem crescer MUITO lentamente.
-    - **Escala de Poder**: Valores entre 25-50 significam reconhecimento local ou regional. 50-75 é fama nacional. Acima de 80 é para ícones globais, algo que um personagem jovem raramente (ou nunca) deveria alcançar.
-    - **Ganhos Mínimos**: Gere pequenos ganhos (+1 a +3) para a maioria dos eventos. Ganhos maiores (+10 ou mais) devem ser reservados para eventos 'isEpic' que definem uma vida e que só acontecem algumas vezes por geração.
-12. **Imersão Total - Sem Placeholders (REGRA CRÍTICA)**: Para manter a imersão, é ESTRITAMENTE PROIBIDO o uso de placeholders ou textos genéricos como '[Nome]', '[Nome do Deputado]', '[Amigo]', '[Empresa]', etc. Você DEVE inventar nomes específicos, concretos e criativos para todas as pessoas, lugares e organizações. Por exemplo, em vez de 'um político chamado [Nome]', crie 'o vereador Jonas Medeiros'. Em vez de 'uma empresa de tecnologia', crie 'a startup InovaTech'.
-13. **Consequências Tangíveis e Imersivas (REGRA CRÍTICA)**: Eventos significativos DEVEM gerar "coisas". Não deixe os inventários vazios.
-    - **Memórias ('memoryGained')**: Uma briga com os pais? Gere uma 'memoryGained' do tipo 'Carta' chamada "Carta de Despedida". Um diploma? Um 'Documento' chamado "Diploma Universitário". Um grande amor? Uma 'Foto' chamada "Primeira foto juntos". Use para momentos emocionantes.
-    - **Bens ('assetChanges')**: Comprou um carro? Adicione "Carro Popular" em 'assetChanges.add'. Herdou uma casa? Adicione "Casa de Campo". Seja concreto.
-    - **Itens Criados ('craftedItemChanges')**: O personagem escreveu um poema? Adicione o "Poema 'Luar de Inverno'" em 'craftedItemChanges.add'. Compôs uma música? Adicione a "Composição 'Valsa da Saudade'". Use para criações do personagem.
-    - **Seja Específico**: Dê nomes criativos e descrições que reflitam o evento. "Documento" não é bom, "Contrato de Demissão da Orquestra de Shenzhen" é excelente.
-14. **Formato JSON**: RESPONDA APENAS com um objeto JSON VÁLIDO que corresponda ao schema fornecido. SEM TEXTO EXTRA, SEM EXPLICAÇÕES, APENAS O JSON.
-`;
+const gameEventSchema = {
+    type: Type.OBJECT,
+    properties: {
+        eventText: { type: Type.STRING },
+        choices: { type: Type.ARRAY, items: choiceSchema },
+        isEpic: { type: Type.BOOLEAN },
+        isWorldEvent: { type: Type.BOOLEAN },
+        type: { type: Type.STRING, enum: ['MULTIPLE_CHOICE', 'OPEN_RESPONSE', 'MINI_GAME'] },
+        placeholderText: { type: Type.STRING },
+        miniGameType: miniGameTypeSchema,
+        miniGameData: {
+            type: Type.OBJECT,
+            description: "Dados para mini-jogos. Usado principalmente para jogos de investimento, que exigem um array de 'options'.",
+            nullable: true,
+            properties: {
+                options: {
+                    type: Type.ARRAY,
+                    items: investmentOptionSchema
+                }
+            }
+        },
+        timeCostInUnits: { type: Type.INTEGER, description: 'Número de meses que o evento leva. 1-12. O padrão é 1.' },
+    },
+    required: ['eventText', 'type']
+};
 
-    if (isTurbo) {
-        return `
-Você é o Mestre do Jogo (GM) para "LifeSim MMORG". Seu papel é criar eventos de vida realistas, desafiadores e envolventes.
-
-**MODO RÁPIDO E BALANCEADO:** A "temperatura" da IA está ajustada para consistência (0.8). O objetivo é criar um evento **narrativo e rápido**, mantendo a imersão.
-- **Narração Vívida e Detalhada:** Descreva o evento com detalhes interessantes e atmosféricos. As escolhas devem ser claras e diretas.
-- **Contexto Histórico Evocativo:** Use o 'Zeitgeist' para dar cor ao evento.
-- **Mantenha o Desafio e o Foco:** O equilíbrio do jogo é vital. Continue aplicando as regras de **Equilíbrio e Risco** e **Economia de Atributos**.
-
-${commonRules}
-`;
-    }
-
+// Helper to create the character summary string for the prompt
+const getCharacterSummary = (character: Character) => {
+    // A concise summary of the character to provide context to the AI
     return `
-Você é o Mestre do Jogo (GM) para "LifeSim MMORG", um simulador de vida roguelite. Seu papel é criar eventos de vida realistas, desafiadores e envolventes.
-
-**MODO AVANÇADO E CRIATIVO:** A "temperatura" da IA está no máximo (1.0). Use essa liberdade para criar eventos e consequências mais diversos, inesperados e criativos. Surpreenda o jogador.
-
-REGRAS PRINCIPAIS:
-${commonRules}
-`;
+      Nome: ${character.name} ${character.lastName}, Idade: ${character.age}, Gênero: ${character.gender}
+      Atributos: Saúde(${character.health}), Inteligência(${character.intelligence}), Carisma(${character.charisma}), Criatividade(${character.creativity}), Disciplina(${character.discipline})
+      Vitals: Felicidade(${character.happiness}), Energia(${character.energy}), Estresse(${character.stress})
+      Reputação: Moralidade(${character.morality}), Fama(${character.fame}), Influência(${character.influence})
+      Finanças: Riqueza($${character.wealth}), Investimentos($${character.investments})
+      Carreira: ${character.profession ? `${character.jobTitle} em ${character.profession} (Nível ${character.careerLevel})` : 'Desempregado(a)'}
+      Traços: ${character.traits.map(t => t.name).join(', ')}
+      Metas de Vida: ${character.lifeGoals.map(g => g.description + (g.completed ? ' (Concluído)' : '')).join('; ')}
+      Habilidades: ${character.skills.map(s => `${s.name} (Nível ${s.level})`).join(', ')}
+      Enredos Atuais: ${character.ongoingPlots ? character.ongoingPlots.join(', ') : 'Nenhum'}
+      Backstory: ${character.backstory}
+    `;
 };
 
 export const generateGameEvent = async (
-    character: Character, 
-    lifeStage: LifeStage, 
-    year: number, 
-    economicClimate: EconomicClimate, 
-    lineageTitle: string | null, 
-    currentFocus: string | null,
+    character: Character,
+    lifeStage: LifeStage,
+    year: number,
+    economicClimate: EconomicClimate,
+    lineageTitle: string | null,
+    focusContext: string | null,
     behaviorTracker: Record<string, number>,
-    isTurbo: boolean,
-    apiKey: string,
+    isTurboMode: boolean,
+    apiKey: string
 ): Promise<GameEvent> => {
     const ai = new GoogleGenAI({ apiKey });
+    const model = isTurboMode ? 'gemini-2.5-flash' : 'gemini-2.5-flash';
 
-    const systemPrompt = getBaseSystemPrompt(isTurbo);
-    
-    // Simplificar o personagem para o prompt
-    const characterSummary = {
-        name: character.name,
-        generation: character.generation,
-        age: character.age,
-        vitals: {
-            health: character.health,
-            happiness: character.happiness,
-            energy: character.energy,
-            stress: character.stress,
-            luck: character.luck,
-        },
-        stats: {
-            intelligence: character.intelligence,
-            charisma: character.charisma,
-            creativity: character.creativity,
-            discipline: character.discipline,
-        },
-        financials: {
-            wealth: character.wealth,
-            investments: character.investments,
-        },
-        social: {
-            morality: character.morality,
-            fame: character.fame,
-            influence: character.influence,
-        },
-        location: character.currentLocation,
-        background: character.familyBackground,
-        traits: character.traits.map(t => t.name),
-        career: {
-            profession: character.profession,
-            jobTitle: character.jobTitle,
-            careerLevel: character.careerLevel,
-            jobSatisfaction: character.jobSatisfaction,
-        },
-        relationships: character.relationships.map(r => ({ name: r.name, type: r.type, intimacy: r.intimacy })),
-        lifeGoals: character.lifeGoals,
-        skills: character.skills.map(s => s.name),
-    };
+    const characterSummary = getCharacterSummary(character);
+    const zeitgeist = getZeitgeist(year);
 
-    // Lógica para determinar o tipo de evento
-    const successScore = ((character.wealth + character.investments) / 10000) + 
-                         (character.intelligence + character.charisma + character.creativity + character.discipline) / 3 + 
-                         character.fame + 
-                         character.influence;
+    const isBossBattle = Math.random() < 0.10; // 10% chance of a boss battle event
+    const eventTypeInstructions = isBossBattle
+        ? `Gere um evento de "batalha de chefe" de alto risco, apropriado para a fase da vida. Descrição do desafio: ${getBossBattlePrompt(lifeStage)}`
+        : `Gere um evento de vida interessante. Pode ser uma oportunidade, um desafio, uma interação social ou um evento mundial. Evite gerar eventos sobre morte, a menos que a saúde do personagem seja extremamente baixa (abaixo de 5).`;
 
-    const temptationRoll = Math.random();
-    const globalEventRoll = Math.random();
-    const bossRoll = Math.random();
-    let eventTypePrompt = '';
+    const systemInstruction = `Você é um mestre de jogo para um simulador de vida. Seu objetivo é criar eventos de vida envolventes, realistas e, às vezes, surreais, que respondam ao estado atual do jogador. Sempre retorne uma resposta JSON válida baseada no schema fornecido.`;
 
-    if (successScore > 200 && temptationRoll < 0.20) { // 20% de chance se a pontuação for alta
-        eventTypePrompt = `
-            Este é um evento de 'Auto-Sabotagem'. O personagem está indo MUITO BEM. Crie uma tentação de alto risco e alta recompensa que pode levar a um sucesso espetacular ou a uma ruína total. O evento deve ser 'isEpic: true'.
-        `;
-    } else if (globalEventRoll < 0.05) { // 5% de chance de um evento mundial bizarro
-        eventTypePrompt = `
-            Este é um 'Evento Global Absurdo'. Uma moda ou tendência bizarra está varrendo o mundo, influenciada pelo Zeitgeist atual. O evento deve ser 'isWorldEvent: true'.
-        `;
-    } else if (bossRoll < 0.10) { // 10% de chance de um evento de "chefe"
-        eventTypePrompt = `Este é um evento de 'Chefe' - um grande ponto de virada na vida. Use este cenário: ${getBossBattlePrompt(lifeStage)}`;
-    } else {
-        eventTypePrompt = `Gere um evento de vida comum baseado nos focos atuais do personagem: "${currentFocus || 'vida cotidiana'}". O evento deve estar relacionado a um ou mais desses focos.`;
-    }
-    
-    const content = `
-        **Informações do Jogo:**
-        - Ano Atual: ${year}
-        - Zeitgeist (Contexto Histórico): ${getZeitgeist(year)}
-        - Clima Econômico: ${economicClimate}
-        - Título da Linhagem: ${lineageTitle || 'Nenhum'}
-        - Foco Atual do Personagem: ${currentFocus || 'Nenhum foco específico, gere um evento geral da vida.'}
-        - Estágio da Vida: ${lifeStage}
+    const prompt = `
+      **Contexto do Jogo:**
+      - Ano Atual: ${year} (${zeitgeist})
+      - Clima Econômico: ${economicClimate}
+      - Foco Anual do Personagem: ${focusContext || "Não definido"}
+      - Título da Linhagem (se houver): ${lineageTitle || "Nenhum"}
 
-        **Dados do Personagem:**
-        ${JSON.stringify(characterSummary, null, 2)}
+      **Resumo do Personagem:**
+      ${characterSummary}
 
-        **Tarefa:**
-        ${eventTypePrompt}
-        Crie um evento JSON com base em todas as informações fornecidas. O evento deve ser uma consequência ou desenvolvimento natural dos focos escolhidos pelo personagem.
-        As escolhas devem ser distintas e ter consequências lógicas.
-        Lembre-se das regras principais, especialmente o contexto histórico, a evolução da personalidade e o formato de resposta JSON.
+      **Instruções para Geração de Evento:**
+      1. ${eventTypeInstructions}
+      2. O texto do evento deve ser narrativo e imersivo.
+      3. O tipo de evento deve ser 'MULTIPLE_CHOICE' ou 'OPEN_RESPONSE'. Apenas em casos raros e criativos, use 'MINI_GAME'.
+      4. Para 'MULTIPLE_CHOICE', forneça 2 a 4 opções de escolha (choices) com consequências claras e interessantes, impactando os atributos (statChanges) e outros aspectos da vida do personagem.
+      5. Para 'OPEN_RESPONSE', não forneça escolhas e crie um 'placeholderText' convidativo.
+      6. Mantenha as mudanças de stats (statChanges) pequenas e realistas para eventos comuns. Eventos épicos ('isEpic: true') podem ter mudanças maiores.
+      7. O evento deve ser consistente com a idade, traços e situação de vida do personagem. Evite eventos muito genéricos.
+      8. Use o 'behaviorTracker' para evitar repetição: ${JSON.stringify(behaviorTracker)}. Tente gerar um evento diferente dos anteriores.
     `;
-    
-    const config: any = {
-        systemInstruction: systemPrompt,
-        responseMimeType: "application/json",
-        responseSchema: eventSchema,
-    };
-
-    if (isTurbo) {
-        config.thinkingConfig = { thinkingBudget: 0 };
-        config.temperature = 0.8;
-    } else {
-        config.temperature = 1.0;
-    }
 
     const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: content,
-        config: config,
+        model,
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: gameEventSchema,
+            systemInstruction
+        }
     });
 
-    const eventData = cleanAndParseJson<GameEvent>(response.text);
-    return eventData;
+    return cleanAndParseJson<GameEvent>(response.text);
 };
 
+
 export const evaluatePlayerResponse = async (
-    character: Character, 
-    eventText: string, 
+    character: Character,
+    eventText: string,
     playerResponse: string,
-    currentFocus: string | null,
+    focusContext: string | null,
     apiKey: string,
-    isTurbo: boolean,
+    isTurboMode: boolean,
 ): Promise<Choice> => {
-     const ai = new GoogleGenAI({ apiKey });
-     
-     const systemPrompt = `
-        Você é um Mestre de Jogo (GM) para "LifeSim MMORG". O jogador descreveu uma ação em texto livre. Sua tarefa é traduzir essa ação em uma escolha estruturada em JSON, seguindo o schema.
+    const ai = new GoogleGenAI({ apiKey });
+    const model = isTurboMode ? 'gemini-2.5-flash' : 'gemini-2.5-flash';
 
-        REGRAS:
-        1.  **Interprete a Intenção**: Entenda o que o jogador quer alcançar com a resposta dele.
-        2.  **Seja Justo, Realista e Desafiador**: As consequências devem ser lógicas e equilibradas. Ações ousadas DEVEM ter uma chance significativa de falha. Não tenha medo de aplicar consequências negativas. O sucesso não deve ser garantido.
-        3.  **Consequências Equilibradas e Realistas (REGRA CRÍTICA)**: Siga RÍGIDAMENTE as regras de Retornos Decrescentes e Trade-offs, e a interação entre os novos status (Felicidade, Energia, Estresse).
-        4.  **Use o Contexto**: Baseie as consequências no personagem (estatísticas, traços, localização atual) e no evento.
-        5.  **Evolução da Personalidade**: Se a ação do jogador for um forte indicador de um traço de personalidade, use 'traitChanges' para refletir isso.
-        6.  **Imersão Total - Sem Placeholders (REGRA CRÍTICA)**: Ao criar novos personagens ou locais como parte do resultado, DÊ um nome específico e criativo. NÃO use placeholders como '[Nome do Amigo]' ou '[Nome da Cidade]'.
-        7.  **Formato JSON Estrito**: Responda APENAS com o objeto JSON da escolha. Sem texto extra.
-        ${isTurbo ? `
-        **MODO RÁPIDO E BALANCEADO:** Temperatura baixa (0.8).
-        - **Resultado Narrativo e Rápido:** O 'outcomeText' deve ser gerado rapidamente, mas ainda assim descrever a consequência da ação de forma vívida e interessante.
-        - **Mantenha as Consequências:** Continue aplicando as regras de **Consequências Equilibradas** e **Retornos Decrescentes**. Ações arriscadas devem ter chance de falha.
-        ` : `**MODO AVANÇADO E CRIATIVO:** Temperatura alta (1.0). Crie um resultado criativo e surpreendente para a ação do jogador, mantendo a lógica do personagem e do mundo.`}
-     `;
+    const characterSummary = getCharacterSummary(character);
+    const systemInstruction = `Você é um mestre de jogo para um simulador de vida. O jogador descreveu uma ação em resposta a um evento. Sua tarefa é determinar o resultado dessa ação de forma criativa e justa, e retornar uma resposta JSON válida no formato de uma única 'Choice'.`;
 
-     const content = `
-        **Contexto do Evento:** "${eventText}"
+    const prompt = `
+      **Contexto do Evento:**
+      "${eventText}"
 
-        **Dados do Personagem:**
-        - Idade: ${character.age}
-        - Traços: ${character.traits.map(t => t.name).join(', ')}
-        - Vitals: Felicidade(${character.happiness}), Energia(${character.energy}), Estresse(${character.stress}), Sorte(${character.luck})
-        - Estatísticas Chave: Inteligência(${character.intelligence}), Carisma(${character.charisma}), Disciplina(${character.discipline})
-        - Moralidade: ${character.morality}
-        - Localização Atual: ${character.currentLocation}
-        - Focos Atuais: ${currentFocus || 'Não especificado'}
+      **Resumo do Personagem:**
+      ${characterSummary}
+      
+      **Ação do Jogador:**
+      "${playerResponse}"
 
-        **Ação do Jogador:** "${playerResponse}"
-
-        **Sua Tarefa:**
-        Crie um objeto JSON 'Choice' que represente o resultado da ação do jogador.
-        - 'choiceText' deve ser um resumo da ação do jogador (ex: "Tenta persuadir o guarda").
-        - 'outcomeText' deve descrever o que acontece como resultado.
-        - 'statChanges' e outros campos devem refletir as consequências.
-     `;
-
-    const config: any = {
-        systemInstruction: systemPrompt,
-        responseMimeType: "application/json",
-        responseSchema: evaluateResponseSchema,
-    };
-
-    if (isTurbo) {
-        config.thinkingConfig = { thinkingBudget: 0 };
-        config.temperature = 0.8;
-    } else {
-        config.temperature = 1.0;
-    }
+      **Instruções:**
+      1. Analise a ação do jogador e determine um resultado plausível baseado nos atributos, traços e situação do personagem.
+      2. Crie um 'choiceText' que resuma a ação do jogador (ex: "Tentei negociar com o guarda.").
+      3. Crie um 'outcomeText' que descreva o resultado da ação de forma narrativa.
+      4. Determine as 'statChanges' e outras consequências (assetChanges, relationshipChanges, etc.) que resultam da ação. Mantenha as mudanças de stats pequenas e realistas.
+      5. Seja criativo. Ações inteligentes ou bem pensadas devem ser recompensadas, enquanto ações tolas devem ter consequências.
+      6. Se a ação for muito fora do contexto, gere um resultado que a traga de volta para a história de uma forma interessante.
+    `;
 
     const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: content,
-        config: config,
+        model,
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: choiceSchema,
+            systemInstruction
+        }
+    });
+
+    return cleanAndParseJson<Choice>(response.text);
+};
+
+
+export const processMetaCommand = async (
+    character: Character,
+    command: string,
+    apiKey: string,
+    isTurboMode: boolean,
+): Promise<Choice> => {
+     const ai = new GoogleGenAI({ apiKey });
+     const model = isTurboMode ? 'gemini-2.5-flash' : 'gemini-2.5-flash';
+    
+    const characterSummary = getCharacterSummary(character);
+    const systemInstruction = `Você é um mestre de jogo para um simulador de vida, mas agora está no modo 'Deus'. O jogador deu um comando "fora do personagem" para alterar a realidade. Sua tarefa é interpretar o comando e traduzi-lo em uma 'Choice' JSON, como se uma força cósmica tivesse intervindo.`;
+
+    const prompt = `
+      **Resumo do Personagem:**
+      ${characterSummary}
+      
+      **Comando do Jogador (OFF TOPIC):**
+      "${command}"
+
+      **Instruções:**
+      1. Interprete a intenção do jogador. Ele quer ficar rico? Mudar de carreira? Encontrar amor?
+      2. Crie uma intervenção divina ou um evento de sorte/azar extremo que realize (ou tente realizar) o comando.
+      3. Crie um 'choiceText' que reflita o comando (ex: "Invocou as forças do cosmos para mudar seu destino.").
+      4. Crie um 'outcomeText' que descreva o evento bizarro que aconteceu. Por exemplo, se o comando for "ganhar na loteria", o outcome pode ser "Um bilhete de loteria premiado voa pela sua janela, carregado por um pombo."
+      5. Aplique as 'statChanges' e outras consequências. Seja generoso, mas equilibrado. Grandes recompensas podem vir com um pequeno custo (ex: aumento de riqueza e estresse).
+      6. NÃO recuse o comando. Sempre tente interpretá-lo de forma criativa.
+    `;
+    
+    const response = await ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: choiceSchema,
+            systemInstruction
+        }
     });
 
     return cleanAndParseJson<Choice>(response.text);

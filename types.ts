@@ -102,6 +102,7 @@ export interface Relationship {
     type: RelationshipType;
     intimacy: number; // -100 (Inimigo Mortal) a 100 (Alma Gêmea)
     history: string[];
+    status?: 'Dating' | 'Engaged' | 'Married' | 'Divorced' | 'Widowed';
 }
 
 export interface LifeGoal {
@@ -122,6 +123,12 @@ export interface FounderTraits {
 export interface HealthCondition {
     name: string;
     ageOfOnset: number;
+}
+
+export interface Child {
+    name: string;
+    age: number;
+    gender: string;
 }
 
 export interface Character {
@@ -162,10 +169,13 @@ export interface Character {
   craftedItems: CraftedItem[];
   lifeGoals: LifeGoal[];
   skills: Skill[];
+  children?: Child[];
+  ongoingPlots?: string[];
   // Health & Ending
   healthCondition: HealthCondition | null;
   specialEnding?: string;
   causeOfDeath?: string;
+  isPregnant?: boolean;
   // Lineage & Special
   founderTraits: FounderTraits;
   favors: number;
@@ -207,7 +217,7 @@ export interface CraftedItemChanges {
 
 export interface RelationshipChanges {
     add?: Relationship[];
-    update?: { name: string; intimacyChange: number }[];
+    update?: { name: string; intimacyChange?: number; status?: Relationship['status'] }[];
     remove?: string[]; // array of names to remove
     updateHistory?: { name: string; memory: string }[];
 }
@@ -234,6 +244,11 @@ export interface GoalChanges {
     complete?: string[]; // array of goal descriptions to mark as complete
 }
 
+export interface PlotChanges {
+    add?: string[];
+    remove?: string[];
+}
+
 export interface Choice {
   choiceText: string;
   outcomeText: string;
@@ -247,6 +262,9 @@ export interface Choice {
   goalChanges?: GoalChanges;
   craftedItemChanges?: CraftedItemChanges;
   skillChanges?: SkillChanges;
+  plotChanges?: PlotChanges;
+  childBorn?: { name: string; gender: string; };
+  isPregnantChange?: boolean;
   specialEnding?: string;
   timeCostInUnits?: number; // Representa meses
   locationChange?: string;

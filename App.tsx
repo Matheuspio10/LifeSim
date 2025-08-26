@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Skill, FamilyBackground, Checkpoint, Ancestor } from './types';
-import { generateGameEvent, evaluatePlayerResponse } from './services/gameService';
+import { generateGameEvent, evaluatePlayerResponse, processMetaCommand } from './services/gameService';
 import { applyChoiceToCharacter, checkLifeGoals } from './services/characterService';
 import { WEEKLY_CHALLENGES, LAST_NAMES, PORTRAIT_COLORS, HEALTH_CONDITIONS, LINEAGE_TITLES, TOTAL_MONTHS_PER_YEAR, SKIN_TONES, HAIR_STYLES, ACCESSORIES } from './constants';
 import { CREST_COLORS, CREST_ICONS, CREST_SHAPES } from './lineageConstants';
@@ -545,6 +545,11 @@ const App: React.FC = () => {
         // --- End of Year Logic ---
         let updatedChar = { ...characterAfterChoice, age: characterAfterChoice.age + 1 };
         
+        // Age up children
+        if (updatedChar.children) {
+            updatedChar.children = updatedChar.children.map(c => ({...c, age: c.age + 1}));
+        }
+        
         // Passive stat changes per year
         if (updatedChar.stress > 75) {
             updatedChar.health = Math.max(0, updatedChar.health - 2);
@@ -637,10 +642,19 @@ const App: React.FC = () => {
     setIsLoading(true);
     setError(null);
 
+    const isMetaCommand = responseText.toUpperCase().startsWith('OFF TOPIC:');
+
     const MAX_RETRIES = 3;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
-            const choice = await evaluatePlayerResponse(character, currentEvent.eventText, responseText, currentFocusContext, apiKey, isTurboMode);
+            let choice: Choice;
+
+            if (isMetaCommand) {
+                const command = responseText.substring(10).trim();
+                choice = await processMetaCommand(character, command, apiKey, isTurboMode);
+            } else {
+                choice = await evaluatePlayerResponse(character, currentEvent.eventText, responseText, currentFocusContext, apiKey, isTurboMode);
+            }
 
             if (!choice || !choice.choiceText || !choice.outcomeText) {
                 throw new Error("A resposta da IA para sua ação estava vazia ou malformada.");
