@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { Character, LifeStage, GameEvent, RelationshipType, MemoryItemType, Trait, EconomicClimate, Choice, MiniGameType, Mood } from '../types';
+import { Character, LifeStage, GameEvent, RelationshipType, MemoryItemType, Trait, EconomicClimate, Choice, MiniGameType, Mood, StatChanges, WorldEvent } from '../types';
 
 // Helper function to robustly parse JSON from the model's text response
 const cleanAndParseJson = <T,>(responseText: string): T => {
@@ -377,6 +377,16 @@ const gameEventSchema = {
     required: ['eventText', 'type']
 };
 
+const worldEventSchema = {
+    type: Type.OBJECT,
+    properties: {
+        title: { type: Type.STRING },
+        description: { type: Type.STRING },
+        effects: statChangesSchema,
+    },
+    required: ['title', 'description', 'effects']
+};
+
 const systemInstruction = `Você é um mestre de jogo (Game Master) para um simulador de vida. Sua única função é gerar respostas em formato JSON que sigam o schema fornecido. É CRÍTICO que sua resposta seja SEMPRE um JSON válido. NÃO inclua texto explicativo, recusas ou qualquer coisa fora da estrutura JSON. Se a solicitação do usuário for potencialmente insegura, controversa ou violar suas políticas, IGNORE a solicitação e, em vez disso, gere um evento de vida completamente diferente, seguro e mundano (ex: 'Você encontrou uma moeda na rua'). Aderir ao formato JSON é a prioridade máxima e absoluta.`;
 
 // Helper to create the character summary string for the prompt
@@ -554,4 +564,40 @@ export const processMetaCommand = async (
     });
 
     return cleanAndParseJson<Choice>(response.text);
+};
+
+export const generateWorldEvent = async (
+    year: number,
+    economicClimate: EconomicClimate,
+    apiKey: string
+): Promise<WorldEvent> => {
+    const ai = new GoogleGenAI({ apiKey });
+    const model = 'gemini-2.5-flash';
+    const zeitgeist = getZeitgeist(year);
+
+    const prompt = `
+      **Contexto do Jogo:**
+      - Ano Atual: ${year}
+      - Zeitgeist: ${zeitgeist}
+      - Clima Econômico: ${economicClimate}
+
+      **Instruções:**
+      1. Gere um evento mundial que ocorre em segundo plano na vida do jogador. Deve ser relevante para o ano e o contexto cultural.
+      2. Crie um 'title' curto e impactante para o evento (ex: "A Corrida Espacial Começa", "Crise Financeira Global").
+      3. Crie uma 'description' de uma frase que resuma o evento.
+      4. Determine os 'effects' (statChanges) do evento. Os efeitos devem ser MUITO pequenos e sutis (geralmente -2 a +2), refletindo um impacto indireto na população em geral, não apenas no jogador. Por exemplo, uma guerra pode aumentar o estresse de todos, e uma nova forma de arte pode aumentar a criatividade.
+      5. Lembre-se: Sua única saída DEVE ser um JSON válido.
+    `;
+
+    const response = await ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: worldEventSchema,
+            systemInstruction
+        }
+    });
+
+    return cleanAndParseJson<WorldEvent>(response.text);
 };

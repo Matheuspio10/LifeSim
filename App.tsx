@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Skill, FamilyBackground, Checkpoint, Ancestor } from './types';
-import { generateGameEvent, evaluatePlayerResponse, processMetaCommand } from './services/gameService';
+import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Skill, FamilyBackground, Checkpoint, Ancestor, WorldEvent } from './types';
+import { generateGameEvent, evaluatePlayerResponse, processMetaCommand, generateWorldEvent } from './services/gameService';
 import { applyChoiceToCharacter, checkLifeGoals, determineCauseOfDeath, applyCriticalStatPenalties } from './services/characterService';
 import { WEEKLY_CHALLENGES, LAST_NAMES, PORTRAIT_COLORS, HEALTH_CONDITIONS, LINEAGE_TITLES, TOTAL_MONTHS_PER_YEAR, SKIN_TONES, HAIR_STYLES, ACCESSORIES } from './constants';
 import { CREST_COLORS, CREST_ICONS, CREST_SHAPES } from './lineageConstants';
@@ -19,6 +19,7 @@ import { BookOpenIcon } from './components/Icons';
 import DowntimeActivities, { MicroActionResult } from './components/DowntimeActivities';
 import EmergencyRollbackModal from './components/EmergencyRollbackModal';
 import FamilyBookModal from './components/FamilyBookModal';
+import WorldEventToast from './components/WorldEventToast';
 
 const getRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const getRandomKey = <T extends object>(obj: T): keyof T => {
@@ -52,6 +53,7 @@ const App: React.FC = () => {
   const [isRollbackModalOpen, setIsRollbackModalOpen] = useState(false);
   const [isFamilyBookOpen, setIsFamilyBookOpen] = useState(false);
   const [ancestors, setAncestors] = useState<Ancestor[]>([]);
+  const [worldEventNotification, setWorldEventNotification] = useState<WorldEvent | null>(null);
 
 
   // Legacy State
@@ -598,7 +600,7 @@ const App: React.FC = () => {
         setCharacter(updatedChar);
         setCurrentYear(prev => prev + 1);
         setMonthsRemainingInYear(TOTAL_MONTHS_PER_YEAR + newMonthsRemaining); // Carry over negative time
-        setGameState(GameState.ROUTINE_PLANNING); // Always plan at the start of a new year
+        setGameState(GameState.YEAR_END_PROCESSING);
         return true; // Signal that it's the end of the year
     } else {
         // --- Mid-Year Logic ---
@@ -775,6 +777,38 @@ const App: React.FC = () => {
     }
   };
 
+    useEffect(() => {
+        if (gameState === GameState.YEAR_END_PROCESSING && character && apiKey) {
+            const processYearEnd = async () => {
+                let updatedChar = { ...character };
+                // World Event Check (25% chance per year)
+                if (Math.random() < 0.25) { 
+                    try {
+                        const worldEvent = await generateWorldEvent(currentYear, economicClimate, apiKey);
+                        if (worldEvent) {
+                            setWorldEventNotification(worldEvent);
+                            const choiceWithEffects: Choice = {
+                                choiceText: 'World Event',
+                                outcomeText: worldEvent.description,
+                                statChanges: worldEvent.effects,
+                            };
+                            updatedChar = applyChoiceToCharacter(updatedChar, choiceWithEffects);
+                            
+                            setLifeSummary(prev => [...prev, { text: `[EVENTO MUNDIAL] ${worldEvent.title}: ${worldEvent.description}`, isEpic: false }]);
+                        }
+                    } catch (e) {
+                        console.error("Falha ao gerar o evento mundial:", e);
+                    }
+                }
+                
+                setCharacter(updatedChar);
+                setGameState(GameState.ROUTINE_PLANNING);
+            };
+
+            processYearEnd();
+        }
+    }, [gameState, character, apiKey, currentYear, economicClimate]);
+
   const renderMainContent = () => {
     if (isLoading) {
         return character 
@@ -799,6 +833,8 @@ const App: React.FC = () => {
     switch (gameState) {
       case GameState.NOT_STARTED:
         return <StartScreen onStart={startGame} lineage={lineage} legacyBonuses={legacyBonuses} currentYear={currentYear} hasSaveData={hasSaveData} onContinueGame={handleContinueGame} onStartNewGame={handleStartNewGameFromScratch} onShowDebug={() => setShowDebug(true)} />;
+      case GameState.YEAR_END_PROCESSING:
+        return <LoadingSpinner onShowDebug={() => setShowDebug(true)} />;
       case GameState.ROUTINE_PLANNING:
         return character && <RoutineScreen character={character} onConfirm={handleRoutineConfirm} isLoading={isLoading} />;
       case GameState.IN_PROGRESS:
@@ -829,6 +865,7 @@ const App: React.FC = () => {
         <div className="flex-grow flex items-center justify-center w-full">
             {renderMainContent()}
         </div>
+        <WorldEventToast event={worldEventNotification} onClose={() => setWorldEventNotification(null)} />
         {gameState === GameState.IN_PROGRESS && character && (
             <button onClick={() => setIsJournalOpen(true)} className="fixed bottom-6 right-6 w-16 h-16 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-500 transition-all transform hover:scale-110 flex items-center justify-center" aria-label="Abrir Diário">
                 <div className="w-8 h-8"><BookOpenIcon /></div>

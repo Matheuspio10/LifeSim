@@ -11,6 +11,7 @@ export enum GameState {
   GAME_OVER,
   LEGACY,
   ROUTINE_PLANNING,
+  YEAR_END_PROCESSING,
 }
 
 export enum LifeStage {
@@ -366,4 +367,10 @@ export interface Ancestor {
   definingTraits: string[];
   finalStatus: string;
   narrative: string;
+}
+
+export interface WorldEvent {
+  title: string;
+  description: string;
+  effects: StatChanges;
 }
