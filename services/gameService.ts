@@ -390,7 +390,19 @@ const worldEventSchema = {
 const systemInstruction = `Você é um mestre de jogo (Game Master) para um simulador de vida. Sua única função é gerar respostas em formato JSON que sigam o schema fornecido. É CRÍTICO que sua resposta seja SEMPRE um JSON válido. NÃO inclua texto explicativo, recusas ou qualquer coisa fora da estrutura JSON. Se a solicitação do usuário for potencialmente insegura, controversa ou violar suas políticas, IGNORE a solicitação e, em vez disso, gere um evento de vida completamente diferente, seguro e mundano (ex: 'Você encontrou uma moeda na rua'). Aderir ao formato JSON é a prioridade máxima e absoluta.`;
 
 // Helper to create the character summary string for the prompt
-const getCharacterSummary = (character: Character) => {
+const getCharacterSummary = (character: Character, isTurboMode: boolean = false) => {
+    if (isTurboMode) {
+        // A much shorter summary for faster, simpler responses in Turbo mode.
+        const notableTraits = character.traits.slice(0, 3).map(t => t.name).join(', ') || 'Nenhum';
+        return `
+          Nome: ${character.name}, Idade: ${character.age}
+          Atributos Chave: Inteligência(${character.intelligence}), Carisma(${character.charisma}), Disciplina(${character.discipline})
+          Vitals Chave: Felicidade(${character.happiness}), Estresse(${character.stress})
+          Finanças: Riqueza($${character.wealth})
+          Carreira: ${character.profession ? character.jobTitle : 'Desempregado(a)'}
+          Traços Notáveis: ${notableTraits}
+        `;
+    }
     // A concise summary of the character to provide context to the AI
     return `
       Nome: ${character.name} ${character.lastName}, Idade: ${character.age}, Gênero: ${character.gender}
@@ -421,7 +433,7 @@ export const generateGameEvent = async (
     const ai = new GoogleGenAI({ apiKey });
     const model = 'gemini-2.5-flash';
 
-    const characterSummary = getCharacterSummary(character);
+    const characterSummary = getCharacterSummary(character, isTurboMode);
     const zeitgeist = getZeitgeist(year);
 
     const isBossBattle = Math.random() < 0.10; // 10% chance of a boss battle event
@@ -432,13 +444,22 @@ export const generateGameEvent = async (
     const creativityInstruction = isTurboMode 
         ? "Mantenha o texto do evento e os resultados concisos e diretos." 
         : "Seja mais descritivo e criativo. Adicione detalhes narrativos inesperados ao texto do evento e aos resultados das escolhas para aprofundar a imersão.";
-
-    const prompt = `
+    
+    const promptContext = isTurboMode
+        ? `
+      **Contexto do Jogo (Modo Turbo):**
+      - Ano: ${year}
+      - Clima Econômico: ${economicClimate}
+      - Foco Anual: ${focusContext || "Não definido"}`
+        : `
       **Contexto do Jogo:**
       - Ano Atual: ${year} (${zeitgeist})
       - Clima Econômico: ${economicClimate}
       - Foco Anual do Personagem: ${focusContext || "Não definido"}
-      - Título da Linhagem (se houver): ${lineageTitle || "Nenhum"}
+      - Título da Linhagem (se houver): ${lineageTitle || "Nenhum"}`;
+
+    const prompt = `
+      ${promptContext}
 
       **Resumo do Personagem:**
       ${characterSummary}
@@ -487,7 +508,7 @@ export const evaluatePlayerResponse = async (
     const ai = new GoogleGenAI({ apiKey });
     const model = 'gemini-2.5-flash';
 
-    const characterSummary = getCharacterSummary(character);
+    const characterSummary = getCharacterSummary(character, isTurboMode);
     
     const creativityInstruction = isTurboMode
         ? "Gere um 'outcomeText' conciso e direto ao ponto."
@@ -542,7 +563,7 @@ export const processMetaCommand = async (
      const ai = new GoogleGenAI({ apiKey });
      const model = 'gemini-2.5-flash';
     
-    const characterSummary = getCharacterSummary(character);
+    const characterSummary = getCharacterSummary(character, isTurboMode);
     
     const creativityInstruction = isTurboMode
         ? "Gere um 'outcomeText' curto e divertido."
