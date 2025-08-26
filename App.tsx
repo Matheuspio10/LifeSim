@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Skill, FamilyBackground, Checkpoint, Ancestor } from './types';
 import { generateGameEvent, evaluatePlayerResponse, processMetaCommand } from './services/gameService';
-import { applyChoiceToCharacter, checkLifeGoals } from './services/characterService';
+import { applyChoiceToCharacter, checkLifeGoals, determineCauseOfDeath, applyCriticalStatPenalties } from './services/characterService';
 import { WEEKLY_CHALLENGES, LAST_NAMES, PORTRAIT_COLORS, HEALTH_CONDITIONS, LINEAGE_TITLES, TOTAL_MONTHS_PER_YEAR, SKIN_TONES, HAIR_STYLES, ACCESSORIES } from './constants';
 import { CREST_COLORS, CREST_ICONS, CREST_SHAPES } from './lineageConstants';
 import CharacterSheet from './components/CharacterSheet';
@@ -573,6 +573,14 @@ const App: React.FC = () => {
             }
         }
 
+        // Critical Stat Penalties Check
+        const penaltyCheck = applyCriticalStatPenalties(updatedChar);
+        updatedChar = penaltyCheck.updatedChar;
+        if (penaltyCheck.penaltiesApplied.length > 0) {
+            const newEntries = penaltyCheck.penaltiesApplied.map(text => ({ text, isEpic: true }));
+            setLifeSummary(prev => [...prev, ...newEntries]);
+        }
+
         // Health degradation with age
         if (updatedChar.age > 40) {
           const healthDecline = Math.max(1, Math.floor((updatedChar.age - 40) / 10));
@@ -581,16 +589,7 @@ const App: React.FC = () => {
         
         // Check for end of life
         if (updatedChar.health <= 0 || updatedChar.age >= 105) {
-          let causeOfDeath = 'Causas naturais devido à idade avançada';
-          if (updatedChar.health <= 0) {
-            if (updatedChar.healthCondition) {
-                causeOfDeath = `Complicações de ${updatedChar.healthCondition.name}`;
-            } else if (updatedChar.age < 65) {
-                causeOfDeath = 'Um mal súbito e inesperado';
-            } else {
-                causeOfDeath = 'Saúde debilitada';
-            }
-          }
+          const causeOfDeath = determineCauseOfDeath(updatedChar);
           handleEndOfLife({ ...updatedChar, causeOfDeath });
           return true; // End of year flow
         }

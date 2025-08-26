@@ -405,3 +405,139 @@ export const applyChoiceToCharacter = (character: Character, choice: Choice, isE
 
     return updatedChar;
 };
+
+export const applyCriticalStatPenalties = (character: Character): { updatedChar: Character; penaltiesApplied: string[] } => {
+    let updatedChar = { ...character };
+    const penaltiesApplied: string[] = [];
+
+    // 1. Critical Low Health (Health < 10)
+    if (updatedChar.health > 0 && updatedChar.health < 10 && !updatedChar.healthCondition) {
+        const possibleIllnesses = ['Pneumonia', 'Esgotamento'];
+        const illness = possibleIllnesses[Math.floor(Math.random() * possibleIllnesses.length)];
+
+        updatedChar.healthCondition = {
+            name: illness,
+            ageOfOnset: updatedChar.age,
+        };
+        updatedChar.happiness = clamp(updatedChar.happiness - 25, 0, 100);
+        updatedChar.energy = clamp(updatedChar.energy - 30, 0, 100);
+
+        penaltiesApplied.push(
+            `Com a saúde criticamente baixa, ${updatedChar.name} contraiu ${illness.toLowerCase()} e precisará de repouso absoluto, sentindo-se infeliz e sem energia.`
+        );
+    }
+
+    // 2. Zero Energy (Energy <= 0)
+    if (updatedChar.energy <= 0) {
+        updatedChar.energy = 25; // Recover to a low state to prevent immediate re-trigger
+        updatedChar.health = clamp(updatedChar.health - 5, 0, 100);
+        updatedChar.happiness = clamp(updatedChar.happiness - 10, 0, 100);
+        if(updatedChar.profession) {
+            updatedChar.jobSatisfaction = clamp(updatedChar.jobSatisfaction - 15, 0, 100);
+            updatedChar.careerLevel = clamp(updatedChar.careerLevel - 2, 0, 100);
+        }
+
+        penaltiesApplied.push(
+            `${updatedChar.name} desmaiou de exaustão total. Acordou sentindo-se fraco(a), infeliz e com sua reputação profissional abalada.`
+        );
+    }
+    
+    // 3. Maximum Stress (Stress >= 95)
+    if (updatedChar.stress >= 95) {
+        updatedChar.stress = clamp(updatedChar.stress - 20, 0, 100); // Reduce stress after the breakdown
+        updatedChar.happiness = clamp(updatedChar.happiness - 30, 0, 100);
+        updatedChar.influence = clamp(updatedChar.influence - 5, -100, 100);
+        updatedChar.fame = clamp(updatedChar.fame - 5, -100, 100);
+
+        let breakdownEventText = '';
+
+        // Social consequence: Damage a random relationship
+        if (updatedChar.relationships.length > 0) {
+            const targetIndex = Math.floor(Math.random() * updatedChar.relationships.length);
+            const targetRelationship = updatedChar.relationships[targetIndex];
+            targetRelationship.intimacy = clamp(targetRelationship.intimacy - 30, -100, 100);
+            const memory = `Teve um colapso nervoso e descontou em mim.`;
+            targetRelationship.history = [...(targetRelationship.history || []), memory].slice(-5);
+            updatedChar.relationships[targetIndex] = targetRelationship;
+            breakdownEventText += `afastando ${targetRelationship.name} com palavras duras`;
+        }
+
+        // Professional consequence: 20% chance to lose job
+        if (updatedChar.profession && Math.random() < 0.20) {
+            updatedChar.profession = null;
+            updatedChar.jobTitle = null;
+            updatedChar.careerLevel = clamp(updatedChar.careerLevel - 10, 0, 100);
+            breakdownEventText += `${breakdownEventText ? ' e, para piorar, ' : ''}foi demitido(a) após um surto no trabalho`;
+        }
+        
+        if (!breakdownEventText) {
+            breakdownEventText = `prejudicou seriamente sua reputação pública`;
+        }
+
+        penaltiesApplied.push(
+            `Sob estresse extremo, ${updatedChar.name} teve um colapso nervoso, ${breakdownEventText}.`
+        );
+    }
+
+    return { updatedChar, penaltiesApplied };
+};
+
+export const determineCauseOfDeath = (character: Character): string => {
+    // Priority 1: Extreme Old Age
+    if (character.age >= 105) {
+        return 'Causas naturais devido à idade avançada';
+    }
+
+    // If health is not at 0, and age is not extreme, death shouldn't happen, but as a fallback:
+    if (character.health > 0) {
+        return 'Faleceu pacificamente de causas naturais';
+    }
+
+    // Priority 2: Specific Health Condition
+    if (character.healthCondition) {
+        const condition = character.healthCondition.name;
+        if (condition.toLowerCase().includes('câncer')) {
+            return 'Perdeu a longa batalha contra o câncer';
+        }
+        if (condition.toLowerCase().includes('depressão') || condition.toLowerCase().includes('ansiedade')) {
+            return 'Faleceu com o coração pesado, após uma vida de lutas internas';
+        }
+        if (condition.toLowerCase().includes('pneumonia')) {
+            return `Complicações fatais de ${condition}`;
+        }
+        return `Complicações de ${condition}`;
+    }
+
+    // Priority 3: Traits and Vitals interaction
+    if (character.traits.some(t => t.name === 'Tendência a Vícios') && character.stress > 80 && character.happiness < 20) {
+        return 'Sucumbiu aos seus vícios após um período de grande dificuldade';
+    }
+    if (character.traits.some(t => t.name === 'Índole Criminosa') && character.morality < -70) {
+        return 'Seu passado criminoso finalmente o alcançou de forma violenta';
+    }
+     if (character.traits.some(t => t.name === 'Impulsivo') && character.discipline < 20) {
+        return 'Morte trágica em um acidente causado por imprudência';
+    }
+    if (character.traits.some(t => t.name === 'Saúde Frágil')) {
+        return 'Complicações de uma doença comum que seu corpo frágil não conseguiu combater';
+    }
+
+    // Priority 4: Vitals
+    if (character.stress > 95) {
+        return 'Ataque cardíaco fulminante induzido por estresse extremo';
+    }
+    if (character.happiness < 5) {
+        return 'Morreu de tristeza, desistindo silenciosamente da vida';
+    }
+
+    // Priority 5: Generic age-based causes
+    if (character.age < 40) {
+        return 'Um mal súbito e inesperado';
+    }
+    if (character.age < 65) {
+        return 'Falência de múltiplos órgãos devido à saúde debilitada';
+    }
+    
+    // Default fallback
+    return 'Faleceu pacificamente de causas naturais';
+};

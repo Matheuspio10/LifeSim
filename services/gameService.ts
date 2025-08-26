@@ -1,31 +1,52 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { Character, LifeStage, GameEvent, RelationshipType, MemoryItemType, Trait, EconomicClimate, Choice, MiniGameType, Mood } from '../types';
 
 // Helper function to robustly parse JSON from the model's text response
 const cleanAndParseJson = <T,>(responseText: string): T => {
+    // 1. Handle empty or non-string responses immediately.
+    if (typeof responseText !== 'string' || !responseText.trim()) {
+        console.error("A API retornou uma resposta vazia ou inválida. Texto Original:", responseText);
+        throw new Error("A resposta da IA estava vazia. Isso pode ser devido a filtros de segurança ou um erro temporário da API. Por favor, tente novamente.");
+    }
+
     let jsonText = responseText.trim();
 
-    // Attempt to find JSON within markdown code blocks like ```json ... ``` or ``` ... ```
+    // 2. More robustly find the JSON snippet.
     const markdownMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
     if (markdownMatch && markdownMatch[1]) {
         jsonText = markdownMatch[1].trim();
     } else {
-        // If no markdown block, it might be prefixed/suffixed with text.
-        // Find the first '{' and last '}' to extract the JSON object.
-        const firstBrace = jsonText.indexOf('{');
-        const lastBrace = jsonText.lastIndexOf('}');
-        if (firstBrace !== -1 && lastBrace > firstBrace) {
-            jsonText = jsonText.substring(firstBrace, lastBrace + 1);
+        const firstBracket = jsonText.indexOf('{');
+        const firstSquare = jsonText.indexOf('[');
+        let firstIndex = -1;
+
+        if (firstBracket === -1) {
+            firstIndex = firstSquare;
+        } else if (firstSquare === -1) {
+            firstIndex = firstBracket;
+        } else {
+            firstIndex = Math.min(firstBracket, firstSquare);
+        }
+        
+        // If we didn't find any start of JSON, the response is likely not JSON.
+        if (firstIndex === -1) {
+            console.error("Nenhum JSON encontrado na resposta da API. Texto Original:", responseText);
+            throw new Error("A resposta da IA não continha um formato JSON reconhecível. Pode ser uma mensagem de erro da API.");
+        }
+
+        const lastBracket = jsonText.lastIndexOf('}');
+        const lastSquare = jsonText.lastIndexOf(']');
+        const lastIndex = Math.max(lastBracket, lastSquare);
+
+        if (lastIndex > firstIndex) {
+            jsonText = jsonText.substring(firstIndex, lastIndex + 1);
         }
     }
     
-    // Sanitize extremely large numbers that might break JSON.parse or game balance.
-    // It looks for a number (positive or negative) with 10 or more digits and caps it.
+    // 3. Keep the number sanitization. It's a good safeguard.
     jsonText = jsonText.replace(/:(\s*)(-?\d{10,})/g, (match, space, number) => {
         const isNegative = number.startsWith('-');
         console.warn(`Número excessivamente grande detectado da API e limitado: ${number}`);
-        // Cap at +/- 999,999,999 as a hard limit to prevent breaking the game economy.
         const cappedNumber = isNegative ? '-999999999' : '999999999';
         return `:${space}${cappedNumber}`;
     });
@@ -33,8 +54,9 @@ const cleanAndParseJson = <T,>(responseText: string): T => {
     try {
         return JSON.parse(jsonText) as T;
     } catch (e) {
-        console.error("Falha ao analisar JSON da API após a limpeza. Texto limpo:", jsonText, "Texto Original:", responseText, e);
-        throw new Error("A resposta da IA não era um JSON válido.");
+        // 4. The error message is now more informative for the user and me (the developer).
+        console.error("Falha ao analisar JSON da API após a limpeza. Texto Limpo:", jsonText, "Texto Original:", responseText, "Erro:", e);
+        throw new Error("A resposta da IA não era um JSON válido, mesmo após a limpeza. O evento pode ter sido muito complexo. Tente simplificar sua última ação ou restaurar o jogo.");
     }
 };
 
