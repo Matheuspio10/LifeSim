@@ -56,7 +56,7 @@ const cleanAndParseJson = <T,>(responseText: string): T => {
     } catch (e) {
         // 4. The error message is now more informative for the user and me (the developer).
         console.error("Falha ao analisar JSON da API após a limpeza. Texto Limpo:", jsonText, "Texto Original:", responseText, "Erro:", e);
-        throw new Error("A resposta da IA não era um JSON válido, mesmo após a limpeza. O evento pode ter sido muito complexo. Tente simplificar sua última ação ou restaurar o jogo.");
+        throw new Error("A resposta da IA não era um JSON válido. Isso pode acontecer se a IA gerar um evento muito complexo ou acionar filtros de segurança. Tente uma ação mais simples, ou use o botão 'Restaurar Jogo' para voltar a um ponto seguro.");
     }
 };
 
@@ -377,6 +377,8 @@ const gameEventSchema = {
     required: ['eventText', 'type']
 };
 
+const systemInstruction = `Você é um mestre de jogo para um simulador de vida. Sua principal diretriz é SEMPRE retornar uma resposta JSON válida que corresponda ao schema fornecido, sem exceções. Se uma solicitação for ambígua, insegura ou impossível, em vez de recusar ou gerar um erro, crie um evento de vida alternativo, seguro e mundano que se encaixe na história do personagem. Nunca, em hipótese alguma, retorne um texto que não seja um JSON válido.`;
+
 // Helper to create the character summary string for the prompt
 const getCharacterSummary = (character: Character) => {
     // A concise summary of the character to provide context to the AI
@@ -407,7 +409,7 @@ export const generateGameEvent = async (
     apiKey: string
 ): Promise<GameEvent> => {
     const ai = new GoogleGenAI({ apiKey });
-    const model = isTurboMode ? 'gemini-2.5-flash' : 'gemini-2.5-flash';
+    const model = 'gemini-2.5-flash';
 
     const characterSummary = getCharacterSummary(character);
     const zeitgeist = getZeitgeist(year);
@@ -417,7 +419,9 @@ export const generateGameEvent = async (
         ? `Gere um evento de "batalha de chefe" de alto risco, apropriado para a fase da vida. Descrição do desafio: ${getBossBattlePrompt(lifeStage)}`
         : `Gere um evento de vida interessante. Pode ser uma oportunidade, um desafio, uma interação social ou um evento mundial. Evite gerar eventos sobre morte, a menos que a saúde do personagem seja extremamente baixa (abaixo de 5).`;
 
-    const systemInstruction = `Você é um mestre de jogo para um simulador de vida. Seu objetivo é criar eventos de vida envolventes, realistas e, às vezes, surreais, que respondam ao estado atual do jogador. Sempre retorne uma resposta JSON válida baseada no schema fornecido.`;
+    const creativityInstruction = isTurboMode 
+        ? "Mantenha o texto do evento e os resultados concisos e diretos." 
+        : "Seja mais descritivo e criativo. Adicione detalhes narrativos inesperados ao texto do evento e aos resultados das escolhas para aprofundar a imersão.";
 
     const prompt = `
       **Contexto do Jogo:**
@@ -431,13 +435,14 @@ export const generateGameEvent = async (
 
       **Instruções para Geração de Evento:**
       1. ${eventTypeInstructions}
-      2. O texto do evento deve ser narrativo e imersivo.
-      3. O tipo de evento deve ser 'MULTIPLE_CHOICE' ou 'OPEN_RESPONSE'. Apenas em casos raros e criativos, use 'MINI_GAME'.
-      4. Para 'MULTIPLE_CHOICE', forneça 2 a 4 opções de escolha (choices) com consequências claras e interessantes, impactando os atributos (statChanges) e outros aspectos da vida do personagem.
-      5. Para 'OPEN_RESPONSE', não forneça escolhas e crie um 'placeholderText' convidativo.
-      6. Mantenha as mudanças de stats (statChanges) pequenas e realistas para eventos comuns. Eventos épicos ('isEpic: true') podem ter mudanças maiores.
-      7. O evento deve ser consistente com a idade, traços e situação de vida do personagem. Evite eventos muito genéricos.
-      8. Use o 'behaviorTracker' para evitar repetição: ${JSON.stringify(behaviorTracker)}. Tente gerar um evento diferente dos anteriores.
+      2. ${creativityInstruction}
+      3. O texto do evento deve ser narrativo e imersivo.
+      4. O tipo de evento deve ser 'MULTIPLE_CHOICE' ou 'OPEN_RESPONSE'. Apenas em casos raros e criativos, use 'MINI_GAME'.
+      5. Para 'MULTIPLE_CHOICE', forneça 2 a 4 opções de escolha (choices) com consequências claras e interessantes, impactando os atributos (statChanges) e outros aspectos da vida do personagem.
+      6. Para 'OPEN_RESPONSE', não forneça escolhas e crie um 'placeholderText' convidativo.
+      7. Mantenha as mudanças de stats (statChanges) pequenas e realistas para eventos comuns. Eventos épicos ('isEpic: true') podem ter mudanças maiores.
+      8. O evento deve ser consistente com a idade, traços e situação de vida do personagem. Evite eventos muito genéricos.
+      9. Use o 'behaviorTracker' para evitar repetição: ${JSON.stringify(behaviorTracker)}. Tente gerar um evento diferente dos anteriores.
     `;
 
     const response = await ai.models.generateContent({
@@ -463,10 +468,13 @@ export const evaluatePlayerResponse = async (
     isTurboMode: boolean,
 ): Promise<Choice> => {
     const ai = new GoogleGenAI({ apiKey });
-    const model = isTurboMode ? 'gemini-2.5-flash' : 'gemini-2.5-flash';
+    const model = 'gemini-2.5-flash';
 
     const characterSummary = getCharacterSummary(character);
-    const systemInstruction = `Você é um mestre de jogo para um simulador de vida. O jogador descreveu uma ação em resposta a um evento. Sua tarefa é determinar o resultado dessa ação de forma criativa e justa, e retornar uma resposta JSON válida no formato de uma única 'Choice'.`;
+    
+    const creativityInstruction = isTurboMode
+        ? "Gere um 'outcomeText' conciso e direto ao ponto."
+        : "Gere um 'outcomeText' mais detalhado e narrativo, descrevendo as consequências da ação do jogador com mais profundidade.";
 
     const prompt = `
       **Contexto do Evento:**
@@ -481,7 +489,7 @@ export const evaluatePlayerResponse = async (
       **Instruções:**
       1. Analise a ação do jogador e determine um resultado plausível baseado nos atributos, traços e situação do personagem.
       2. Crie um 'choiceText' que resuma a ação do jogador (ex: "Tentei negociar com o guarda.").
-      3. Crie um 'outcomeText' que descreva o resultado da ação de forma narrativa.
+      3. Crie um 'outcomeText' que descreva o resultado da ação de forma narrativa. ${creativityInstruction}
       4. Determine as 'statChanges' e outras consequências (assetChanges, relationshipChanges, etc.) que resultam da ação. Mantenha as mudanças de stats pequenas e realistas.
       5. Seja criativo. Ações inteligentes ou bem pensadas devem ser recompensadas, enquanto ações tolas devem ter consequências.
       6. Se a ação for muito fora do contexto, gere um resultado que a traga de volta para a história de uma forma interessante.
@@ -508,10 +516,13 @@ export const processMetaCommand = async (
     isTurboMode: boolean,
 ): Promise<Choice> => {
      const ai = new GoogleGenAI({ apiKey });
-     const model = isTurboMode ? 'gemini-2.5-flash' : 'gemini-2.5-flash';
+     const model = 'gemini-2.5-flash';
     
     const characterSummary = getCharacterSummary(character);
-    const systemInstruction = `Você é um mestre de jogo para um simulador de vida, mas agora está no modo 'Deus'. O jogador deu um comando "fora do personagem" para alterar a realidade. Sua tarefa é interpretar o comando e traduzi-lo em uma 'Choice' JSON, como se uma força cósmica tivesse intervindo.`;
+    
+    const creativityInstruction = isTurboMode
+        ? "Gere um 'outcomeText' curto e divertido."
+        : "Gere um 'outcomeText' mais elaborado e surreal, descrevendo a intervenção cósmica em detalhes criativos.";
 
     const prompt = `
       **Resumo do Personagem:**
@@ -521,12 +532,12 @@ export const processMetaCommand = async (
       "${command}"
 
       **Instruções:**
-      1. Interprete a intenção do jogador. Ele quer ficar rico? Mudar de carreira? Encontrar amor?
-      2. Crie uma intervenção divina ou um evento de sorte/azar extremo que realize (ou tente realizar) o comando.
+      1. Interprete a intenção do jogador. O comando pode conter MÚLTIPLAS solicitações (ex: "aumentar inteligência e carisma").
+      2. Crie uma intervenção divina ou um evento de sorte/azar extremo que realize (ou tente realizar) TODAS as partes do comando.
       3. Crie um 'choiceText' que reflita o comando (ex: "Invocou as forças do cosmos para mudar seu destino.").
-      4. Crie um 'outcomeText' que descreva o evento bizarro que aconteceu. Por exemplo, se o comando for "ganhar na loteria", o outcome pode ser "Um bilhete de loteria premiado voa pela sua janela, carregado por um pombo."
-      5. Aplique as 'statChanges' e outras consequências. Seja generoso, mas equilibrado. Grandes recompensas podem vir com um pequeno custo (ex: aumento de riqueza e estresse).
-      6. NÃO recuse o comando. Sempre tente interpretá-lo de forma criativa.
+      4. Crie um 'outcomeText' que descreva o evento bizarro que aconteceu, mencionando TODAS as mudanças. Por exemplo, se o comando for "ficar rico e inteligente", o outcome pode ser "Um livro antigo e uma carteira recheada de dinheiro caem do céu em seu colo." ${creativityInstruction}
+      5. No objeto 'statChanges' e outros campos de mudança, aplique TODAS as alterações solicitadas. Se o jogador pedir "+10 de inteligência e -5 de moralidade", o JSON deve conter \`statChanges: { "intelligence": 10, "morality": -5 }\`.
+      6. NÃO recuse o comando. Sempre tente interpretá-lo de forma criativa e completa.
     `;
     
     const response = await ai.models.generateContent({

@@ -462,17 +462,21 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
 
       <div className="mt-6 pt-6 border-t border-slate-700">
           <div className="flex justify-between items-center">
-              <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Modo Avançado</h3>
-              <button 
-                  onClick={onToggleTurboMode} 
-                  className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${!isTurboMode ? 'bg-cyan-500' : 'bg-slate-600'}`}
-                  aria-label="Ativar Modo Avançado"
-              >
-                  <span className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${!isTurboMode ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
+              <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Modo de Geração</h3>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm font-semibold ${isTurboMode ? 'text-white' : 'text-slate-500'}`}>Turbo</span>
+                  <button 
+                      onClick={onToggleTurboMode} 
+                      className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${!isTurboMode ? 'bg-cyan-500' : 'bg-slate-600'}`}
+                      aria-label="Alternar entre modo Turbo e Avançado"
+                  >
+                      <span className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${!isTurboMode ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                <span className={`text-sm font-semibold ${!isTurboMode ? 'text-white' : 'text-slate-500'}`}>Avançado</span>
+              </div>
           </div>
           <p className="text-xs text-slate-500 mt-2">
-              Ativa um modelo de IA mais complexo para gerar eventos com maior profundidade, criatividade e imprevisibilidade. As respostas podem ser mais lentas.
+            O modo 'Avançado' gera eventos com maior profundidade narrativa e criatividade, mas pode ser mais lento. O modo 'Turbo' (padrão) é mais rápido e direto.
           </p>
       </div>
 
