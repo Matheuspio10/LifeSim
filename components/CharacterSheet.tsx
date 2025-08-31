@@ -316,6 +316,29 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
             )}
         </div>
       </div>
+      
+      <div className="mt-4 pt-4 border-t border-slate-700">
+        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <span className="w-4 h-4"><PuzzlePieceIcon /></span>
+            Tramas Ativas
+        </h3>
+        <div className="space-y-2">
+            {character.ongoingPlots && character.ongoingPlots.length > 0 ? (
+                character.ongoingPlots.map((plot, index) => (
+                    <div key={index} className="flex items-start gap-2">
+                        <span className={`w-5 h-5 flex-shrink-0 mt-0.5 text-purple-400`}>
+                            <SparklesIcon />
+                        </span>
+                        <p className={`text-sm font-medium text-slate-200`}>
+                            {plot}
+                        </p>
+                    </div>
+                ))
+            ) : (
+                <p className="text-sm text-slate-500 italic">Nenhuma trama ativa no momento.</p>
+            )}
+        </div>
+      </div>
 
       <div className="mt-4 pt-4 border-t border-slate-700">
         <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -436,10 +459,12 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
         </h3>
         {character.relationships.length > 0 ? (
           <div className="space-y-3">
-            {character.relationships.map((rel) => (
+            {character.relationships.map((rel) => {
+              const displayName = rel.title ? `${rel.name} (${rel.title})` : rel.name;
+              return (
               <div key={rel.name} className="group relative">
                  <div className="flex justify-between items-baseline">
-                    <p className="text-sm font-medium text-slate-200">{rel.name}</p>
+                    <p className="text-sm font-medium text-slate-200">{displayName}</p>
                     <p className="text-xs text-slate-400">{rel.type}</p>
                  </div>
                  <RelationshipBar intimacy={rel.intimacy} />
@@ -453,7 +478,7 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
                     </div>
                 )}
               </div>
-            ))}
+            )})}
           </div>
         ) : (
           <p className="text-sm text-slate-500 italic">Nenhum relacionamento significativo.</p>

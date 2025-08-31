@@ -1,4 +1,4 @@
-import { Character, FamilyBackground, RelationshipType, LegacyBonuses, Trait, Lineage, Mood, FounderTraits } from '../types';
+import { Character, FamilyBackground, RelationshipType, LegacyBonuses, Trait, Lineage, Mood, FounderTraits, Relationship } from '../types';
 import { BIRTHPLACES, LIFE_GOALS, LAST_NAMES, FIRST_NAMES, LINEAGE_TITLES } from '../constants';
 import { GENDERS, SKIN_TONES, HAIR_STYLES, ACCESSORIES, PERSONALITY_PROFILES, BACKSTORIES } from '../characterCreatorConstants';
 
@@ -92,14 +92,15 @@ export const generateRandomCharacter = (lineage: Lineage | null, legacyBonuses: 
         traits: initialTraits,
         assets: [...allBonuses.addAssets],
         relationships: [
-            { name: 'Mãe', type: RelationshipType.FAMILY, intimacy: getRandomInt(50, 70), history: [] },
-            { name: 'Pai', type: RelationshipType.FAMILY, intimacy: getRandomInt(50, 70), history: [] },
+            { name: 'Mãe', type: RelationshipType.FAMILY, intimacy: getRandomInt(50, 70), history: [], age: getRandomInt(25, 35) + 5, title: 'Mãe', gender: 'Feminino' },
+            { name: 'Pai', type: RelationshipType.FAMILY, intimacy: getRandomInt(50, 70), history: [], age: getRandomInt(25, 38) + 5, title: 'Pai', gender: 'Masculino' },
             ...allBonuses.addRelationships
         ],
         memories: [],
         craftedItems: [],
         lifeGoals: [{ description: getRandom(LIFE_GOALS), completed: false }],
         skills: [...allBonuses.addSkills],
+        ongoingPlots: [],
         healthCondition: null,
         founderTraits,
         favors: allBonuses.favors,

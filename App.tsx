@@ -547,9 +547,14 @@ const App: React.FC = () => {
         // --- End of Year Logic ---
         let updatedChar = { ...characterAfterChoice, age: characterAfterChoice.age + 1 };
         
-        // Age up children
-        if (updatedChar.children) {
-            updatedChar.children = updatedChar.children.map(c => ({...c, age: c.age + 1}));
+        // Age up relationships that have an age property
+        if (updatedChar.relationships) {
+            updatedChar.relationships = updatedChar.relationships.map(r => {
+                if (r.age !== undefined) {
+                    return { ...r, age: r.age + 1 };
+                }
+                return r;
+            });
         }
         
         // Passive stat changes per year

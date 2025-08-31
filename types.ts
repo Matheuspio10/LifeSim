@@ -104,6 +104,9 @@ export interface Relationship {
     intimacy: number; // -100 (Inimigo Mortal) a 100 (Alma Gêmea)
     history: string[];
     status?: 'Dating' | 'Engaged' | 'Married' | 'Divorced' | 'Widowed';
+    title?: string; // e.g., 'Filho', 'Esposa'
+    age?: number;
+    gender?: string;
 }
 
 export interface LifeGoal {
@@ -124,12 +127,6 @@ export interface FounderTraits {
 export interface HealthCondition {
     name: string;
     ageOfOnset: number;
-}
-
-export interface Child {
-    name: string;
-    age: number;
-    gender: string;
 }
 
 export interface Character {
@@ -170,7 +167,6 @@ export interface Character {
   craftedItems: CraftedItem[];
   lifeGoals: LifeGoal[];
   skills: Skill[];
-  children?: Child[];
   ongoingPlots?: string[];
   // Health & Ending
   healthCondition: HealthCondition | null;
@@ -218,7 +214,7 @@ export interface CraftedItemChanges {
 
 export interface RelationshipChanges {
     add?: Relationship[];
-    update?: { name: string; intimacyChange?: number; status?: Relationship['status'] }[];
+    update?: { name: string; intimacyChange?: number; status?: Relationship['status']; title?: string; }[];
     remove?: string[]; // array of names to remove
     updateHistory?: { name: string; memory: string }[];
 }

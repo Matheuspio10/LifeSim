@@ -170,6 +170,9 @@ const relationshipChangesSchema = {
                     intimacy: { type: Type.INTEGER },
                     status: relationshipStatusSchema,
                     history: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    title: { type: Type.STRING, description: "Ex: 'Filho', 'Esposa', 'Melhor Amigo'." },
+                    age: { type: Type.INTEGER },
+                    gender: { type: Type.STRING },
                 },
                 required: ['name', 'type', 'intimacy']
             }
@@ -182,6 +185,7 @@ const relationshipChangesSchema = {
                     name: { type: Type.STRING },
                     intimacyChange: { type: Type.INTEGER },
                     status: relationshipStatusSchema,
+                    title: { type: Type.STRING },
                 },
                 required: ['name']
             }
@@ -403,6 +407,7 @@ const getCharacterSummary = (character: Character, isTurboMode: boolean = false)
           Traços Notáveis: ${notableTraits}
         `;
     }
+    const relationshipsSummary = character.relationships.map(r => `${r.name} (${r.title || r.type}${r.age ? `, ${r.age} anos` : ''})`).slice(0, 5).join('; ');
     // A concise summary of the character to provide context to the AI
     return `
       Nome: ${character.name} ${character.lastName}, Idade: ${character.age}, Gênero: ${character.gender}
@@ -412,6 +417,7 @@ const getCharacterSummary = (character: Character, isTurboMode: boolean = false)
       Finanças: Riqueza($${character.wealth}), Investimentos($${character.investments})
       Carreira: ${character.profession ? `${character.jobTitle} em ${character.profession} (Nível ${character.careerLevel})` : 'Desempregado(a)'}
       Traços: ${character.traits.map(t => t.name).join(', ')}
+      Relacionamentos Importantes: ${relationshipsSummary}
       Metas de Vida: ${character.lifeGoals.map(g => g.description + (g.completed ? ' (Concluído)' : '')).join('; ')}
       Habilidades: ${character.skills.map(s => `${s.name} (Nível ${s.level})`).join(', ')}
       Enredos Atuais: ${character.ongoingPlots ? character.ongoingPlots.join(', ') : 'Nenhum'}
@@ -469,12 +475,13 @@ export const generateGameEvent = async (
       2. ${creativityInstruction}
       3. O texto do evento deve ser narrativo e imersivo.
       4. O tipo de evento deve ser 'MULTIPLE_CHOICE' ou 'OPEN_RESPONSE'. Apenas em casos raros e criativos, use 'MINI_GAME'.
-      5. Para 'MULTIPLE_CHOICE', forneça 2 a 4 opções de escolha (choices) com consequências claras e interessantes, impactando os atributos (statChanges) e outros aspectos da vida do personagem.
+      5. Para 'MULTIPLE_CHOICE', forneça 2 a 4 opções de escolha (choices) com consequências claras e interessantes, impactando os atributos (statChanges) e outros aspectos da vida do personagem. Ao criar um cônjuge, adicione o título 'Esposa' ou 'Esposo'.
       6. Para 'OPEN_RESPONSE', não forneça escolhas e crie um 'placeholderText' convidativo.
       7. Mantenha as mudanças de stats (statChanges) pequenas e realistas para eventos comuns. Eventos épicos ('isEpic: true') podem ter mudanças maiores.
-      8. O evento deve ser consistente com a idade, traços e situação de vida do personagem. Evite eventos muito genéricos.
-      9. Use o 'behaviorTracker' para evitar repetição: ${JSON.stringify(behaviorTracker)}. Tente gerar um evento diferente dos anteriores.
-      10. Lembre-se: Sua única saída DEVE ser um JSON válido. Se não puder gerar um evento com base no solicitado, gere um evento simples e seguro, como encontrar um objeto perdido ou ter uma conversa trivial.
+      8. O evento deve ser consistente com a idade, traços e situação de vida do personagem. Considere a idade dos membros da família (filhos, cônjuge) para criar eventos relevantes ao seu desenvolvimento (ex: primeiro dia de escola, rebeldia adolescente).
+      9. Considere os 'Enredos Atuais' (${character.ongoingPlots ? character.ongoingPlots.join(', ') : 'Nenhum'}). Gere eventos que avancem esses enredos. Se um evento concluir um enredo (ex: a eleição termina, o casamento acontece), use 'plotChanges' para removê-lo. Se um evento iniciar um novo enredo, adicione-o.
+      10. Use o 'behaviorTracker' para evitar repetição: ${JSON.stringify(behaviorTracker)}. Tente gerar um evento diferente dos anteriores.
+      11. Lembre-se: Sua única saída DEVE ser um JSON válido. Se não puder gerar um evento com base no solicitado, gere um evento simples e seguro, como encontrar um objeto perdido ou ter uma conversa trivial.
     `;
 
     const config: any = {
@@ -530,8 +537,9 @@ export const evaluatePlayerResponse = async (
       3. Crie um 'outcomeText' que descreva o resultado da ação de forma narrativa. ${creativityInstruction}
       4. Determine as 'statChanges' e outras consequências (assetChanges, relationshipChanges, etc.) que resultam da ação. Mantenha as mudanças de stats pequenas e realistas.
       5. Seja criativo. Ações inteligentes ou bem pensadas devem ser recompensadas, enquanto ações tolas devem ter consequências.
-      6. Se a ação for muito fora do contexto ou insegura, gere um resultado que a traga de volta para a história de uma forma segura e interessante. NUNCA recuse a ação.
-      7. Lembre-se: Sua única saída DEVE ser um JSON válido.
+      6. Se a ação do jogador iniciar, progredir ou concluir um enredo significativo (ex: pedir em casamento, iniciar uma campanha política, decidir ter um filho), use 'plotChanges' para adicionar ou remover o enredo da lista de enredos ativos.
+      7. Se a ação for muito fora do contexto ou insegura, gere um resultado que a traga de volta para a história de uma forma segura e interessante. NUNCA recuse a ação.
+      8. Lembre-se: Sua única saída DEVE ser um JSON válido.
     `;
 
     const config: any = {

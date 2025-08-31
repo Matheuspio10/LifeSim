@@ -13,7 +13,8 @@ import {
     Skill,
     Relationship,
     Trait,
-    RelationshipType
+    RelationshipType,
+    PlotChanges
 } from '../types';
 
 // Helper to ensure a stat stays within a given min/max range.
@@ -121,7 +122,7 @@ export const checkLifeGoals = (character: Character): Character => {
             }
         }
         if (description.includes('ter filho') || description.includes('ser pai') || description.includes('ser mãe')) {
-            if (character.children && character.children.length > 0) {
+            if (character.relationships.some(r => r.title === 'Filho' || r.title === 'Filha')) {
                 isCompleted = true;
             }
         }
@@ -200,6 +201,9 @@ export const applyChoiceToCharacter = (character: Character, choice: Choice, isE
                     }
                     if (updateInfo.status) {
                         updatedRel.status = updateInfo.status;
+                    }
+                    if (updateInfo.title) {
+                        updatedRel.title = updateInfo.title;
                     }
                     return updatedRel;
                 }
@@ -376,14 +380,19 @@ export const applyChoiceToCharacter = (character: Character, choice: Choice, isE
 
     // Handle birth
     if (choice.childBorn) {
-        const children = [...(updatedChar.children || [])];
-        children.push({
+        const relationships = [...updatedChar.relationships];
+        const newChild: Relationship = {
             name: choice.childBorn.name,
             gender: choice.childBorn.gender,
-            age: 0
-        });
-        updatedChar.children = children;
-        updatedChar.isPregnant = false; // Birth ends pregnancy
+            age: 0,
+            type: RelationshipType.FAMILY,
+            intimacy: 80,
+            history: [`Nasceu em ${updatedChar.birthYear + updatedChar.age}.`],
+            title: choice.childBorn.gender === 'Masculino' ? 'Filho' : 'Filha'
+        };
+        relationships.push(newChild);
+        updatedChar.relationships = relationships;
+        updatedChar.isPregnant = false;
     }
 
 
