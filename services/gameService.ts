@@ -434,10 +434,11 @@ export const generateGameEvent = async (
     lineageTitle: string | null,
     focusContext: string | null,
     behaviorTracker: Record<string, number>,
-    isTurboMode: boolean,
-    apiKey: string
+    isTurboMode: boolean
+    // Fix: Removed apiKey parameter.
 ): Promise<GameEvent> => {
-    const ai = new GoogleGenAI({ apiKey });
+    // Fix: Initialize with API key from environment variables.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const model = 'gemini-2.5-flash';
 
     const characterSummary = getCharacterSummary(character, isTurboMode);
@@ -515,10 +516,10 @@ export const evaluatePlayerResponse = async (
     eventText: string,
     playerResponse: string,
     focusContext: string | null,
-    apiKey: string,
     isTurboMode: boolean,
 ): Promise<Choice> => {
-    const ai = new GoogleGenAI({ apiKey });
+    // Fix: Initialize with API key from environment variables.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const model = 'gemini-2.5-flash';
 
     const characterSummary = getCharacterSummary(character, isTurboMode);
@@ -572,10 +573,10 @@ export const evaluatePlayerResponse = async (
 export const processMetaCommand = async (
     character: Character,
     command: string,
-    apiKey: string,
     isTurboMode: boolean,
 ): Promise<Choice> => {
-     const ai = new GoogleGenAI({ apiKey });
+    // Fix: Initialize with API key from environment variables.
+     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
      const model = 'gemini-2.5-flash';
     
     const characterSummary = getCharacterSummary(character, isTurboMode);
@@ -623,10 +624,10 @@ export const processMetaCommand = async (
 
 export const generateWorldEvent = async (
     year: number,
-    economicClimate: EconomicClimate,
-    apiKey: string
+    economicClimate: EconomicClimate
 ): Promise<WorldEvent> => {
-    const ai = new GoogleGenAI({ apiKey });
+    // Fix: Initialize with API key from environment variables.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const model = 'gemini-2.5-flash';
     const zeitgeist = getZeitgeist(year);
 
@@ -660,9 +661,9 @@ export const generateWorldEvent = async (
 export const processAuditModificationRequest = async (
     character: Character,
     request: string,
-    apiKey: string,
 ): Promise<Choice> => {
-    const ai = new GoogleGenAI({ apiKey });
+    // Fix: Initialize with API key from environment variables.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const model = 'gemini-2.5-flash';
 
     const characterSummary = getCharacterSummary(character, false); // use full summary
@@ -685,6 +686,47 @@ export const processAuditModificationRequest = async (
       8. Lembre-se: Sua única saída DEVE ser um JSON válido que siga o schema 'choiceSchema'.
     `;
     
+    const response = await ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: choiceSchema,
+            systemInstruction
+        }
+    });
+
+    return cleanAndParseJson<Choice>(response.text);
+};
+
+export const generateCatastrophicEvent = async (
+    character: Character,
+): Promise<Choice> => {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const model = 'gemini-2.5-flash';
+
+    const characterSummary = getCharacterSummary(character, false); // use full summary for more context
+    const zeitgeist = getZeitgeist(character.birthYear + character.age);
+
+    const prompt = `
+      **Contexto do Jogo:**
+      - Ano Atual: ${character.birthYear + character.age} (${zeitgeist})
+      - Resumo do Personagem:
+      ${characterSummary}
+
+      **Instruções para Geração de Evento CATASTRÓFICO:**
+      1.  Você DEVE gerar um evento de vida súbito, severo e inescapável. O personagem NÃO TEM ESCOLHA.
+      2.  O evento deve ser baseado no perfil do personagem (idade, saúde, traços, localização, profissão).
+      3.  Exemplos de eventos: Doença súbita e agressiva, acidente fatal, crime violento, desastre natural.
+      4.  O resultado DEVE ser drástico. Escolha UMA das seguintes opções:
+          - **Morte Imediata:** Forneça um campo \`specialEnding\` com uma descrição narrativa e trágica do fim da vida do personagem.
+          - **Sobrevivência com Sequelas Graves:** NÃO forneça \`specialEnding\`. Em vez disso, aplique penalidades massivas em \`statChanges\` (ex: \`health: -80\`) OU adicione uma nova condição de saúde crônica e debilitante em \`healthConditionChange\` (ex: "Lesão na Coluna", "Perda de Memória").
+      5.  O \`outcomeText\` deve descrever o evento e suas consequências de forma impactante. O \`choiceText\` DEVE ser "O destino interveio."
+      6.  NÃO ofereça múltiplas \`choices\`. Gere um objeto JSON no formato 'Choice' que contenha apenas um resultado.
+      7.  Seja criativo. Um personagem com o traço 'Índole Criminosa' pode ser traído por um cúmplice. Um personagem 'Impulsivo' pode sofrer um acidente de carro. Um personagem mais velho com saúde baixa pode ter um ataque cardíaco.
+      8.  Sua única saída DEVE ser um JSON válido.
+    `;
+
     const response = await ai.models.generateContent({
         model,
         contents: prompt,

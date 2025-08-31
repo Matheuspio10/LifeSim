@@ -22,6 +22,17 @@ const iconMap: { [key: string]: React.ReactNode } = {
   StarIcon: <StarIcon />,
 };
 
+const statLabels: { [key: string]: string } = {
+    intelligence: 'Inteligência',
+    charisma: 'Carisma',
+    creativity: 'Criatividade',
+    discipline: 'Disciplina',
+    morality: 'Moralidade',
+    fame: 'Fama',
+    influence: 'Influência',
+};
+
+
 const FamilyBookModal: React.FC<FamilyBookModalProps> = ({ isOpen, onClose, ancestors, lastName }) => {
   const [selectedAncestorId, setSelectedAncestorId] = useState<string | null>(ancestors[ancestors.length - 1]?.id || null);
   
@@ -100,30 +111,72 @@ const FamilyBookModal: React.FC<FamilyBookModalProps> = ({ isOpen, onClose, ance
                             <h4 className="font-bold text-amber-900 text-lg border-b border-amber-800/20 mb-2 pb-1">Status Final</h4>
                             <p className="text-slate-700 italic">"{selectedAncestor.finalStatus}"</p>
                         </div>
-                        <div>
-                            <h4 className="font-bold text-amber-900 text-lg border-b border-amber-800/20 mb-2 pb-1">Traços Marcantes</h4>
-                            <div className="flex flex-wrap gap-2">
-                                {selectedAncestor.definingTraits.map(trait => (
-                                    <span key={trait} className="px-3 py-1 bg-amber-100 text-amber-900 rounded-full text-sm font-semibold border border-amber-200">{trait}</span>
-                                ))}
-                            </div>
-                        </div>
-                         <div>
-                            <h4 className="font-bold text-amber-900 text-lg border-b border-amber-800/20 mb-3 pb-1">Conquistas Notáveis</h4>
-                            <div className="space-y-2">
-                               {selectedAncestor.achievements.map((ach, index) => (
-                                   <div key={index} className="flex items-center gap-3 p-2 bg-amber-50/50 rounded-md">
-                                        <span className="w-6 h-6 text-amber-800 flex-shrink-0">{iconMap[ach.icon] || <TrophyIcon />}</span>
-                                        <p className="text-slate-700 font-medium">{ach.text}</p>
-                                   </div>
-                               ))}
-                               {selectedAncestor.achievements.length === 0 && <p className="text-slate-500 italic">Nenhuma grande conquista registrada.</p>}
-                            </div>
-                        </div>
+                        
                         <div>
                             <h4 className="font-bold text-amber-900 text-lg border-b border-amber-800/20 mb-2 pb-1">Resumo da Vida</h4>
                             <p className="text-slate-700 leading-relaxed text-justify">{selectedAncestor.narrative}</p>
                         </div>
+
+                        <div className="bg-amber-50/40 p-4 rounded-lg border border-amber-200/50">
+                            <h4 className="font-bold text-amber-900 text-lg border-b border-amber-800/20 mb-3 pb-1">Legado Deixado</h4>
+                            <div className="space-y-4">
+                                <div>
+                                    <h5 className="font-semibold text-amber-800 mb-2">Traços Marcantes</h5>
+                                    <div className="flex flex-wrap gap-2">
+                                        {selectedAncestor.definingTraits.map(trait => (
+                                            <span key={trait} className="px-3 py-1 bg-amber-100 text-amber-900 rounded-full text-sm font-semibold border border-amber-200">{trait}</span>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div>
+                                    <h5 className="font-semibold text-amber-800 mb-2">Conquistas Notáveis</h5>
+                                    <div className="space-y-2">
+                                    {selectedAncestor.achievements.map((ach, index) => (
+                                        <div key={index} className="flex items-center gap-3">
+                                                <span className="w-5 h-5 text-amber-800 flex-shrink-0">{iconMap[ach.icon] || <TrophyIcon />}</span>
+                                                <p className="text-slate-700 font-medium text-sm">{ach.text}</p>
+                                        </div>
+                                    ))}
+                                    {selectedAncestor.achievements.length === 0 && <p className="text-slate-500 italic text-sm">Nenhuma grande conquista registrada.</p>}
+                                    </div>
+                                </div>
+                                <div>
+                                    <h5 className="font-semibold text-amber-800 mb-2">Atributos Finais</h5>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-1 text-sm">
+                                        {Object.entries(selectedAncestor.finalStats).map(([key, value]) => (
+                                            <div key={key} className="flex justify-between border-b border-amber-200/50 py-1">
+                                                <span className="capitalize text-slate-600">{statLabels[key] || key}:</span>
+                                                <span className="font-bold text-slate-800">{value}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                                 <div>
+                                    <h5 className="font-semibold text-amber-800 mb-2">Carreira e Finanças</h5>
+                                    <div className="text-sm space-y-1">
+                                        <p><span className="text-slate-600">Profissão Final:</span> <span className="font-bold text-slate-800">{selectedAncestor.careerSummary.jobTitle || 'Não especificado'}</span></p>
+                                        <p><span className="text-slate-600">Nível de Carreira:</span> <span className="font-bold text-slate-800">{selectedAncestor.careerSummary.careerLevel}</span></p>
+                                        <p><span className="text-slate-600">Patrimônio Deixado:</span> <span className="font-bold text-slate-800">${selectedAncestor.finalWealth.toLocaleString('pt-BR')}</span></p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h5 className="font-semibold text-amber-800 mb-2">Relacionamentos Chave</h5>
+                                    <div className="space-y-2 text-sm">
+                                        {selectedAncestor.keyRelationships.map((rel, index) => {
+                                            const intimacyColor = rel.intimacy > 20 ? 'text-green-800' : rel.intimacy < -20 ? 'text-red-800' : 'text-slate-700';
+                                            return (
+                                                <div key={index} className="flex justify-between items-center">
+                                                    <p className="font-semibold text-slate-800">{rel.name} <span className="text-xs text-slate-500">({rel.title})</span></p>
+                                                    <span className={`font-bold ${intimacyColor}`}>{rel.intimacy > 0 ? `+${rel.intimacy}` : rel.intimacy}</span>
+                                                </div>
+                                            );
+                                        })}
+                                        {selectedAncestor.keyRelationships.length === 0 && <p className="text-slate-500 italic">Viveu uma vida solitária.</p>}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             ) : (

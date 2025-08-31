@@ -82,7 +82,7 @@ const SkillBar: React.FC<{ level: number, color: string }> = ({ level, color }) 
 }
 
 
-const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, lineage, isTurboMode, onToggleTurboMode, onChangeApiKey, onFullReset, monthsRemainingInYear, onOpenFamilyBook, onRollback, canRollback, onRunAudit }) => {
+const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, lineage, isTurboMode, onToggleTurboMode, onFullReset, monthsRemainingInYear, onOpenFamilyBook, onRollback, canRollback, onRunAudit }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
   const currentMonth = Math.max(1, TOTAL_MONTHS_PER_YEAR - monthsRemainingInYear + 1);
@@ -121,21 +121,13 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
           </button>
           {isSettingsOpen && (
             <div className="absolute top-full right-0 mt-2 w-64 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-20 animate-fade-in-fast">
-              <button
-                onClick={() => {
-                  onChangeApiKey();
-                  setIsSettingsOpen(false);
-                }}
-                className="w-full text-left px-4 py-3 text-sm text-slate-200 hover:bg-slate-800 rounded-t-lg"
-              >
-                Mudar Chave de API (Manter Jogo)
-              </button>
+              {/* Fix: Removed API Key change button. */}
               <button
                 onClick={() => {
                   onFullReset();
                   setIsSettingsOpen(false);
                 }}
-                className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-slate-800 rounded-b-lg border-t border-slate-700"
+                className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-slate-800 rounded-lg"
               >
                 Reiniciar Jogo (Apaga Tudo)
               </button>

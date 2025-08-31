@@ -377,6 +377,25 @@ export interface Ancestor {
   definingTraits: string[];
   finalStatus: string;
   narrative: string;
+  finalStats: {
+    intelligence: number;
+    charisma: number;
+    creativity: number;
+    discipline: number;
+    morality: number;
+    fame: number;
+    influence: number;
+  };
+  finalWealth: number;
+  careerSummary: {
+    jobTitle: string | null;
+    careerLevel: number;
+  };
+  keyRelationships: {
+    name: string;
+    title: string | undefined;
+    intimacy: number;
+  }[];
 }
 
 export interface WorldEvent {
@@ -437,7 +456,7 @@ export interface CharacterSheetProps {
   lineage: Lineage | null;
   isTurboMode: boolean;
   onToggleTurboMode: () => void;
-  onChangeApiKey: () => void;
+  // Fix: Removed onChangeApiKey as it's no longer needed.
   onFullReset: () => void;
   monthsRemainingInYear: number;
   onOpenFamilyBook: () => void;

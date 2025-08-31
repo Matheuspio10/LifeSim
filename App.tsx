@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Skill, FamilyBackground, Checkpoint, Ancestor, WorldEvent, Relationship, AuditReport } from './types';
-import { generateGameEvent, evaluatePlayerResponse, processMetaCommand, generateWorldEvent, processAuditModificationRequest } from './services/gameService';
+import { generateGameEvent, evaluatePlayerResponse, processMetaCommand, generateWorldEvent, processAuditModificationRequest, generateCatastrophicEvent } from './services/gameService';
 import { applyChoiceToCharacter, checkLifeGoals, determineCauseOfDeath, applyCriticalStatPenalties, checkForNewHealthConditions } from './services/characterService';
 import { getDynamicFocusCost } from './services/economyService';
 import { runCharacterAudit } from './services/auditService';
@@ -16,7 +16,7 @@ import LegacyScreen from './components/LegacyScreen';
 import RoutineScreen from './components/RoutineScreen';
 import MiniGameHost from './components/MiniGameHost';
 import JournalScreen from './components/JournalScreen';
-import ApiKeyModal from './components/ApiKeyModal';
+// Fix: Removed ApiKeyModal as API key should be handled by environment variables.
 import QuotaErrorModal from './components/QuotaErrorModal';
 import { BookOpenIcon } from './components/Icons';
 import DowntimeActivities, { MicroActionResult } from './components/DowntimeActivities';
@@ -31,7 +31,7 @@ const getRandomKey = <T extends object>(obj: T): keyof T => {
     return keys[Math.floor(Math.random() * keys.length)];
 };
 const SAVE_GAME_KEY = 'lifeSimMMORGSaveData';
-const API_KEY_KEY = 'geminiApiKey';
+// Fix: Removed API_KEY_KEY as API key should be handled by environment variables.
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(GameState.NOT_STARTED);
@@ -49,7 +49,7 @@ const App: React.FC = () => {
   const [isJournalOpen, setIsJournalOpen] = useState<boolean>(false);
   const [hasSaveData, setHasSaveData] = useState<boolean>(false);
   const [isTurboMode, setIsTurboMode] = useState<boolean>(true);
-  const [apiKey, setApiKey] = useState<string | null>(null);
+  // Fix: Removed apiKey state. The API key must be sourced from process.env.API_KEY.
   const [isQuotaModalOpen, setIsQuotaModalOpen] = useState<boolean>(false);
   const [lastError, setLastError] = useState<string | null>(null);
   const [showDebug, setShowDebug] = useState<boolean>(false);
@@ -88,13 +88,8 @@ const App: React.FC = () => {
     return Math.round(scaledChange);
   };
 
-  useEffect(() => {
-    const storedKey = localStorage.getItem(API_KEY_KEY);
-    if (storedKey) {
-        setApiKey(storedKey);
-    }
-  }, []);
-
+  // Fix: Removed useEffect for loading API key from local storage.
+  
   const saveForRollback = useCallback(() => {
     const stateToSave = {
         gameState, character, currentEvent, lifeSummary, currentYear,
@@ -205,17 +200,10 @@ const App: React.FC = () => {
     }
   };
 
-  const handleChangeApiKey = () => {
-    if (window.confirm('Tem certeza de que deseja alterar sua chave de API? Seu progresso salvo será mantido.')) {
-        localStorage.removeItem(API_KEY_KEY);
-        setApiKey(null);
-    }
-  };
-
+  // Fix: Removed handleChangeApiKey as API key is now handled by environment variables.
   const handleFullReset = () => {
-    if (window.confirm('Tem certeza de que deseja apagar TODO o progresso e a chave de API? Esta ação é irreversível.')) {
-        localStorage.removeItem(API_KEY_KEY);
-        setApiKey(null);
+    if (window.confirm('Tem certeza de que deseja apagar TODO o progresso? Esta ação é irreversível.')) {
+        // Fix: Removed API key logic from full reset.
         resetGameAndClearSave();
     }
   };
@@ -266,10 +254,7 @@ const App: React.FC = () => {
   };
   
   const fetchNextEvent = useCallback(async (char: Character, eventYear: number, newBehaviorTracker?: Record<string, number>) => {
-    if (!apiKey) {
-        setError("Chave de API do Gemini não configurada.");
-        return;
-    }
+    // Fix: Removed API key check.
     setIsLoading(true);
     setError(null);
 
@@ -278,7 +263,8 @@ const App: React.FC = () => {
         try {
             const lifeStage = getCurrentLifeStage(char.age);
             const lineageTitle = lineage ? lineage.title : null;
-            const event = await generateGameEvent(char, lifeStage, eventYear, economicClimate, lineageTitle, currentFocusContext, newBehaviorTracker ?? behaviorTracker, isTurboMode, apiKey);
+            // Fix: Removed apiKey from arguments.
+            const event = await generateGameEvent(char, lifeStage, eventYear, economicClimate, lineageTitle, currentFocusContext, newBehaviorTracker ?? behaviorTracker, isTurboMode);
             
             if (!event || !event.eventText || !event.type) {
                 throw new Error("A resposta da IA estava vazia ou malformada.");
@@ -310,7 +296,7 @@ const App: React.FC = () => {
             }
         }
     }
-  }, [economicClimate, lineage, currentFocusContext, behaviorTracker, isTurboMode, apiKey]);
+  }, [economicClimate, lineage, currentFocusContext, behaviorTracker, isTurboMode]);
 
 
   const processNextDecision = useCallback(async (char: Character) => {
@@ -448,6 +434,13 @@ const App: React.FC = () => {
     const finalStatus = char.specialEnding || char.causeOfDeath || 'Faleceu de causas naturais.';
 
     const narrative = `${char.name} foi um(a) ${definingTraits.join(', ')} que marcou sua época. Nascido(a) em ${char.birthplace}, sua jornada o(a) levou até ${char.currentLocation}. Sua vida foi definida por ${achievements.length > 0 ? achievements[0].text.toLowerCase() : 'uma vida de momentos simples'}. ${finalStatus}`;
+    
+    const finalWealth = char.wealth + char.investments;
+    
+    const keyRelationships = [...char.relationships]
+        .sort((a, b) => Math.abs(b.intimacy) - Math.abs(a.intimacy))
+        .slice(0, 4) // Get top 4 most impactful relationships (good or bad)
+        .map(r => ({ name: r.name, title: r.title, intimacy: r.intimacy }));
 
     return {
         id: `${char.generation}-${char.lastName}`,
@@ -460,7 +453,22 @@ const App: React.FC = () => {
         achievements: achievements.slice(0, 3), // Max 3 achievements
         definingTraits,
         finalStatus,
-        narrative
+        narrative,
+        finalStats: {
+            intelligence: char.intelligence,
+            charisma: char.charisma,
+            creativity: char.creativity,
+            discipline: char.discipline,
+            morality: char.morality,
+            fame: char.fame,
+            influence: char.influence,
+        },
+        finalWealth: finalWealth,
+        careerSummary: {
+            jobTitle: char.jobTitle,
+            careerLevel: char.careerLevel,
+        },
+        keyRelationships: keyRelationships,
     };
   };
 
@@ -678,7 +686,7 @@ const App: React.FC = () => {
   };
   
   const handleOpenResponseSubmit = async (responseText: string) => {
-    if (!character || !currentEvent || !apiKey) return;
+    if (!character || !currentEvent) return;
     saveForRollback();
     setIsLoading(true);
     setError(null);
@@ -692,9 +700,11 @@ const App: React.FC = () => {
 
             if (isMetaCommand) {
                 const command = responseText.substring(10).trim();
-                choice = await processMetaCommand(character, command, apiKey, isTurboMode);
+                // Fix: Removed apiKey from arguments.
+                choice = await processMetaCommand(character, command, isTurboMode);
             } else {
-                choice = await evaluatePlayerResponse(character, currentEvent.eventText, responseText, currentFocusContext, apiKey, isTurboMode);
+                // Fix: Removed apiKey from arguments.
+                choice = await evaluatePlayerResponse(character, currentEvent.eventText, responseText, currentFocusContext, isTurboMode);
             }
 
             if (!choice || !choice.choiceText || !choice.outcomeText) {
@@ -813,10 +823,7 @@ const App: React.FC = () => {
     setIsTurboMode(prev => !prev);
   };
   
-  const handleApiKeySave = (key: string) => {
-    localStorage.setItem(API_KEY_KEY, key);
-    setApiKey(key);
-  };
+  // Fix: Removed handleApiKeySave as API key is now handled by environment variables.
 
   const handleRetry = () => {
     setError(null);
@@ -864,10 +871,11 @@ const App: React.FC = () => {
   };
 
   const handleRequestAuditModification = async (request: string) => {
-    if (!character || !apiKey) return;
+    if (!character) return;
     setIsAuditLoading(true);
     try {
-        const modificationChoice = await processAuditModificationRequest(character, request, apiKey);
+        // Fix: Removed apiKey from arguments.
+        const modificationChoice = await processAuditModificationRequest(character, request);
         
         // Apply changes
         let updatedChar = applyChoiceToCharacter(character, modificationChoice);
@@ -892,14 +900,72 @@ const App: React.FC = () => {
     }
   };
 
+    const calculateCatastrophicEventChance = (char: Character): number => {
+        let baseChance = 0.01; // 1% base chance per year
+
+        // Age factor
+        if (char.age > 50) {
+            baseChance += (char.age - 50) * 0.002; // +0.2% per year after 50
+        }
+        if (char.age > 75) {
+            baseChance += (char.age - 75) * 0.003; // an additional +0.3% per year after 75
+        }
+
+        // Trait factors
+        const riskTraits = ['Impulsivo', 'Índole Criminosa', 'Destino Sombrio', 'Tendência a Vícios'];
+        const protectionTraits = ['Constituição Forte', 'Resiliente', 'Sorte Familiar'];
+
+        riskTraits.forEach(traitName => {
+            if (char.traits.some(t => t.name === traitName)) baseChance += 0.025; // +2.5% per risk trait
+        });
+        protectionTraits.forEach(traitName => {
+            if (char.traits.some(t => t.name === traitName)) baseChance -= 0.01; // -1% per protection trait
+        });
+
+        // Stat-based factors
+        if (char.health < 20) baseChance += 0.04; // +4% if health is critical
+        if (char.stress > 90) baseChance += 0.03; // +3% if stress is extreme
+        if (char.fame < -60) baseChance += 0.02; // +2% for high infamy
+
+        // Risky profession check
+        const riskyProfessions = ['Criminoso', 'Policial', 'Soldado', 'Atleta de Risco'];
+        if (char.profession && riskyProfessions.some(p => char.profession!.includes(p))) {
+             baseChance += 0.02;
+        }
+
+        return Math.max(0, Math.min(baseChance, 0.4)); // Cap at 40%
+    };
+
     useEffect(() => {
-        if (gameState === GameState.YEAR_END_PROCESSING && character && apiKey) {
+        if (gameState === GameState.YEAR_END_PROCESSING && character) {
             const processYearEnd = async () => {
                 let updatedChar = { ...character };
+                
+                // CATASTROPHIC EVENT CHECK
+                const catastropheChance = calculateCatastrophicEventChance(updatedChar);
+                if (Math.random() < catastropheChance) {
+                    try {
+                        const catastrophe = await generateCatastrophicEvent(updatedChar);
+                        setLifeSummary(prev => [...prev, { text: catastrophe.outcomeText, isEpic: true }]);
+
+                        if (catastrophe.specialEnding) {
+                            handleEndOfLife({ ...updatedChar, specialEnding: catastrophe.specialEnding });
+                            return; // Stop processing, game is over.
+                        }
+
+                        // If not fatal, apply consequences.
+                        updatedChar = applyChoiceToCharacter(updatedChar, catastrophe, true);
+                    } catch (err) {
+                        console.error("Failed to generate catastrophic event:", err);
+                        // Fail silently, game continues.
+                    }
+                }
+
                 // World Event Check (25% chance per year)
                 if (Math.random() < 0.25) { 
                     try {
-                        const worldEvent = await generateWorldEvent(currentYear, economicClimate, apiKey);
+                        // Fix: Removed apiKey from arguments.
+                        const worldEvent = await generateWorldEvent(currentYear, economicClimate);
                         if (worldEvent) {
                             setWorldEventNotification(worldEvent);
                             const choiceWithEffects: Choice = {
@@ -922,7 +988,7 @@ const App: React.FC = () => {
 
             processYearEnd();
         }
-    }, [gameState, character, apiKey, currentYear, economicClimate]);
+    }, [gameState, character, currentYear, economicClimate]);
 
   const renderMainContent = () => {
     if (isLoading) {
@@ -967,78 +1033,49 @@ const App: React.FC = () => {
     }
   };
   
-  if (!apiKey) {
-    return (
-        <main className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-900">
-            <ApiKeyModal onSave={handleApiKeySave} />
-        </main>
-    )
-  }
+  // Fix: Removed ApiKeyModal logic. The app now assumes the API key is available via environment variables.
 
   return (
     <main className="min-h-screen flex flex-col md:flex-row items-start justify-center gap-8 p-4 md:p-8 bg-slate-900 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]">
-        {character && <CharacterSheet character={character} lifeStage={getCurrentLifeStage(character.age)} lineage={lineage} isTurboMode={isTurboMode} onToggleTurboMode={handleToggleTurboMode} onChangeApiKey={handleChangeApiKey} onFullReset={handleFullReset} monthsRemainingInYear={monthsRemainingInYear} onOpenFamilyBook={() => setIsFamilyBookOpen(true)} onRollback={handleOpenRollbackModal} canRollback={history.length > 0} onRunAudit={handleRunAudit} />}
-        <div className="flex-grow flex items-center justify-center w-full">
+        {/* Fix: Resolved file truncation and type error by providing the correct handler to onToggleTurboMode and completing the component. */}
+        {character && (
+          <CharacterSheet
+            character={character}
+            lifeStage={getCurrentLifeStage(character.age)}
+            lineage={lineage}
+            isTurboMode={isTurboMode}
+            onToggleTurboMode={handleToggleTurboMode}
+            onFullReset={handleFullReset}
+            monthsRemainingInYear={monthsRemainingInYear}
+            onOpenFamilyBook={() => setIsFamilyBookOpen(true)}
+            onRollback={handleOpenRollbackModal}
+            canRollback={history.length > 0}
+            onRunAudit={handleRunAudit}
+          />
+        )}
+        <div className="flex-grow flex items-center justify-center min-h-[80vh] w-full max-w-lg">
             {renderMainContent()}
         </div>
-        <WorldEventToast event={worldEventNotification} onClose={() => setWorldEventNotification(null)} />
-        {gameState === GameState.IN_PROGRESS && character && (
-            <button onClick={() => setIsJournalOpen(true)} className="fixed bottom-6 right-6 w-16 h-16 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-500 transition-all transform hover:scale-110 flex items-center justify-center" aria-label="Abrir Diário">
-                <div className="w-8 h-8"><BookOpenIcon /></div>
-            </button>
-        )}
+        
         {isJournalOpen && character && <JournalScreen character={character} lifeSummary={lifeSummary} onClose={() => setIsJournalOpen(false)} />}
         {isQuotaModalOpen && <QuotaErrorModal onClose={() => setIsQuotaModalOpen(false)} />}
-        {isRollbackModalOpen && (
-            <EmergencyRollbackModal
-                isOpen={isRollbackModalOpen}
-                onClose={() => setIsRollbackModalOpen(false)}
-                onRestore={handleRestore}
-                checkpoints={history}
-            />
-        )}
-        {isFamilyBookOpen && lineage && (
-            <FamilyBookModal
-                isOpen={isFamilyBookOpen}
-                onClose={() => setIsFamilyBookOpen(false)}
-                ancestors={ancestors}
-                lastName={lineage.lastName}
-            />
-        )}
-        {isAuditModalOpen && (
-            <AuditReportModal
-                isOpen={isAuditModalOpen}
-                onClose={() => setIsAuditModalOpen(false)}
-                report={auditReport}
-                onApplyFixes={handleApplyAuditFixes}
-                onRequestModification={handleRequestAuditModification}
-                isLoading={isAuditLoading}
-            />
-        )}
-        {showDebug && (
-            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-                <div className="w-full max-w-2xl bg-slate-800 border border-slate-600 rounded-lg p-6 text-left">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-white">Informações de Depuração</h2>
-                        <button
-                            onClick={() => setShowDebug(false)}
-                            className="w-8 h-8 flex items-center justify-center bg-slate-700/50 rounded-full text-slate-300 hover:bg-slate-600 hover:text-white transition-colors"
-                            aria-label="Fechar"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-                    <h3 className="text-lg font-semibold text-slate-300 mb-2">Último Erro Capturado</h3>
-                    <pre className="bg-slate-900 p-4 rounded-md text-sm text-red-300 whitespace-pre-wrap overflow-auto max-h-96">
-                        {lastError || 'Nenhum erro foi capturado ainda.'}
-                    </pre>
+        {isRollbackModalOpen && <EmergencyRollbackModal isOpen={isRollbackModalOpen} onClose={() => setIsRollbackModalOpen(false)} onRestore={handleRestore} checkpoints={history} />}
+        {isFamilyBookOpen && ancestors && <FamilyBookModal isOpen={isFamilyBookOpen} onClose={() => setIsFamilyBookOpen(false)} ancestors={ancestors} lastName={lineage?.lastName || character?.lastName || ''} />}
+        {worldEventNotification && <WorldEventToast event={worldEventNotification} onClose={() => setWorldEventNotification(null)} />}
+        {isAuditModalOpen && <AuditReportModal isOpen={isAuditModalOpen} onClose={() => setIsAuditModalOpen(false)} report={auditReport} onApplyFixes={handleApplyAuditFixes} onRequestModification={handleRequestAuditModification} isLoading={isAuditLoading} />}
+
+        {showDebug && lastError && (
+             <div className="fixed bottom-4 right-4 w-1/2 max-w-2xl h-1/2 bg-slate-950/90 border border-slate-700 rounded-lg p-4 z-[100] text-white flex flex-col">
+                <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-bold text-lg text-red-400">Último Erro (Depuração)</h3>
+                    <button onClick={() => setShowDebug(false)} className="text-slate-400 hover:text-white">&times;</button>
                 </div>
+                <pre className="text-xs whitespace-pre-wrap overflow-auto flex-grow text-slate-300">{lastError}</pre>
             </div>
         )}
     </main>
   );
 };
 
+// Fix: Add default export to resolve module import error.
 export default App;
