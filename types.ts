@@ -300,6 +300,8 @@ export interface LegacyBonuses {
     influence?: number;
     fame?: number;
     favors?: number;
+    happiness?: number;
+    stress?: number;
     addTraits?: Trait[];
     inheritedSecret?: string;
     addSkills?: Skill[];

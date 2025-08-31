@@ -37,6 +37,7 @@ export const POSITIVE_TRAITS: Trait[] = [
     { name: 'Senso de Humor', description: 'Sua capacidade de fazer os outros rirem melhora suas interações sociais e alivia o estresse.', type: 'positive' },
     { name: 'Corajoso', description: 'Você enfrenta o perigo de frente, mesmo quando está com medo.', type: 'positive' },
     { name: 'Visionário', description: 'Você vê possibilidades onde outros veem apenas o status quo.', type: 'positive' },
+    { name: 'Filantropo', description: 'Você é conhecido por sua generosidade e ganha influência por isso.', type: 'positive' },
 ];
 
 export const NEGATIVE_TRAITS: Trait[] = [
@@ -64,6 +65,12 @@ export const NEGATIVE_TRAITS: Trait[] = [
     { name: 'Sob os Holofotes', description: 'Devido às suas conexões, a imprensa e os rivais políticos acompanham cada passo seu, prontos para explorar qualquer erro.', type: 'negative' },
     { name: 'Nostálgico', description: 'Você viveu em muitos lugares e, embora isso tenha enriquecido você, muitas vezes se sente um estranho, com saudades de um lar que não existe mais.', type: 'negative' },
     { name: 'Dívida de Gratidão', description: 'Você deve um grande favor a alguém poderoso. Um dia, a cobrança virá.', type: 'negative' },
+    { name: 'Obrigações de Caridade', description: 'Sua filantropia exige atenção e recursos constantes, gerando estresse.', type: 'negative' },
+    { name: 'Observado/Perseguido', description: 'Inimigos poderosos observam cada passo seu, prontos para agir.', type: 'negative' },
+    { name: 'Socialmente Desajeitado', description: 'Sua disciplina extrema torna difícil criar conexões sociais genuínas.', type: 'negative' },
+    { name: 'Paranormalmente Sensível', description: 'Você percebe coisas que outros não veem, o que pode ser perturbador.', type: 'negative' },
+    { name: 'Trauma Herdado', description: 'Um peso de gerações passadas afeta sua felicidade e seus relacionamentos.', type: 'negative' },
+    { name: 'Destino Sombrio', description: 'Uma sombra paira sobre seu futuro, prometendo um fim prematuro e trágico.', type: 'negative' },
 ];
 
 export const PORTRAIT_COLORS = {

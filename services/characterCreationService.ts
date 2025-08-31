@@ -1,3 +1,5 @@
+
+
 import { Character, FamilyBackground, RelationshipType, LegacyBonuses, Trait, Lineage, Mood, FounderTraits, Relationship } from '../types';
 import { BIRTHPLACES, LIFE_GOALS, LAST_NAMES, FIRST_NAMES, LINEAGE_TITLES } from '../constants';
 import { GENDERS, SKIN_TONES, HAIR_STYLES, ACCESSORIES, PERSONALITY_PROFILES, BACKSTORIES } from '../characterCreatorConstants';
@@ -29,18 +31,22 @@ export const createHeirCharacter = (heir: Relationship, parent: Character, linea
     else if (inheritedWealth < 500000) familyBg = FamilyBackground.MIDDLE_CLASS;
     else familyBg = FamilyBackground.WEALTHY;
 
-    // 3. Rebuild family relationships
+    // 3. Rebuild family relationships for consistency
     const newRelationships: Relationship[] = [];
-    const survivingParent = parent.relationships.find(r => r.status === 'Married');
-    if (survivingParent) {
+
+    // Find the other living parent (the spouse of the deceased character)
+    const survivingSpouse = parent.relationships.find(r => r.status === 'Married');
+    if (survivingSpouse) {
         newRelationships.push({
-            ...survivingParent,
+            ...survivingSpouse,
             type: RelationshipType.FAMILY,
-            title: survivingParent.gender === 'Masculino' ? 'Pai' : 'Mãe',
+            title: survivingSpouse.gender === 'Masculino' ? 'Pai' : 'Mãe',
             intimacy: getRandomInt(60, 80),
-            history: [`Meu/minha ${parent.gender === 'Masculino' ? 'pai' : 'mãe'} faleceu.`]
+            history: [`Meu/minha outro(a) genitor(a), ${parent.name}, faleceu.`]
         });
     }
+
+    // Find siblings
     const siblings = parent.relationships.filter(r => (r.title === 'Filho' || r.title === 'Filha') && r.name !== heir.name);
     siblings.forEach(sibling => {
         newRelationships.push({
@@ -48,9 +54,19 @@ export const createHeirCharacter = (heir: Relationship, parent: Character, linea
             type: RelationshipType.FAMILY,
             title: sibling.gender === 'Masculino' ? 'Irmão' : 'Irmã',
             intimacy: getRandomInt(30, 70),
-            history: [`Nosso(a) ${parent.gender === 'Masculino' ? 'pai' : 'mãe'} faleceu.`]
+            history: [`Nosso(a) genitor(a), ${parent.name}, faleceu.`]
         });
     });
+    
+    // Find grandparents (parents of the deceased character)
+    const grandFather = parent.relationships.find(r => r.title === 'Pai');
+    if (grandFather) {
+        newRelationships.push({ ...grandFather, title: 'Avô', intimacy: getRandomInt(20, 50) });
+    }
+    const grandMother = parent.relationships.find(r => r.title === 'Mãe');
+    if (grandMother) {
+        newRelationships.push({ ...grandMother, title: 'Avó', intimacy: getRandomInt(20, 50) });
+    }
 
     // 4. Generate stats with legacy bonus
     const bonusPool = Math.floor(legacyPoints / 15); // 1 bonus point per 15 legacy points
@@ -129,6 +145,7 @@ export const generateRandomCharacter = (lineage: Lineage | null, legacyBonuses: 
     const lineageBonus: LegacyBonuses = lineage?.title ? LINEAGE_TITLES.find(t => t.name === lineage.title)?.bonus || {} : {};
     const purchasedBonuses: LegacyBonuses = legacyBonuses || {};
 
+    // Fix: Added missing happiness and stress properties to satisfy Required<LegacyBonuses>.
     const allBonuses: Required<LegacyBonuses> = {
         wealth: (lineageBonus.wealth || 0) + (purchasedBonuses.wealth || 0),
         intelligence: (lineageBonus.intelligence || 0) + (purchasedBonuses.intelligence || 0),
@@ -139,6 +156,8 @@ export const generateRandomCharacter = (lineage: Lineage | null, legacyBonuses: 
         fame: (lineageBonus.fame || 0) + (purchasedBonuses.fame || 0),
         influence: (lineageBonus.influence || 0) + (purchasedBonuses.influence || 0),
         favors: (lineageBonus.favors || 0) + (purchasedBonuses.favors || 0),
+        happiness: (lineageBonus.happiness || 0) + (purchasedBonuses.happiness || 0),
+        stress: (lineageBonus.stress || 0) + (purchasedBonuses.stress || 0),
         addTraits: [...(lineageBonus.addTraits || []), ...(purchasedBonuses.addTraits || [])].filter(t => t),
         addSkills: [...(lineageBonus.addSkills || []), ...(purchasedBonuses.addSkills || [])].filter(h => h),
         addAssets: [...(lineageBonus.addAssets || []), ...(purchasedBonuses.addAssets || [])].filter(a => a),
@@ -167,6 +186,12 @@ export const generateRandomCharacter = (lineage: Lineage | null, legacyBonuses: 
     
     const birthplace = lineage?.lastKnownLocation ? lineage.lastKnownLocation : getRandom(BIRTHPLACES);
 
+    const MALE_NAMES = FIRST_NAMES.slice(0, 70);
+    const FEMALE_NAMES = FIRST_NAMES.slice(70);
+
+    const motherName = getRandom(FEMALE_NAMES);
+    const fatherName = getRandom(MALE_NAMES);
+
     const newChar: Character = {
         name: getRandom(FIRST_NAMES),
         lastName: lineage ? lineage.lastName : getRandom(LAST_NAMES),
@@ -179,9 +204,10 @@ export const generateRandomCharacter = (lineage: Lineage | null, legacyBonuses: 
         charisma: baseStat + distributedPoints[1] + allBonuses.charisma,
         creativity: baseStat + distributedPoints[2] + allBonuses.creativity,
         discipline: baseStat + distributedPoints[3] + allBonuses.discipline,
-        happiness: getRandomInt(60, 80),
+        // Fix: Applied happiness and stress bonuses.
+        happiness: getRandomInt(60, 80) + allBonuses.happiness,
         energy: getRandomInt(70, 90),
-        stress: getRandomInt(5, 20),
+        stress: getRandomInt(5, 20) + allBonuses.stress,
         luck: getRandomInt(30, 70),
         wealth: startingWealth + allBonuses.wealth,
         investments: 0,
@@ -195,8 +221,8 @@ export const generateRandomCharacter = (lineage: Lineage | null, legacyBonuses: 
         traits: initialTraits,
         assets: [...allBonuses.addAssets],
         relationships: [
-            { name: 'Mãe', type: RelationshipType.FAMILY, intimacy: getRandomInt(50, 70), history: [], age: getRandomInt(25, 35) + 5, title: 'Mãe', gender: 'Feminino' },
-            { name: 'Pai', type: RelationshipType.FAMILY, intimacy: getRandomInt(50, 70), history: [], age: getRandomInt(25, 38) + 5, title: 'Pai', gender: 'Masculino' },
+            { name: motherName, type: RelationshipType.FAMILY, intimacy: getRandomInt(50, 70), history: [], age: getRandomInt(25, 35) + 5, title: 'Mãe', gender: 'Feminino' },
+            { name: fatherName, type: RelationshipType.FAMILY, intimacy: getRandomInt(50, 70), history: [], age: getRandomInt(25, 38) + 5, title: 'Pai', gender: 'Masculino' },
             ...allBonuses.addRelationships
         ],
         memories: [],

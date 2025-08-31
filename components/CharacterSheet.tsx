@@ -85,7 +85,6 @@ const SkillBar: React.FC<{ level: number, color: string }> = ({ level, color }) 
 const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, lineage, isTurboMode, onToggleTurboMode, onChangeApiKey, onFullReset, monthsRemainingInYear, onOpenFamilyBook, onRollback, canRollback, onRunAudit }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
-  const displayName = lineage?.title ? `${lineage.title} dos ${character.lastName}` : `${character.name} ${character.lastName}`;
   const currentMonth = Math.max(1, TOTAL_MONTHS_PER_YEAR - monthsRemainingInYear + 1);
   
   const skillConfig: Record<string, { icon: React.ReactNode; color: string; }> = {
@@ -162,8 +161,8 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
                 eyeColor={character.founderTraits.eyeColor} 
             />
         </div>
-        <h2 className="text-xl font-bold text-white">{displayName}</h2>
-        {!lineage?.title && <p className="text-sm text-slate-400">{character.name} {character.lastName}</p>}
+        <h2 className="text-xl font-bold text-white">{character.name} {character.lastName}</h2>
+        {lineage?.title && <p className="text-sm text-slate-400">{`${lineage.title} dos ${character.lastName}`}</p>}
         <p className="text-lg text-cyan-400 font-semibold">{`Geração ${character.generation} | Idade: ${character.age}`}</p>
         <p className="text-sm text-slate-400">Ano: {character.birthYear + character.age} | Período: {currentMonth}/{TOTAL_MONTHS_PER_YEAR}</p>
         <p className="mt-2 text-sm bg-cyan-900/50 text-cyan-300 rounded-full px-3 py-1 inline-block">{lifeStage}</p>

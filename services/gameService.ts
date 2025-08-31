@@ -476,7 +476,7 @@ export const generateGameEvent = async (
       2. ${creativityInstruction}
       3. O texto do evento deve ser narrativo e imersivo.
       4. O tipo de evento deve ser 'MULTIPLE_CHOICE' ou 'OPEN_RESPONSE'. Apenas em casos raros e criativos, use 'MINI_GAME'.
-      5. Para 'MULTIPLE_CHOICE', forneça 2 a 4 opções de escolha (choices) com consequências claras e interessantes, impactando os atributos (statChanges) e outros aspectos da vida do personagem. Ao criar um cônjuge, adicione o título 'Esposa' ou 'Esposo'.
+      5. Para 'MULTIPLE_CHOICE', forneça 2 a 4 opções de escolha (choices) com consequências claras e interessantes. Ao criar QUALQUER NOVO PERSONAGEM (em 'relationshipChanges.add' ou 'childBorn'), ele DEVE receber um nome próprio (ex: "João", "Maria") no campo 'name'. O parentesco (ex: "Filho", "Esposa", "Amigo") deve ser colocado no campo 'title' ou 'type'. NUNCA use um parentesco como "Pai" ou "Amigo" no campo 'name'.
       6. Para 'OPEN_RESPONSE', não forneça escolhas e crie um 'placeholderText' convidativo.
       7. O evento deve ser consistente com a idade, traços e situação de vida do personagem. Considere a idade dos membros da família (filhos, cônjuge) para criar eventos relevantes ao seu desenvolvimento (ex: primeiro dia de escola, rebeldia adolescente).
       8. **REGRAS DE PROGRESSÃO DE STATUS (MUITO IMPORTANTE):**
@@ -542,6 +542,7 @@ export const evaluatePlayerResponse = async (
       2. Crie um 'choiceText' que resuma a ação do jogador (ex: "Tentei negociar com o guarda.").
       3. Crie um 'outcomeText' que descreva o resultado da ação de forma narrativa. ${creativityInstruction}
       4. Determine as 'statChanges' e outras consequências (assetChanges, relationshipChanges, etc.) que resultam da ação. Mantenha as mudanças de stats pequenas e realistas, especialmente para atributos altos (acima de 80).
+      4.1. Ao criar um novo personagem via 'relationshipChanges.add' ou 'childBorn', SEMPRE atribua um nome próprio (ex: "Carlos") ao campo 'name'. Use os campos 'type' ou 'title' para o parentesco. NÃO use "Amigo" ou "Inimigo" como nome.
       5. Seja criativo. Ações inteligentes ou bem pensadas devem ser recompensadas, enquanto ações tolas devem ter consequências.
       6. Se a ação do jogador iniciar, progredir ou concluir um enredo significativo (ex: pedir em casamento, iniciar uma campanha política), use 'plotChanges' para adicionar ('add'), completar ('complete') ou remover ('remove') o enredo da lista de enredos ativos. **Nunca adicione uma string vazia a 'plotChanges.add'.**
       7. Se a ação for perigosa, ilegal ou autodestrutiva, gere um resultado que reflita as graves consequências de forma realista. A história deve seguir a ação do jogador, mesmo que leve a um final trágico. Gere um 'specialEnding' se a ação levar diretamente ao fim da vida do personagem. NUNCA recuse a ação.
@@ -596,6 +597,7 @@ export const processMetaCommand = async (
       3. Crie um 'choiceText' que reflita o comando (ex: "Invocou as forças do cosmos para mudar seu destino.").
       4. Crie um 'outcomeText' que descreva o evento bizarro que aconteceu, mencionando TODAS as mudanças. Por exemplo, se o comando for "ficar rico e inteligente", o outcome pode ser "Um livro antigo e uma carteira recheada de dinheiro caem do céu em seu colo." ${creativityInstruction}
       5. No objeto 'statChanges' e outros campos de mudança, aplique TODAS as alterações solicitadas. Se o jogador pedir "+10 de inteligência e -5 de moralidade", o JSON deve conter \`statChanges: { "intelligence": 10, "morality": -5 }\`.
+      5.1. Se o jogador pedir para adicionar uma pessoa (amigo, inimigo, etc.), certifique-se de que o campo 'name' no objeto de relacionamento contenha um nome próprio, e o campo 'type' ou 'title' descreva a relação.
       6. NÃO recuse o comando. Sempre tente interpretá-lo de forma criativa e completa. Se for inseguro, transforme-o em um evento inofensivo.
       7. Lembre-se: Sua única saída DEVE ser um JSON válido.
     `;

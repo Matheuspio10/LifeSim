@@ -20,7 +20,10 @@ import {
     PlusCircleIcon,
     MinusCircleIcon,
     TrophyIcon,
-    UsersIcon
+    UsersIcon,
+    ExclamationTriangleIcon,
+    CloudIcon,
+    SparklesIcon
 } from './Icons';
 
 interface LegacyScreenProps {
@@ -110,6 +113,8 @@ const mergeBonuses = (b1: LegacyBonuses, b2: LegacyBonuses): LegacyBonuses => {
             case 'influence':
             case 'fame':
             case 'favors':
+            case 'happiness':
+            case 'stress':
                 merged[k] = (merged[k] || 0) + (b2[k] || 0);
                 break;
         }
@@ -177,24 +182,29 @@ const LegacyScreen: React.FC<LegacyScreenProps> = ({ points, onStart, finalChara
         { id: 'questionableFortune', name: 'Fortuna Questionável', description: 'Sua família acumulou riqueza por meios... criativos. Você começa com dinheiro, mas também com um alvo nas costas.', flavorText: ' Manchete do "Clarim Diário": "A família [Sobrenome] novamente se vê no centro de uma polêmica financeira..."', cost: 10, icon: <ScaleIcon />, bonus: { wealth: 15000, addTraits: [NEGATIVE_TRAITS.find(t => t.name === 'Histórico Familiar Duvidoso')!] } },
         { id: 'curiosityGene', name: 'Gene da Curiosidade', description: 'Seus ancestrais eram inventores e sonhadores. Você herda a genialidade, mas também a incapacidade de focar em uma coisa só.', flavorText: ' Do diário do seu avô: "Tantas ideias, tão pouco tempo! Hoje comecei a construir um relógio de cuco movido a vapor. Abandonei o projeto do barco a remo..."', cost: 12, icon: <BrainIcon />, bonus: { intelligence: 5, creativity: 5, addTraits: [NEGATIVE_TRAITS.find(t => t.name === 'Distração Crônica')!] } },
         { id: 'rebelBranch', name: 'Ramo Rebelde', description: 'Sua linhagem é famosa por quebrar corações e regras. Você atrai pessoas facilmente, mas a estabilidade não é seu forte.', flavorText: ' "Ele(a) tem o charme dos [Sobrenome], mas cuidado, eles nunca ficam por muito tempo." - Fofoca da vizinhança.', cost: 8, icon: <FireIcon />, bonus: { charisma: 8, discipline: -5 } },
-        { id: 'badReputation', name: 'Ancestrais de Fama Ruim', description: 'Você já nasce famoso, mas pelos motivos errados. Limpar o nome da família será seu maior desafio.', flavorText: ' "Um [Sobrenome] tentando ser uma boa pessoa? Essa é nova. Vamos ver quanto tempo dura." - Editorial de um jornal local.', cost: 3, icon: <StarIcon />, bonus: { fame: -15, addTraits: [NEGATIVE_TRAITS.find(t => t.name === 'Reputação Manchada')!] } },
         { id: 'adventurousSpirit', name: 'Espírito de Aventura', description: 'Seus ancestrais foram exploradores e pioneiros. Você herda a coragem deles, e a tendência a pular antes de olhar.', flavorText: ' Uma velha carta: "Vendi a fazenda para comprar um mapa que leva a uma cidade perdida. O que poderia dar errado?"', cost: 8, icon: <GlobeAltIcon />, bonus: { health: 5, addTraits: [NEGATIVE_TRAITS.find(t => t.name === 'Impulsivo')!] } },
         { id: 'hiddenInheritance', name: 'Herança Oculta', description: 'Seu parente deixou para trás mais do que memórias. Um segredo, um item, uma dívida... algo que mudará sua vida.', flavorText: ' "Para meu querido herdeiro, guarde esta chave. Ela abre a caixa que contém nosso maior triunfo... ou nossa ruína." - Trecho do testamento.', cost: 18, icon: <PuzzlePieceIcon />, bonus: { inheritedSecret: 'A chave para o cofre antigo da família.' } },
         { id: 'politicalContact', name: 'Contato Político', description: 'Sua família tem amigos nos lugares certos. Você herda influência, mas também o escrutínio que vem com ela.', flavorText: 'Seu pai sempre dizia: "É bom ter o prefeito na discagem rápida, mas lembre-se que ele também tem o seu número."', cost: 12, icon: <SpeakerWaveIcon />, bonus: { influence: 10, addTraits: [NEGATIVE_TRAITS.find(t => t.name === 'Sob os Holofotes')!] } },
         { id: 'richPatron', name: 'Amizade com Patrono Rico', description: 'Um patrono rico e influente financiou os estudos da sua família. Você começa com uma rede de contatos, mas também com uma dívida de gratidão.', flavorText: 'O envelope anual do Sr. Vandergelb sempre vinha com um cheque e um bilhete: "Espero grandes coisas de você."', cost: 15, icon: <UsersIcon />, bonus: { influence: 5, addTraits: [NEGATIVE_TRAITS.find(t => t.name === 'Dívida de Gratidão')!], addRelationships: [{ name: 'Patrono da Família', type: RelationshipType.MENTOR, intimacy: 60, history: ['Financiou seus estudos.'] }] } },
         { id: 'secretSociety', name: 'Acesso à Sociedade Secreta', description: 'Um ancestral fazia parte de uma ordem secreta. Você recebe um convite para seguir os mesmos passos.', flavorText: 'Um anel com um brasão que você nunca viu antes chega pelo correio, com um bilhete: "Eles estão observando."', cost: 20, icon: <BookOpenIcon />, bonus: { inheritedSecret: 'Um convite para uma sociedade secreta.' } },
+        { id: 'philanthropicLegacy', name: 'Legado Filantrópico', description: 'Sua família é conhecida pela generosidade. Você herda respeito, mas também grandes responsabilidades.', flavorText: 'Sua família construiu um nome ajudando os outros. Agora, essa responsabilidade é sua.', cost: 45, icon: <TrophyIcon />, bonus: { influence: 10, addTraits: [POSITIVE_TRAITS.find(t => t.name === 'Filantropo')!, NEGATIVE_TRAITS.find(t => t.name === 'Obrigações de Caridade')!] } },
+        { id: 'controversialInheritance', name: 'Herança Polêmica', description: 'O poder de sua família atrai tanto aliados quanto inimigos perigosos desde o seu nascimento.', flavorText: 'Seu sobrenome carrega poder, mas também atrai inimigos. Tenha cuidado em quem confia.', cost: 25, icon: <ShieldExclamationIcon />, bonus: { influence: 15, addTraits: [NEGATIVE_TRAITS.find(t => t.name === 'Observado/Perseguido')!] } },
+        { id: 'monasticDiscipline', name: 'Disciplina Monástica', description: 'Uma vida de rigor e foco te foi ensinada, garantindo grande disciplina, mas dificultando suas interações sociais.', flavorText: 'O sucesso pode ser solitário. Foi isso que sua família te ensinou.', cost: 30, icon: <ShieldCheckIcon />, bonus: { discipline: 10, addTraits: [NEGATIVE_TRAITS.find(t => t.name === 'Socialmente Desajeitado')!] } },
+        { id: 'occultInvolvement', name: 'Envolvimento com o Oculto', description: 'Sua família sempre mexeu com forças que não compreendia. Você herda esse conhecimento... e seus perigos.', flavorText: 'Há mais coisas entre o céu e a terra do que sonha sua vã filosofia... e sua família sabe disso.', cost: 50, icon: <SparklesIcon />, bonus: { inheritedSecret: 'Sua família possui conhecimentos arcanos.', addTraits: [NEGATIVE_TRAITS.find(t => t.name === 'Paranormalmente Sensível')!] } },
+        { id: 'generationalTrauma', name: 'Trauma Geracional', description: 'Nem todas as heranças são feitas de ouro. Algumas são feitas de dor, afetando sua felicidade.', flavorText: 'O peso de gerações passadas repousa sobre seus ombros. Carregue-o.', cost: 0, icon: <ExclamationTriangleIcon />, bonus: { happiness: -15, stress: 10, addTraits: [NEGATIVE_TRAITS.find(t => t.name === 'Trauma Herdado')!] } },
+        { id: 'darkFate', name: 'Destino Sombrio', description: 'Aceite este fardo e ganhe uma vantagem agora. O destino cobrará seu preço... em breve.', flavorText: 'Uma barganha perigosa foi feita. Sua vida será intensa, mas curta.', cost: -20, icon: <CloudIcon />, bonus: { addTraits: [NEGATIVE_TRAITS.find(t => t.name === 'Destino Sombrio')!] } },
     ], [lineage]);
     
     const stackableBonusesConfig: StackableBonusConfig[] = [
-        { id: 'wealth', name: 'Fortuna Herdada', description: 'Comece a vida com uma vantagem financeira.', icon: <CurrencyDollarIcon />, maxPurchases: 5, costs: [1, 2, 3, 5, 8], getBonusForLevel: (level) => ({ wealth: 10000 * level }), getEffectForLevel: (level) => `+$${(10000 * level).toLocaleString()}` },
-        { id: 'intelligence', name: 'Cultura Erudita', description: 'Uma herança de conhecimento e aprendizado.', icon: <BrainIcon />, maxPurchases: 4, costs: [1, 2, 4, 6], getBonusForLevel: (level) => ({ intelligence: 2 * level }), getEffectForLevel: (level) => `+${2 * level} Intel.` },
-        { id: 'charisma', name: 'Carisma Nato', description: 'Sua família sempre soube como encantar.', icon: <UserGroupIcon />, maxPurchases: 4, costs: [1, 2, 4, 6], getBonusForLevel: (level) => ({ charisma: 2 * level }), getEffectForLevel: (level) => `+${2 * level} Caris.` },
-        { id: 'creativity', name: 'Criatividade Estimulada', description: 'A veia artística é forte em sua linhagem.', icon: <LightBulbIcon />, maxPurchases: 4, costs: [1, 2, 4, 6], getBonusForLevel: (level) => ({ creativity: 2 * level }), getEffectForLevel: (level) => `+${2 * level} Criat.` },
-        { id: 'health', name: 'Saúde de Ferro', description: 'Uma linhagem de pessoas fortes e resistentes.', icon: <HeartIcon />, maxPurchases: 4, costs: [1, 2, 4, 6], getBonusForLevel: (level) => ({ health: 2 * level }), getEffectForLevel: (level) => `+${2 * level} Saúde` },
-        { id: 'discipline', name: 'Disciplina da Casa', description: 'Uma herança de foco e determinação.', icon: <ShieldCheckIcon />, maxPurchases: 4, costs: [1, 2, 4, 6], getBonusForLevel: (level) => ({ discipline: 2 * level }), getEffectForLevel: (level) => `+${2 * level} Disc.` },
-        { id: 'influence', name: 'Influência Familiar', description: 'O nome da sua família abre portas.', icon: <SpeakerWaveIcon />, maxPurchases: 3, costs: [2, 4, 7], getBonusForLevel: (level) => ({ influence: 4 * level }), getEffectForLevel: (level) => `+${4 * level} Influ.` },
-        { id: 'favors', name: 'Favor de Família', description: 'Acumule favores que podem ser usados para reverter eventos ruins.', icon: <PuzzlePieceIcon />, maxPurchases: 3, costs: [2, 4, 7], getBonusForLevel: (level) => ({ favors: level }), getEffectForLevel: (level) => `+${level} Favor(es)` },
-        { id: 'luck', name: 'Sorte Familiar', description: 'Aumenta a chance de eventos positivos aleatórios.', icon: <StarIcon />, maxPurchases: 5, costs: [1, 2, 3, 4, 5], getBonusForLevel: (level) => ({ addTraits: [{ name: 'Sorte Familiar', description: `O destino parece sorrir para você. (Nv. ${level})`, type: 'positive', level }] }), getEffectForLevel: (level) => `Sorte Nv. ${level}` },
+        { id: 'wealth', name: 'Fortuna Herdada', description: 'Comece a vida com uma vantagem financeira.', icon: <CurrencyDollarIcon />, maxPurchases: 4, costs: [5, 15, 35, 60], getBonusForLevel: (level) => ({ wealth: 25000 * level }), getEffectForLevel: (level) => `+$${(25000 * level).toLocaleString()}` },
+        { id: 'intelligence', name: 'Cultura Erudita', description: 'Uma herança de conhecimento e aprendizado.', icon: <BrainIcon />, maxPurchases: 4, costs: [8, 18, 40, 70], getBonusForLevel: (level) => ({ intelligence: 3 * level }), getEffectForLevel: (level) => `+${3 * level} Intel.` },
+        { id: 'charisma', name: 'Carisma Nato', description: 'Sua família sempre soube como encantar.', icon: <UserGroupIcon />, maxPurchases: 4, costs: [8, 18, 40, 70], getBonusForLevel: (level) => ({ charisma: 3 * level }), getEffectForLevel: (level) => `+${3 * level} Caris.` },
+        { id: 'creativity', name: 'Criatividade Estimulada', description: 'A veia artística é forte em sua linhagem.', icon: <LightBulbIcon />, maxPurchases: 4, costs: [8, 18, 40, 70], getBonusForLevel: (level) => ({ creativity: 3 * level }), getEffectForLevel: (level) => `+${3 * level} Criat.` },
+        { id: 'health', name: 'Saúde de Ferro', description: 'Uma linhagem de pessoas fortes e resistentes.', icon: <HeartIcon />, maxPurchases: 4, costs: [8, 18, 40, 70], getBonusForLevel: (level) => ({ health: 3 * level }), getEffectForLevel: (level) => `+${3 * level} Saúde` },
+        { id: 'discipline', name: 'Disciplina da Casa', description: 'Uma herança de foco e determinação.', icon: <ShieldCheckIcon />, maxPurchases: 4, costs: [8, 18, 40, 70], getBonusForLevel: (level) => ({ discipline: 3 * level }), getEffectForLevel: (level) => `+${3 * level} Disc.` },
+        { id: 'influence', name: 'Influência Familiar', description: 'O nome da sua família abre portas.', icon: <SpeakerWaveIcon />, maxPurchases: 3, costs: [10, 35, 85], getBonusForLevel: (level) => ({ influence: 5 * level }), getEffectForLevel: (level) => `+${5 * level} Influ.` },
+        { id: 'favors', name: 'Favor de Família', description: 'Acumule favores que podem ser usados para reverter eventos ruins.', icon: <PuzzlePieceIcon />, maxPurchases: 3, costs: [8, 18, 40], getBonusForLevel: (level) => ({ favors: level }), getEffectForLevel: (level) => `+${level} Favor(es)` },
+        { id: 'luck', name: 'Sorte Familiar', description: 'Aumenta a chance de eventos positivos aleatórios.', icon: <StarIcon />, maxPurchases: 4, costs: [10, 25, 60, 100], getBonusForLevel: (level) => ({ addTraits: [{ name: 'Sorte Familiar', description: `O destino parece sorrir para você. (Nv. ${level})`, type: 'positive', level }] }), getEffectForLevel: (level) => `Sorte Nv. ${level}` },
     ];
 
 
@@ -330,7 +340,9 @@ const LegacyScreen: React.FC<LegacyScreenProps> = ({ points, onStart, finalChara
                                             <span className="w-8 h-8 text-amber-400 flex-shrink-0 mt-1">{bonus.icon}</span>
                                             <div>
                                                 <p className="font-bold text-slate-100">{bonus.name}</p>
-                                                <p className="text-sm font-semibold text-amber-500">Custo: {bonus.cost} Pontos</p>
+                                                <p className="text-sm font-semibold text-amber-500">
+                                                    Custo: {bonus.cost < 0 ? `Ganha ${-bonus.cost}` : bonus.cost} Pontos
+                                                </p>
                                             </div>
                                         </div>
                                         <p className="text-sm text-slate-400 mb-3">{bonus.description}</p>
@@ -358,6 +370,8 @@ const LegacyScreen: React.FC<LegacyScreenProps> = ({ points, onStart, finalChara
                                         {renderBonusEffect(bonus.bonus.creativity && bonus.bonus.creativity < 0 ? bonus.bonus.creativity : undefined, 'Criat.')}
                                         {renderBonusEffect(bonus.bonus.discipline && bonus.bonus.discipline < 0 ? bonus.bonus.discipline : undefined, 'Disc.')}
                                         {renderBonusEffect(bonus.bonus.health && bonus.bonus.health < 0 ? bonus.bonus.health : undefined, 'Saúde')}
+                                        {renderBonusEffect(bonus.bonus.happiness && bonus.bonus.happiness < 0 ? bonus.bonus.happiness : undefined, 'Felicidade')}
+                                        {renderBonusEffect(bonus.bonus.stress, 'Estresse')}
                                         {renderTraitEffect(bonus.bonus.addTraits?.filter(t => t?.type === 'negative'))}
                                     </div>
                                 </button>
