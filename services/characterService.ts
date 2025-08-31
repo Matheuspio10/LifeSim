@@ -367,7 +367,7 @@ export const applyChoiceToCharacter = (character: Character, choice: Choice, isE
         // Add new plots
         if (choice.plotChanges.add) {
             choice.plotChanges.add.forEach(desc => {
-                if (!plots.some(p => p.description === desc)) {
+                if (desc && desc.trim() && !plots.some(p => p.description === desc)) {
                     plots.push({ description: desc, completed: false });
                 }
             });

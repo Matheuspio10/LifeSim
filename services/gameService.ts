@@ -294,9 +294,9 @@ const craftedItemChangesSchema = {
 const plotChangesSchema = {
     type: Type.OBJECT,
     properties: {
-        add: { type: Type.ARRAY, items: { type: Type.STRING } },
-        complete: { type: Type.ARRAY, items: { type: Type.STRING } },
-        remove: { type: Type.ARRAY, items: { type: Type.STRING } },
+        add: { type: Type.ARRAY, items: { type: Type.STRING, description: "Uma descrição de enredo NÃO VAZIA para adicionar." } },
+        complete: { type: Type.ARRAY, items: { type: Type.STRING, description: "A descrição exata do enredo a ser marcado como concluído." } },
+        remove: { type: Type.ARRAY, items: { type: Type.STRING, description: "A descrição exata do enredo a ser removido." } },
     },
 };
 
@@ -480,7 +480,7 @@ export const generateGameEvent = async (
       6. Para 'OPEN_RESPONSE', não forneça escolhas e crie um 'placeholderText' convidativo.
       7. Mantenha as mudanças de stats (statChanges) pequenas e realistas para eventos comuns. Eventos épicos ('isEpic: true') podem ter mudanças maiores.
       8. O evento deve ser consistente com a idade, traços e situação de vida do personagem. Considere a idade dos membros da família (filhos, cônjuge) para criar eventos relevantes ao seu desenvolvimento (ex: primeiro dia de escola, rebeldia adolescente).
-      9. **PRIORIDADE MÁXIMA: ENREDOS ATIVOS.** Considere os 'Enredos Atuais' (${character.ongoingPlots ? character.ongoingPlots.map(p => p.description + (p.completed ? ' (Concluído)' : '')).join(', ') : 'Nenhum'}). Se houver enredos ativos (não concluídos), é **CRUCIAL** que o evento gerado avance ou conclua um desses enredos. Evite eventos genéricos ou repetitivos (como um debate aleatório) se um enredo principal (ex: uma campanha política) estiver em andamento. Se um evento concluir um enredo, use 'plotChanges.complete' para marcá-lo como concluído. Se um evento iniciar um novo enredo, use 'plotChanges.add'. Use 'plotChanges.remove' apenas se o personagem abandonar ativamente um enredo.
+      9. **PRIORIDADE MÁXIMA: ENREDOS ATIVOS.** Considere os 'Enredos Atuais' (${character.ongoingPlots ? character.ongoingPlots.map(p => p.description + (p.completed ? ' (Concluído)' : '')).join(', ') : 'Nenhum'}). Se houver enredos ativos (não concluídos), é **CRUCIAL** que o evento gerado avance ou conclua um desses enredos. Evite eventos genéricos ou repetitivos (como um debate aleatório) se um enredo principal (ex: uma campanha política) estiver em andamento. Se um evento concluir um enredo, use 'plotChanges.complete' para marcá-lo como concluído. Se um evento iniciar um novo enredo, use 'plotChanges.add'. **NUNCA adicione uma string vazia a 'plotChanges.add'.** Use 'plotChanges.remove' apenas se o personagem abandonar ativamente um enredo.
       10. Use o 'behaviorTracker' para evitar repetição: ${JSON.stringify(behaviorTracker)}. Tente gerar um evento diferente dos anteriores.
       11. Lembre-se: Sua única saída DEVE ser um JSON válido.
     `;
@@ -538,7 +538,7 @@ export const evaluatePlayerResponse = async (
       3. Crie um 'outcomeText' que descreva o resultado da ação de forma narrativa. ${creativityInstruction}
       4. Determine as 'statChanges' e outras consequências (assetChanges, relationshipChanges, etc.) que resultam da ação. Mantenha as mudanças de stats pequenas e realistas.
       5. Seja criativo. Ações inteligentes ou bem pensadas devem ser recompensadas, enquanto ações tolas devem ter consequências.
-      6. Se a ação do jogador iniciar, progredir ou concluir um enredo significativo (ex: pedir em casamento, iniciar uma campanha política), use 'plotChanges' para adicionar ('add'), completar ('complete') ou remover ('remove') o enredo da lista de enredos ativos.
+      6. Se a ação do jogador iniciar, progredir ou concluir um enredo significativo (ex: pedir em casamento, iniciar uma campanha política), use 'plotChanges' para adicionar ('add'), completar ('complete') ou remover ('remove') o enredo da lista de enredos ativos. **Nunca adicione uma string vazia a 'plotChanges.add'.**
       7. Se a ação for perigosa, ilegal ou autodestrutiva, gere um resultado que reflita as graves consequências de forma realista. A história deve seguir a ação do jogador, mesmo que leve a um final trágico. Gere um 'specialEnding' se a ação levar diretamente ao fim da vida do personagem. NUNCA recuse a ação.
       8. Lembre-se: Sua única saída DEVE ser um JSON válido.
     `;
