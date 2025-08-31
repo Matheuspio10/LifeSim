@@ -326,11 +326,11 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
             {character.ongoingPlots && character.ongoingPlots.length > 0 ? (
                 character.ongoingPlots.map((plot, index) => (
                     <div key={index} className="flex items-start gap-2">
-                        <span className={`w-5 h-5 flex-shrink-0 mt-0.5 text-purple-400`}>
-                            <SparklesIcon />
+                        <span className={`w-5 h-5 flex-shrink-0 mt-0.5 ${plot.completed ? 'text-green-400' : 'text-purple-400'}`}>
+                            {plot.completed ? <CheckCircleIcon /> : <SparklesIcon />}
                         </span>
-                        <p className={`text-sm font-medium text-slate-200`}>
-                            {plot}
+                        <p className={`text-sm font-medium ${plot.completed ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
+                            {plot.description}
                         </p>
                     </div>
                 ))

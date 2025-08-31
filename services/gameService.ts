@@ -295,6 +295,7 @@ const plotChangesSchema = {
     type: Type.OBJECT,
     properties: {
         add: { type: Type.ARRAY, items: { type: Type.STRING } },
+        complete: { type: Type.ARRAY, items: { type: Type.STRING } },
         remove: { type: Type.ARRAY, items: { type: Type.STRING } },
     },
 };
@@ -391,7 +392,7 @@ const worldEventSchema = {
     required: ['title', 'description', 'effects']
 };
 
-const systemInstruction = `Você é um mestre de jogo (Game Master) para um simulador de vida. Sua única função é gerar respostas em formato JSON que sigam o schema fornecido. É CRÍTICO que sua resposta seja SEMPRE um JSON válido. NÃO inclua texto explicativo, recusas ou qualquer coisa fora da estrutura JSON. Se a solicitação do usuário for potencialmente insegura, controversa ou violar suas políticas, IGNORE a solicitação e, em vez disso, gere um evento de vida completamente diferente, seguro e mundano (ex: 'Você encontrou uma moeda na rua'). Aderir ao formato JSON é a prioridade máxima e absoluta.`;
+const systemInstruction = `Você é um mestre de jogo (Game Master) para um simulador de vida. Sua única função é gerar respostas em formato JSON que sigam o schema fornecido. É CRÍTICO que sua resposta seja SEMPRE um JSON válido. NÃO inclua texto explicativo, recusas ou qualquer coisa fora da estrutura JSON. Se a solicitação do usuário levar a um resultado sombrio, violento ou trágico (como ferimentos graves, crime, ou morte, incluindo autodestruição), modele essas consequências de forma realista dentro da narrativa do jogo em vez de evitá-las. A história deve refletir as escolhas do jogador, mesmo que sejam perigosas ou eticamente questionáveis. Gere um 'specialEnding' se a ação levar diretamente ao fim da vida do personagem. Evite conteúdo gráfico explícito.`;
 
 // Helper to create the character summary string for the prompt
 const getCharacterSummary = (character: Character, isTurboMode: boolean = false) => {
@@ -420,7 +421,7 @@ const getCharacterSummary = (character: Character, isTurboMode: boolean = false)
       Relacionamentos Importantes: ${relationshipsSummary}
       Metas de Vida: ${character.lifeGoals.map(g => g.description + (g.completed ? ' (Concluído)' : '')).join('; ')}
       Habilidades: ${character.skills.map(s => `${s.name} (Nível ${s.level})`).join(', ')}
-      Enredos Atuais: ${character.ongoingPlots ? character.ongoingPlots.join(', ') : 'Nenhum'}
+      Enredos Atuais: ${character.ongoingPlots ? character.ongoingPlots.map(p => p.description + (p.completed ? ' (Concluído)' : '')).join(', ') : 'Nenhum'}
       Backstory: ${character.backstory}
     `;
 };
@@ -445,7 +446,7 @@ export const generateGameEvent = async (
     const isBossBattle = Math.random() < 0.10; // 10% chance of a boss battle event
     const eventTypeInstructions = isBossBattle
         ? `Gere um evento de "batalha de chefe" de alto risco, apropriado para a fase da vida. Descrição do desafio: ${getBossBattlePrompt(lifeStage)}`
-        : `Gere um evento de vida interessante. Pode ser uma oportunidade, um desafio, uma interação social ou um evento mundial. Evite gerar eventos sobre morte, a menos que a saúde do personagem seja extremamente baixa (abaixo de 5).`;
+        : `Gere um evento de vida interessante. Pode ser uma oportunidade, um desafio ou uma interação social. Eventos que podem levar à morte (devido a doença, acidente ou violência) são permitidos e devem ser gerados se forem narrativamente apropriados para a idade, saúde, traços e situação de vida do personagem.`;
 
     const creativityInstruction = isTurboMode 
         ? "Mantenha o texto do evento e os resultados concisos e diretos." 
@@ -479,9 +480,9 @@ export const generateGameEvent = async (
       6. Para 'OPEN_RESPONSE', não forneça escolhas e crie um 'placeholderText' convidativo.
       7. Mantenha as mudanças de stats (statChanges) pequenas e realistas para eventos comuns. Eventos épicos ('isEpic: true') podem ter mudanças maiores.
       8. O evento deve ser consistente com a idade, traços e situação de vida do personagem. Considere a idade dos membros da família (filhos, cônjuge) para criar eventos relevantes ao seu desenvolvimento (ex: primeiro dia de escola, rebeldia adolescente).
-      9. Considere os 'Enredos Atuais' (${character.ongoingPlots ? character.ongoingPlots.join(', ') : 'Nenhum'}). Gere eventos que avancem esses enredos. Se um evento concluir um enredo (ex: a eleição termina, o casamento acontece), use 'plotChanges' para removê-lo. Se um evento iniciar um novo enredo, adicione-o.
+      9. Considere os 'Enredos Atuais' (${character.ongoingPlots ? character.ongoingPlots.map(p => p.description + (p.completed ? ' (Concluído)' : '')).join(', ') : 'Nenhum'}). Gere eventos que avancem enredos ativos (não concluídos). Se um evento concluir um enredo (ex: a eleição termina), use 'plotChanges.complete' para marcá-lo como concluído. Se um evento iniciar um novo enredo, use 'plotChanges.add'. Use 'plotChanges.remove' apenas se o personagem abandonar ativamente um enredo.
       10. Use o 'behaviorTracker' para evitar repetição: ${JSON.stringify(behaviorTracker)}. Tente gerar um evento diferente dos anteriores.
-      11. Lembre-se: Sua única saída DEVE ser um JSON válido. Se não puder gerar um evento com base no solicitado, gere um evento simples e seguro, como encontrar um objeto perdido ou ter uma conversa trivial.
+      11. Lembre-se: Sua única saída DEVE ser um JSON válido.
     `;
 
     const config: any = {
@@ -537,8 +538,8 @@ export const evaluatePlayerResponse = async (
       3. Crie um 'outcomeText' que descreva o resultado da ação de forma narrativa. ${creativityInstruction}
       4. Determine as 'statChanges' e outras consequências (assetChanges, relationshipChanges, etc.) que resultam da ação. Mantenha as mudanças de stats pequenas e realistas.
       5. Seja criativo. Ações inteligentes ou bem pensadas devem ser recompensadas, enquanto ações tolas devem ter consequências.
-      6. Se a ação do jogador iniciar, progredir ou concluir um enredo significativo (ex: pedir em casamento, iniciar uma campanha política, decidir ter um filho), use 'plotChanges' para adicionar ou remover o enredo da lista de enredos ativos.
-      7. Se a ação for muito fora do contexto ou insegura, gere um resultado que a traga de volta para a história de uma forma segura e interessante. NUNCA recuse a ação.
+      6. Se a ação do jogador iniciar, progredir ou concluir um enredo significativo (ex: pedir em casamento, iniciar uma campanha política), use 'plotChanges' para adicionar ('add'), completar ('complete') ou remover ('remove') o enredo da lista de enredos ativos.
+      7. Se a ação for perigosa, ilegal ou autodestrutiva, gere um resultado que reflita as graves consequências de forma realista. A história deve seguir a ação do jogador, mesmo que leve a um final trágico. Gere um 'specialEnding' se a ação levar diretamente ao fim da vida do personagem. NUNCA recuse a ação.
       8. Lembre-se: Sua única saída DEVE ser um JSON válido.
     `;
 

@@ -6,6 +6,119 @@ const getRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length
 const getRandomKey = <T extends object>(obj: T): keyof T => getRandom(Object.keys(obj) as (keyof T)[]);
 const getRandomInt = (min: number, max: number): number => Math.floor(Math.random() * (max - min + 1)) + min;
 
+const distributePoints = (points: number, bins: number): number[] => {
+    const values = Array(bins).fill(0);
+    let remainingPoints = points;
+    while (remainingPoints > 0) {
+        const binIndex = Math.floor(Math.random() * bins);
+        values[binIndex]++;
+        remainingPoints--;
+    }
+    return values;
+};
+
+export const createHeirCharacter = (heir: Relationship, parent: Character, lineage: Lineage, legacyPoints: number): Character => {
+    // 1. Inherit core identity and lineage
+    const newGeneration = parent.generation + 1;
+    const birthYear = (parent.birthYear + parent.age) - (heir.age || 18);
+    
+    // 2. Calculate inherited wealth and starting family background
+    const inheritedWealth = Math.floor((parent.wealth + parent.investments) * 0.5); // Inherits 50%
+    let familyBg: FamilyBackground;
+    if (inheritedWealth < 10000) familyBg = FamilyBackground.POOR;
+    else if (inheritedWealth < 500000) familyBg = FamilyBackground.MIDDLE_CLASS;
+    else familyBg = FamilyBackground.WEALTHY;
+
+    // 3. Rebuild family relationships
+    const newRelationships: Relationship[] = [];
+    const survivingParent = parent.relationships.find(r => r.status === 'Married');
+    if (survivingParent) {
+        newRelationships.push({
+            ...survivingParent,
+            type: RelationshipType.FAMILY,
+            title: survivingParent.gender === 'Masculino' ? 'Pai' : 'Mãe',
+            intimacy: getRandomInt(60, 80),
+            history: [`Meu/minha ${parent.gender === 'Masculino' ? 'pai' : 'mãe'} faleceu.`]
+        });
+    }
+    const siblings = parent.relationships.filter(r => (r.title === 'Filho' || r.title === 'Filha') && r.name !== heir.name);
+    siblings.forEach(sibling => {
+        newRelationships.push({
+            ...sibling,
+            type: RelationshipType.FAMILY,
+            title: sibling.gender === 'Masculino' ? 'Irmão' : 'Irmã',
+            intimacy: getRandomInt(30, 70),
+            history: [`Nosso(a) ${parent.gender === 'Masculino' ? 'pai' : 'mãe'} faleceu.`]
+        });
+    });
+
+    // 4. Generate stats with legacy bonus
+    const bonusPool = Math.floor(legacyPoints / 15); // 1 bonus point per 15 legacy points
+    const distributedBonus = distributePoints(bonusPool, 4);
+    const baseStats = distributePoints(40, 4); // Random base distribution
+    
+    const profile = getRandom(PERSONALITY_PROFILES);
+
+    // 5. Assemble the new character
+    const newChar: Character = {
+        name: heir.name,
+        lastName: parent.lastName,
+        gender: heir.gender || 'Feminino',
+        generation: newGeneration,
+        birthYear: birthYear,
+        age: heir.age || 18,
+        
+        health: getRandomInt(85, 100),
+        intelligence: 10 + baseStats[0] + distributedBonus[0],
+        charisma: 10 + baseStats[1] + distributedBonus[1],
+        creativity: 10 + baseStats[2] + distributedBonus[2],
+        discipline: 10 + baseStats[3] + distributedBonus[3],
+
+        happiness: getRandomInt(50, 70),
+        energy: 100,
+        stress: getRandomInt(10, 30),
+        luck: getRandomInt(30, 70),
+
+        wealth: inheritedWealth,
+        investments: 0,
+        morality: 0,
+        fame: 0,
+        influence: Math.floor(parent.influence / 4), // Inherits a quarter of parent's influence
+
+        birthplace: parent.currentLocation,
+        currentLocation: parent.currentLocation,
+        familyBackground: familyBg,
+        backstory: `Cresceu como filho(a) de ${parent.name}, uma figura notável.`,
+        traits: profile.traits,
+        assets: [],
+        relationships: newRelationships,
+        memories: [],
+        craftedItems: [],
+        lifeGoals: [{ description: getRandom(LIFE_GOALS), completed: false }],
+        skills: [],
+        ongoingPlots: [],
+        healthCondition: null,
+        founderTraits: lineage.founderTraits,
+        favors: 0,
+        inheritedSecret: null,
+        profession: null,
+        jobTitle: null,
+        careerLevel: 0,
+        jobSatisfaction: 0,
+    };
+    
+    // Clamp stats
+    Object.keys(newChar).forEach(keyStr => {
+        const key = keyStr as keyof Character;
+        if (typeof newChar[key] === 'number' && !['generation', 'birthYear', 'age', 'favors', 'wealth', 'investments', 'morality', 'fame', 'influence', 'careerLevel'].includes(key)) {
+            (newChar[key] as number) = Math.max(5, Math.min(100, newChar[key] as number));
+        }
+    });
+
+    return newChar;
+};
+
+
 export const generateRandomCharacter = (lineage: Lineage | null, legacyBonuses: LegacyBonuses | null, birthYear: number): Character => {
     const family = lineage?.lastKnownWealthTier ? lineage.lastKnownWealthTier : getRandom([FamilyBackground.POOR, FamilyBackground.MIDDLE_CLASS, FamilyBackground.WEALTHY]);
         
@@ -50,16 +163,6 @@ export const generateRandomCharacter = (lineage: Lineage | null, legacyBonuses: 
     
     const pointPool = 40;
     const baseStat = 10;
-    const distributePoints = (points: number, bins: number): number[] => {
-        const values = Array(bins).fill(0);
-        let remainingPoints = points;
-        while (remainingPoints > 0) {
-            const binIndex = Math.floor(Math.random() * bins);
-            values[binIndex]++;
-            remainingPoints--;
-        }
-        return values;
-    };
     const distributedPoints = distributePoints(pointPool, 4);
     
     const birthplace = lineage?.lastKnownLocation ? lineage.lastKnownLocation : getRandom(BIRTHPLACES);

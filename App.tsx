@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Skill, FamilyBackground, Checkpoint, Ancestor, WorldEvent } from './types';
+import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Skill, FamilyBackground, Checkpoint, Ancestor, WorldEvent, Relationship } from './types';
 import { generateGameEvent, evaluatePlayerResponse, processMetaCommand, generateWorldEvent } from './services/gameService';
-import { applyChoiceToCharacter, checkLifeGoals, determineCauseOfDeath, applyCriticalStatPenalties } from './services/characterService';
+import { applyChoiceToCharacter, checkLifeGoals, determineCauseOfDeath, applyCriticalStatPenalties, checkForNewHealthConditions } from './services/characterService';
 import { WEEKLY_CHALLENGES, LAST_NAMES, PORTRAIT_COLORS, HEALTH_CONDITIONS, LINEAGE_TITLES, TOTAL_MONTHS_PER_YEAR, SKIN_TONES, HAIR_STYLES, ACCESSORIES } from './constants';
+import { createHeirCharacter } from './services/characterCreationService';
 import { CREST_COLORS, CREST_ICONS, CREST_SHAPES } from './lineageConstants';
 import CharacterSheet from './components/CharacterSheet';
 import EventCard from './components/EventCard';
@@ -504,6 +505,26 @@ const App: React.FC = () => {
     finalSummary.push({ text: endMessage, isEpic: true });
     setLifeSummary(finalSummary);
   };
+  
+   const handleContinueAsHeir = (heir: Relationship) => {
+        if (!character || !lineage) return;
+
+        const newCharacter = createHeirCharacter(heir, character, lineage, legacyPoints);
+        
+        const updatedLineage = { ...lineage, generation: newCharacter.generation };
+        setLineage(updatedLineage);
+
+        setCharacter(newCharacter);
+        setLifeSummary([{ text: `${newCharacter.name}, filho(a) de ${character.name}, agora continua o legado da família ${character.lastName}.`, isEpic: true }]);
+        setCurrentYear(newCharacter.birthYear + newCharacter.age);
+        setMonthsRemainingInYear(TOTAL_MONTHS_PER_YEAR);
+        setBehaviorTracker({});
+        setCurrentFocusContext(null);
+        setLegacyBonuses(null);
+        setCompletedChallenges([]);
+        
+        setGameState(GameState.ROUTINE_PLANNING);
+    };
 
   const applyEconomicPhase = (char: Character, currentClimate: EconomicClimate): Character => {
     const updatedChar = { ...char };
@@ -594,6 +615,14 @@ const App: React.FC = () => {
           updatedChar.health = Math.max(0, updatedChar.health - healthDecline);
         }
         
+        // Annual health check for new conditions
+        const healthCheck = checkForNewHealthConditions(updatedChar);
+        updatedChar = healthCheck.updatedChar;
+        if (healthCheck.newConditionMessage) {
+            const newEntry = { text: healthCheck.newConditionMessage, isEpic: true };
+            setLifeSummary(prev => [...prev, newEntry]);
+        }
+
         // Check for end of life
         if (updatedChar.health <= 0 || updatedChar.age >= 105) {
           const causeOfDeath = determineCauseOfDeath(updatedChar);
@@ -848,7 +877,8 @@ const App: React.FC = () => {
         }
         return currentEvent ? <EventCard event={currentEvent} onChoice={handleChoice} onOpenResponseSubmit={handleOpenResponseSubmit} /> : <LoadingSpinner onShowDebug={() => setShowDebug(true)} />;
       case GameState.GAME_OVER:
-        return character ? <GameOverScreen finalCharacter={character} lifeSummary={lifeSummary} legacyPoints={legacyPoints} completedChallenges={completedChallenges} isMultiplayerCycle={isMultiplayerCycle} onContinueLineage={continueLineage} onStartNewLineage={startNewLineage} lineage={lineage} /> : <LoadingSpinner onShowDebug={() => setShowDebug(true)} />;
+        const heirs = character ? character.relationships.filter(r => r.title === 'Filho' || r.title === 'Filha') : [];
+        return character ? <GameOverScreen finalCharacter={character} lifeSummary={lifeSummary} legacyPoints={legacyPoints} completedChallenges={completedChallenges} isMultiplayerCycle={isMultiplayerCycle} onContinueLineage={continueLineage} onStartNewLineage={startNewLineage} lineage={lineage} heirs={heirs} onContinueAsHeir={handleContinueAsHeir} /> : <LoadingSpinner onShowDebug={() => setShowDebug(true)} />;
       case GameState.LEGACY:
         return <LegacyScreen points={legacyPoints} onStart={startNextGeneration} finalCharacter={character} lineage={lineage} />;
       default:

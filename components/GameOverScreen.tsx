@@ -1,18 +1,7 @@
 import React, { useMemo } from 'react';
-import { Character, LifeSummaryEntry, MemoryItem, MemoryItemType, ParallelLifeData, Lineage } from '../types';
-import { StarIcon, DocumentTextIcon, PhotoIcon, EnvelopeIcon, TrophyIcon, SparklesIcon, TicketIcon, CheckCircleIcon } from './Icons';
+import { Character, LifeSummaryEntry, MemoryItem, MemoryItemType, ParallelLifeData, Lineage, Relationship, GameOverScreenProps } from '../types';
+import { StarIcon, DocumentTextIcon, PhotoIcon, EnvelopeIcon, TrophyIcon, SparklesIcon, TicketIcon, CheckCircleIcon, UsersIcon } from './Icons';
 import { WEEKLY_CHALLENGES, LINEAGE_TITLES } from '../constants';
-
-interface GameOverScreenProps {
-  finalCharacter: Character;
-  lifeSummary: LifeSummaryEntry[];
-  legacyPoints: number;
-  completedChallenges: { name: string; reward: number }[];
-  isMultiplayerCycle: boolean;
-  onContinueLineage: () => void;
-  onStartNewLineage: () => void;
-  lineage: Lineage | null;
-}
 
 const MemoryIcon: React.FC<{ type: MemoryItemType }> = ({ type }) => {
     const icons: Record<MemoryItemType, React.ReactNode> = {
@@ -26,7 +15,7 @@ const MemoryIcon: React.FC<{ type: MemoryItemType }> = ({ type }) => {
     return <div className="w-8 h-8 text-cyan-400">{icons[type] || null}</div>;
 };
 
-const GameOverScreen: React.FC<GameOverScreenProps> = ({ finalCharacter, lifeSummary, legacyPoints, completedChallenges, isMultiplayerCycle, onContinueLineage, onStartNewLineage, lineage }) => {
+const GameOverScreen: React.FC<GameOverScreenProps> = ({ finalCharacter, lifeSummary, legacyPoints, completedChallenges, isMultiplayerCycle, onContinueLineage, onStartNewLineage, lineage, heirs, onContinueAsHeir }) => {
   const completedGoals = finalCharacter.lifeGoals.filter(g => g.completed);
   const specialEnding = finalCharacter.specialEnding;
   
@@ -207,24 +196,62 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({ finalCharacter, lifeSum
             )}
         </div>
       </div>
-
-      <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <button
-            onClick={onContinueLineage}
-            className="px-8 py-4 bg-indigo-600 text-white font-bold text-lg rounded-lg
-                    hover:bg-indigo-500 transition-colors duration-200 transform hover:scale-105
-                    shadow-lg shadow-indigo-600/30"
-        >
-            Continuar Linhagem
-        </button>
-        <button
-            onClick={onStartNewLineage}
-            className="px-6 py-3 bg-slate-600 text-white font-semibold rounded-lg
-                    hover:bg-slate-500 transition-colors duration-200"
-        >
-            Iniciar Nova Família
-        </button>
-      </div>
+      
+      {heirs && heirs.length > 0 ? (
+          <div className="p-6 bg-slate-900/70 border-2 border-indigo-500 rounded-lg shadow-lg shadow-indigo-500/20">
+              <h3 className="text-2xl font-bold text-indigo-300 mb-4 flex items-center justify-center gap-2"><UsersIcon />Continuar como Herdeiro</h3>
+              <p className="text-slate-300 mb-6">O legado da família está em suas mãos. Escolha o próximo a carregar a tocha.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                  {heirs.map(heir => (
+                       <button
+                            key={heir.name}
+                            onClick={() => onContinueAsHeir(heir)}
+                            className="p-4 bg-indigo-700 text-white font-bold rounded-lg
+                                       hover:bg-indigo-600 transition-colors duration-200 transform hover:scale-105
+                                       shadow-md shadow-indigo-800/40 text-center"
+                        >
+                            <span className="text-xl">{heir.name}</span>
+                            <span className="block text-sm font-normal text-indigo-200">({heir.age} anos)</span>
+                        </button>
+                  ))}
+              </div>
+               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4 border-t border-slate-700">
+                    <p className="text-slate-400 text-sm">Ou, se preferir:</p>
+                    <button
+                        onClick={onContinueLineage}
+                        className="px-6 py-3 bg-slate-700 text-white font-semibold rounded-lg text-sm
+                                hover:bg-slate-600 transition-colors duration-200"
+                    >
+                        Criar Novo Herdeiro
+                    </button>
+                    <button
+                        onClick={onStartNewLineage}
+                        className="px-6 py-3 bg-slate-600 text-white font-semibold rounded-lg text-sm
+                                hover:bg-slate-500 transition-colors duration-200"
+                    >
+                        Iniciar Nova Família
+                    </button>
+               </div>
+          </div>
+      ) : (
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+                onClick={onContinueLineage}
+                className="px-8 py-4 bg-indigo-600 text-white font-bold text-lg rounded-lg
+                        hover:bg-indigo-500 transition-colors duration-200 transform hover:scale-105
+                        shadow-lg shadow-indigo-600/30"
+            >
+                Continuar Linhagem
+            </button>
+            <button
+                onClick={onStartNewLineage}
+                className="px-6 py-3 bg-slate-600 text-white font-semibold rounded-lg
+                        hover:bg-slate-500 transition-colors duration-200"
+            >
+                Iniciar Nova Família
+            </button>
+        </div>
+      )}
     </div>
   );
 };

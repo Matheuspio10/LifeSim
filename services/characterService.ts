@@ -14,8 +14,10 @@ import {
     Relationship,
     Trait,
     RelationshipType,
-    PlotChanges
+    PlotChanges,
+    Plot
 } from '../types';
+import { HEALTH_CONDITIONS } from '../constants';
 
 // Helper to ensure a stat stays within a given min/max range.
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
@@ -361,14 +363,24 @@ export const applyChoiceToCharacter = (character: Character, choice: Choice, isE
     
     // Apply plot changes
     if (choice.plotChanges) {
-        let plots = [...(updatedChar.ongoingPlots || [])];
+        let plots: Plot[] = [...(updatedChar.ongoingPlots || [])];
+        // Add new plots
         if (choice.plotChanges.add) {
-            plots.push(...choice.plotChanges.add);
-            // Remove duplicates
-            plots = [...new Set(plots)];
+            choice.plotChanges.add.forEach(desc => {
+                if (!plots.some(p => p.description === desc)) {
+                    plots.push({ description: desc, completed: false });
+                }
+            });
         }
+        // Mark plots as complete
+        if (choice.plotChanges.complete) {
+            plots = plots.map(p => 
+                choice.plotChanges!.complete!.includes(p.description) ? { ...p, completed: true } : p
+            );
+        }
+        // Remove plots (abandon)
         if (choice.plotChanges.remove) {
-            plots = plots.filter(p => !choice.plotChanges!.remove!.includes(p));
+            plots = plots.filter(p => !choice.plotChanges!.remove!.includes(p.description));
         }
         updatedChar.ongoingPlots = plots;
     }
@@ -491,6 +503,73 @@ export const applyCriticalStatPenalties = (character: Character): { updatedChar:
     return { updatedChar, penaltiesApplied };
 };
 
+const getAgeAndStressAppropriateConditions = (age: number, stress: number): string[] => {
+    const conditions: string[] = [];
+
+    // Stress-related
+    if (stress > 70) {
+        conditions.push('Enxaqueca Crônica', 'Insônia Crônica', 'Hipertensão', 'Esgotamento');
+    }
+
+    // Age-related
+    if (age > 45) {
+        conditions.push('Hipertensão', 'Diabetes Tipo 2');
+    }
+    if (age > 60) {
+        conditions.push('Artrite', 'Doença Cardíaca');
+    }
+    
+    // General acute illness
+    conditions.push('Gripe Forte', 'Pneumonia');
+
+    // Remove duplicates
+    const uniqueConditions = [...new Set(conditions)];
+
+    // Filter out conditions that aren't in the main list, just in case
+    return uniqueConditions.filter(c => HEALTH_CONDITIONS[c]);
+};
+
+export const checkForNewHealthConditions = (character: Character): { updatedChar: Character; newConditionMessage: string | null } => {
+    let updatedChar = { ...character };
+    let newConditionMessage: string | null = null;
+
+    // Don't assign a new condition if one already exists
+    if (updatedChar.healthCondition) {
+        return { updatedChar, newConditionMessage };
+    }
+
+    let conditionChance = 0;
+    // Base chance increases with age
+    if (updatedChar.age > 70) conditionChance += 0.25; // 25%
+    else if (updatedChar.age > 50) conditionChance += 0.15; // 15%
+    
+    // Low health increases chance significantly
+    if (updatedChar.health < 25) conditionChance += 0.30; // +30%
+    else if (updatedChar.health < 50) conditionChance += 0.15; // +15%
+
+    // High stress is a major factor
+    if (updatedChar.stress > 80) conditionChance += 0.25; // +25%
+
+    if (Math.random() < conditionChance) {
+        const possibleConditions = getAgeAndStressAppropriateConditions(updatedChar.age, updatedChar.stress);
+        
+        if (possibleConditions.length > 0) {
+            const newConditionName = possibleConditions[Math.floor(Math.random() * possibleConditions.length)];
+            
+            updatedChar.healthCondition = { name: newConditionName, ageOfOnset: updatedChar.age };
+            
+            // Apply an initial penalty for getting sick
+            updatedChar.health = clamp(updatedChar.health - 15, 0, 100);
+            updatedChar.happiness = clamp(updatedChar.happiness - 20, 0, 100);
+            updatedChar.stress = clamp(updatedChar.stress + 10, 0, 100);
+
+            newConditionMessage = `Em um ano difícil, ${updatedChar.name} foi diagnosticado(a) com ${newConditionName.toLowerCase()}. A notícia abalou sua saúde e felicidade.`;
+        }
+    }
+
+    return { updatedChar, newConditionMessage };
+};
+
 export const determineCauseOfDeath = (character: Character): string => {
     // Priority 1: Extreme Old Age
     if (character.age >= 105) {
@@ -511,10 +590,10 @@ export const determineCauseOfDeath = (character: Character): string => {
         if (condition.toLowerCase().includes('depressão') || condition.toLowerCase().includes('ansiedade')) {
             return 'Faleceu com o coração pesado, após uma vida de lutas internas';
         }
-        if (condition.toLowerCase().includes('pneumonia')) {
-            return `Complicações fatais de ${condition}`;
+        if (condition.toLowerCase().includes('pneumonia') || condition.toLowerCase().includes('cardíaca')) {
+            return `Complicações fatais de ${condition.toLowerCase()}`;
         }
-        return `Complicações de ${condition}`;
+        return `Complicações de ${condition.toLowerCase()}`;
     }
 
     // Priority 3: Traits and Vitals interaction

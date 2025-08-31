@@ -114,6 +114,11 @@ export interface LifeGoal {
     completed: boolean;
 }
 
+export interface Plot {
+    description: string;
+    completed: boolean;
+}
+
 export interface FounderTraits {
     hairColor: string;
     eyeColor: string;
@@ -167,7 +172,7 @@ export interface Character {
   craftedItems: CraftedItem[];
   lifeGoals: LifeGoal[];
   skills: Skill[];
-  ongoingPlots?: string[];
+  ongoingPlots?: Plot[];
   // Health & Ending
   healthCondition: HealthCondition | null;
   specialEnding?: string;
@@ -243,6 +248,7 @@ export interface GoalChanges {
 
 export interface PlotChanges {
     add?: string[];
+    complete?: string[];
     remove?: string[];
 }
 
@@ -369,4 +375,17 @@ export interface WorldEvent {
   title: string;
   description: string;
   effects: StatChanges;
+}
+
+export interface GameOverScreenProps {
+  finalCharacter: Character;
+  lifeSummary: LifeSummaryEntry[];
+  legacyPoints: number;
+  completedChallenges: { name: string; reward: number }[];
+  isMultiplayerCycle: boolean;
+  onContinueLineage: () => void;
+  onStartNewLineage: () => void;
+  lineage: Lineage | null;
+  heirs: Relationship[];
+  onContinueAsHeir: (heir: Relationship) => void;
 }

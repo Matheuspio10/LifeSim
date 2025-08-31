@@ -22,6 +22,12 @@ export const HEALTH_CONDITIONS: Record<string, ConditionDetails> = {
     'Asma': { type: 'Chronic', recoveryTurns: Infinity },
     'Câncer em Tratamento': { type: 'Chronic', recoveryTurns: Infinity },
     'Câncer em Remissão': { type: 'Chronic', recoveryTurns: Infinity },
+    'Hipertensão': { type: 'Chronic', recoveryTurns: Infinity },
+    'Diabetes Tipo 2': { type: 'Chronic', recoveryTurns: Infinity },
+    'Artrite': { type: 'Chronic', recoveryTurns: Infinity },
+    'Enxaqueca Crônica': { type: 'Chronic', recoveryTurns: Infinity },
+    'Insônia Crônica': { type: 'Chronic', recoveryTurns: Infinity },
+    'Doença Cardíaca': { type: 'Chronic', recoveryTurns: Infinity, sequelae: { trait: { name: 'Coração Fraco', description: 'Seu coração requer cuidados constantes.', type: 'negative' }, chance: 0.5 } },
 };
 
 
