@@ -100,130 +100,148 @@ export const FOCUS_OPTIONS: WeeklyFocus[] = [
         name: 'Foco na Carreira',
         description: 'Dedique-se ao trabalho ou aos estudos para progredir.',
         iconName: 'BriefcaseIcon',
-        statChanges: { discipline: 2, wealth: 50, health: -1, stress: 5, energy: -5, jobSatisfaction: 1 }
+        statChanges: { discipline: 2, health: -1, stress: 5, energy: -5, jobSatisfaction: 1 },
+        costFactors: { base: 100, careerLevelMultiplier: 50 }
     },
     {
         id: 'social',
         name: 'Vida Social',
         description: 'Passe tempo com amigos e familiares, construindo laços.',
         iconName: 'UsersIcon',
-        statChanges: { charisma: 2, wealth: -20, happiness: 5, stress: -3, energy: 2 }
+        statChanges: { charisma: 2, happiness: 5, stress: -3, energy: 2 },
+        costFactors: { base: 50 }
     },
     {
         id: 'health',
         name: 'Saúde e Bem-estar',
         description: 'Cuide do corpo e da mente com exercícios e descanso.',
         iconName: 'HeartPulseIcon',
-        statChanges: { health: 3, discipline: 1, wealth: -25, happiness: 3, stress: -4, energy: 5 }
+        statChanges: { health: 3, discipline: 1, happiness: 3, stress: -4, energy: 5 },
+        costFactors: { base: 75 }
     },
     {
         id: 'studies',
         name: 'Estudo e Desenvolvimento',
         description: 'Aprenda novas habilidades e expanda seu conhecimento.',
         iconName: 'AcademicCapIcon',
-        statChanges: { intelligence: 3, creativity: 1, health: -1, stress: 2, energy: -3 }
+        statChanges: { intelligence: 3, creativity: 1, health: -1, stress: 2, energy: -3 },
+        costFactors: { base: 60 }
     },
      {
         id: 'hobby_art',
         name: 'Praticar Arte',
         description: 'Passe tempo pintando, desenhando ou esculpindo.',
         iconName: 'PaintBrushIcon',
-        statChanges: { creativity: 2, wealth: -15, happiness: 4, stress: -2 },
-        skillName: 'Arte'
+        statChanges: { creativity: 2, happiness: 4, stress: -2 },
+        skillName: 'Arte',
+        costFactors: { base: 30 }
     },
     {
         id: 'hobby_music',
         name: 'Praticar Música',
         description: 'Toque um instrumento, componha ou ensaie com sua banda.',
         iconName: 'MusicalNoteIcon',
-        statChanges: { creativity: 1, charisma: 1, wealth: -15, happiness: 4, stress: -2 },
-        skillName: 'Música'
+        statChanges: { creativity: 1, charisma: 1, happiness: 4, stress: -2 },
+        skillName: 'Música',
+        costFactors: { base: 30 }
     },
     {
         id: 'leisure',
         name: 'Lazer e Descanso',
         description: 'Relaxe e recarregue as energias para evitar o esgotamento.',
         iconName: 'HomeIcon',
-        statChanges: { health: 2, wealth: -20, happiness: 5, stress: -5, energy: 10 }
+        statChanges: { health: 2, happiness: 5, stress: -5, energy: 10 },
+        costFactors: { base: 40 }
     },
     {
         id: 'investments',
         name: 'Investir no Mercado',
         description: 'Estude o mercado financeiro e aplique seu dinheiro para gerar retornos.',
         iconName: 'ChartBarIcon',
-        statChanges: { intelligence: 2, discipline: 1, wealth: -50, stress: 3 }
+        statChanges: { intelligence: 2, discipline: 1, stress: 3 },
+        costFactors: { base: 200, wealthMultiplier: 0.005 }
     },
     {
         id: 'networking',
         name: 'Expandir Contatos',
         description: 'Participe de eventos e conheça pessoas influentes para expandir sua rede.',
         iconName: 'SpeakerWaveIcon',
-        statChanges: { charisma: 2, influence: 1, wealth: -30, energy: -2 }
+        statChanges: { charisma: 2, influence: 1, energy: -2 },
+        costFactors: { base: 100, influenceMultiplier: 25 }
     },
     {
         id: 'side_hustle',
         name: 'Projeto Paralelo',
-        description: 'Comece um pequeno negócio ou projeto para gerar uma renda extra.',
+        description: 'Invista tempo e dinheiro em um pequeno negócio para gerar uma renda futura.',
         iconName: 'CurrencyDollarIcon',
-        statChanges: { creativity: 1, discipline: 2, wealth: 25, health: -2, stress: 4, energy: -6 }
+        statChanges: { creativity: 1, discipline: 2, health: -2, stress: 4, energy: -6 },
+        costFactors: { base: 150 }
     },
     {
         id: 'family_time',
         name: 'Tempo com a Família',
         description: 'Dedique tempo de qualidade aos seus parentes mais próximos, fortalecendo os laços.',
         iconName: 'HeartIcon',
-        statChanges: { charisma: 1, wealth: -10, happiness: 6, stress: -4 }
+        statChanges: { charisma: 1, happiness: 6, stress: -4 },
+        costFactors: { base: 20 }
     },
     {
         id: 'hobby_sports',
         name: 'Praticar Esportes',
         description: 'Treine seu corpo, participe de competições amadoras e melhore sua saúde.',
         iconName: 'TrophyIcon',
-        statChanges: { health: 3, discipline: 1, wealth: -20, energy: 3, stress: -2 },
-        skillName: 'Esportes'
+        statChanges: { health: 3, discipline: 1, energy: 3, stress: -2 },
+        skillName: 'Esportes',
+        costFactors: { base: 50 }
     },
     {
         id: 'hobby_cooking',
         name: 'Aprender Culinária',
         description: 'Explore novas receitas e técnicas na cozinha para impressionar amigos e família.',
         iconName: 'BeakerIcon',
-        statChanges: { creativity: 2, health: 1, wealth: -20, happiness: 3 },
-        skillName: 'Culinária'
+        statChanges: { creativity: 2, health: 1, happiness: 3 },
+        skillName: 'Culinária',
+        costFactors: { base: 40 }
     },
     {
         id: 'illegal_schemes',
         name: 'Esquemas Ilegais',
-        description: 'Envolva-se em atividades ilícitas para ganhar dinheiro rápido, mas com alto risco.',
+        description: 'Invista em atividades ilícitas para ganhar dinheiro rápido, mas com alto risco.',
         iconName: 'ShieldExclamationIcon',
-        statChanges: { wealth: 250, morality: -10, health: -2, discipline: -1, stress: 8 }
+        statChanges: { morality: -10, health: -2, discipline: -1, stress: 8 },
+        costFactors: { base: 500, wealthMultiplier: 0.001 }
     },
     {
         id: 'nightlife',
         name: 'Vida Noturna Intensa',
         description: 'Frequente festas e eventos noturnos, expandindo contatos de forma arriscada.',
         iconName: 'SparklesIcon',
-        statChanges: { charisma: 2, creativity: 1, health: -3, discipline: -2, energy: -5, happiness: 4 }
+        statChanges: { charisma: 2, creativity: 1, health: -3, discipline: -2, energy: -5, happiness: 4 },
+        costFactors: { base: 100 }
     },
     {
         id: 'gambling',
         name: 'Apostar e Jogar',
         description: 'Arrisque seu dinheiro em jogos de azar, com a chance de ganhar ou perder tudo.',
         iconName: 'CurrencyDollarIcon',
-        statChanges: { wealth: -40, discipline: -2, stress: 5 },
-        skillName: 'Jogos de Azar'
+        statChanges: { discipline: -2, stress: 5 },
+        skillName: 'Jogos de Azar',
+        costFactors: { base: 100 }
     },
     {
         id: 'politics',
         name: 'Política e Lobbies',
         description: 'Mergulhe no universo do poder, campanhas e acordos de bastidores.',
         iconName: 'SpeakerWaveIcon',
-        statChanges: { influence: 2, charisma: 1, morality: -2, wealth: -40, health: -1, stress: 6 }
+        statChanges: { influence: 2, charisma: 1, morality: -2, health: -1, stress: 6 },
+        costFactors: { base: 250, influenceMultiplier: 100 }
     },
     {
         id: 'dating',
         name: 'Aventuras Amorosas',
         description: 'Procure por romance, de paixões passageiras a conexões profundas.',
         iconName: 'HeartIcon',
-        statChanges: { charisma: 2, wealth: -30, discipline: -1, happiness: 5, stress: 2 }
+        statChanges: { charisma: 2, discipline: -1, happiness: 5, stress: 2 },
+        costFactors: { base: 80 }
     }
 ];

@@ -345,8 +345,14 @@ export interface WeeklyFocus {
     name: string;
     description: string;
     iconName: string;
-    statChanges: StatChanges;
+    statChanges: Omit<StatChanges, 'wealth'>;
     skillName?: string;
+    costFactors: {
+        base: number;
+        wealthMultiplier?: number;
+        careerLevelMultiplier?: number;
+        influenceMultiplier?: number;
+    };
 }
 
 export interface Checkpoint {

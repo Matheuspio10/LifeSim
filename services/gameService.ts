@@ -415,7 +415,7 @@ const getCharacterSummary = (character: Character, isTurboMode: boolean = false)
       Atributos: Saúde(${character.health}), Inteligência(${character.intelligence}), Carisma(${character.charisma}), Criatividade(${character.creativity}), Disciplina(${character.discipline})
       Vitals: Felicidade(${character.happiness}), Energia(${character.energy}), Estresse(${character.stress})
       Reputação: Moralidade(${character.morality}), Fama(${character.fame}), Influência(${character.influence})
-      Finanças: Riqueza($${character.wealth}), Investimentos($${character.investments})
+      Finanças: Riqueza($${character.wealth.toLocaleString()}), Investimentos($${character.investments.toLocaleString()})
       Carreira: ${character.profession ? `${character.jobTitle} em ${character.profession} (Nível ${character.careerLevel})` : 'Desempregado(a)'}
       Traços: ${character.traits.map(t => t.name).join(', ')}
       Relacionamentos Importantes: ${relationshipsSummary}
@@ -485,8 +485,9 @@ export const generateGameEvent = async (
          - É quase impossível para um personagem atingir o nível 100 em múltiplos atributos. Se um personagem já é uma lenda em uma área (ex: Inteligência 95+), evite dar grandes bônus em outros atributos principais. A excelência em uma área exige sacrifício em outras.
          - NÃO conceda aumentos casuais (+1, +2) para atributos que já são muito altos (85+). O ganho deve ser justificado pela história do evento.
       9. **PRIORIDADE MÁXIMA: ENREDOS ATIVOS.** Considere os 'Enredos Atuais' (${character.ongoingPlots ? character.ongoingPlots.map(p => p.description + (p.completed ? ' (Concluído)' : '')).join(', ') : 'Nenhum'}). Se houver enredos ativos (não concluídos), é **CRUCIAL** que o evento gerado avance ou conclua um desses enredos. Evite eventos genéricos ou repetitivos (como um debate aleatório) se um enredo principal (ex: uma campanha política) estiver em andamento. Se um evento concluir um enredo, use 'plotChanges.complete' para marcá-lo como concluído. Se um evento iniciar um novo enredo, use 'plotChanges.add'. **NUNCA adicione uma string vazia a 'plotChanges.add'.** Use 'plotChanges.remove' apenas se o personagem abandonar ativamente um enredo.
-      10. Use o 'behaviorTracker' para evitar repetição: ${JSON.stringify(behaviorTracker)}. Tente gerar um evento diferente dos anteriores.
-      11. Lembre-se: Sua única saída DEVE ser um JSON válido.
+      10. **COERÊNCIA FINANCEIRA:** Gere custos e recompensas financeiras (em \`statChanges.wealth\`) que sejam proporcionais à riqueza e ao status atuais do personagem. Um personagem com milhões não deve se preocupar com decisões de $20. As apostas financeiras devem ser sempre significativas.
+      11. Use o 'behaviorTracker' para evitar repetição: ${JSON.stringify(behaviorTracker)}. Tente gerar um evento diferente dos anteriores.
+      12. Lembre-se: Sua única saída DEVE ser um JSON válido.
     `;
 
     const config: any = {

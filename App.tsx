@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Skill, FamilyBackground, Checkpoint, Ancestor, WorldEvent, Relationship, AuditReport } from './types';
 import { generateGameEvent, evaluatePlayerResponse, processMetaCommand, generateWorldEvent, processAuditModificationRequest } from './services/gameService';
 import { applyChoiceToCharacter, checkLifeGoals, determineCauseOfDeath, applyCriticalStatPenalties, checkForNewHealthConditions } from './services/characterService';
+import { getDynamicFocusCost } from './services/economyService';
 import { runCharacterAudit } from './services/auditService';
 import { WEEKLY_CHALLENGES, LAST_NAMES, PORTRAIT_COLORS, HEALTH_CONDITIONS, LINEAGE_TITLES, TOTAL_MONTHS_PER_YEAR, SKIN_TONES, HAIR_STYLES, ACCESSORIES } from './constants';
 import { createHeirCharacter } from './services/characterCreationService';
@@ -734,6 +735,14 @@ const App: React.FC = () => {
       saveForRollback();
       let updatedChar = { ...character };
       
+      const totalCost = focuses.reduce((sum, focus) => {
+          return sum + getDynamicFocusCost(focus, updatedChar);
+      }, 0);
+
+      updatedChar.wealth -= totalCost;
+      setLifeSummary(prev => [...prev, { text: `Investiu um total de $${totalCost.toLocaleString()} em seus focos para o ano.`, isEpic: false }]);
+
+
       focuses.forEach(focus => {
           // Apply stat changes
           for(const key in focus.statChanges) {

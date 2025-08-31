@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { Character, WeeklyFocus } from '../types';
 import { FOCUS_OPTIONS, MAX_FOCUS_POINTS } from '../constants';
+import { getDynamicFocusCost } from '../services/economyService';
 import { 
     BriefcaseIcon, 
     UsersIcon, 
@@ -106,33 +107,38 @@ const RoutineScreen: React.FC<RoutineScreenProps> = ({ character, onConfirm, isL
         {FOCUS_OPTIONS.map(focus => {
           const isSelected = selectedFocuses.includes(focus.id);
           const isDisabled = pointsRemaining === 0 && !isSelected;
+          const cost = getDynamicFocusCost(focus, character);
           
           return (
             <button
               key={focus.id}
               onClick={() => handleSelectFocus(focus.id)}
               disabled={isDisabled}
-              className={`relative p-4 bg-slate-900/60 border border-slate-700 rounded-lg text-left transition-all duration-200 group
+              className={`relative p-4 bg-slate-900/60 border border-slate-700 rounded-lg text-left transition-all duration-200 group flex flex-col h-full
                          ${isSelected ? 'ring-2 ring-cyan-500' : ''}
                          ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-700/50 hover:border-slate-600 transform hover:-translate-y-1'}`}
             >
-              {isSelected && (
-                <div className="absolute top-2 right-2 w-6 h-6 text-cyan-400 bg-slate-800 rounded-full flex items-center justify-center">
-                    <CheckCircleIcon />
+              <div className="flex-grow">
+                {isSelected && (
+                  <div className="absolute top-2 right-2 w-6 h-6 text-cyan-400 bg-slate-800 rounded-full flex items-center justify-center">
+                      <CheckCircleIcon />
+                  </div>
+                )}
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="w-8 h-8 text-cyan-400 flex-shrink-0">{iconMap[focus.iconName]}</span>
+                  <h3 className="text-lg font-bold text-slate-100">{focus.name}</h3>
                 </div>
-              )}
-              <div className="flex items-center gap-3 mb-2">
-                <span className="w-8 h-8 text-cyan-400 flex-shrink-0">{iconMap[focus.iconName]}</span>
-                <h3 className="text-lg font-bold text-slate-100">{focus.name}</h3>
+                <p className="text-sm text-slate-400 mb-3">{focus.description}</p>
+                <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-semibold border-t border-slate-700 pt-2">
+                      <span className="text-green-400">{getStatChangeText(focus.statChanges.health, ' Saúde')}</span>
+                      <span className="text-blue-400">{getStatChangeText(focus.statChanges.intelligence, ' Intel.')}</span>
+                      <span className="text-yellow-400">{getStatChangeText(focus.statChanges.charisma, ' Caris.')}</span>
+                      <span className="text-purple-400">{getStatChangeText(focus.statChanges.creativity, ' Criat.')}</span>
+                      <span className="text-emerald-400">{getStatChangeText(focus.statChanges.discipline, ' Disc.')}</span>
+                </div>
               </div>
-              <p className="text-sm text-slate-400 mb-3 h-10">{focus.description}</p>
-              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-semibold border-t border-slate-700 pt-2">
-                    <span className="text-green-400">{getStatChangeText(focus.statChanges.health, ' Saúde')}</span>
-                    <span className="text-blue-400">{getStatChangeText(focus.statChanges.intelligence, ' Intel.')}</span>
-                    <span className="text-yellow-400">{getStatChangeText(focus.statChanges.charisma, ' Caris.')}</span>
-                    <span className="text-purple-400">{getStatChangeText(focus.statChanges.creativity, ' Criat.')}</span>
-                    <span className="text-emerald-400">{getStatChangeText(focus.statChanges.discipline, ' Disc.')}</span>
-                    <span className={`font-mono ${focus.statChanges.wealth && focus.statChanges.wealth > 0 ? 'text-amber-400' : 'text-rose-400'}`}>{getStatChangeText(focus.statChanges.wealth, '$')}</span>
+              <div className="border-t border-slate-600 mt-2 pt-2 text-right">
+                <span className="font-mono text-rose-400 font-bold text-sm">CUSTO: ${cost.toLocaleString()}</span>
               </div>
             </button>
           );
