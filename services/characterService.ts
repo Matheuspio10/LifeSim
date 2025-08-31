@@ -22,21 +22,47 @@ import { HEALTH_CONDITIONS } from '../constants';
 // Helper to ensure a stat stays within a given min/max range.
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
 
-const getScaledStatChange = (currentValue: number, change: number): number => {
+const getScaledStatChange = (
+    currentValue: number, 
+    change: number, 
+    isEpic: boolean,
+    otherHighStatsCount: number // How many OTHER core stats are >= 95
+): number => {
     if (change <= 0) {
-        return Math.floor(change); // Apply losses fully to maintain challenge
+        return Math.floor(change); // Losses are always full
     }
 
     let multiplier = 1.0;
-    if (currentValue >= 90) {
-        multiplier = 0.25;
-    } else if (currentValue >= 75) {
-        multiplier = 0.5;
-    } else if (currentValue >= 50) {
-        multiplier = 0.75;
+
+    // Base progression scaling
+    if (currentValue >= 98) multiplier = 0.1;
+    else if (currentValue >= 95) multiplier = 0.2;
+    else if (currentValue >= 90) multiplier = 0.3;
+    else if (currentValue >= 80) multiplier = 0.5;
+    else if (currentValue >= 60) multiplier = 0.75;
+
+    // If there are other very high stats, apply a penalty
+    if (otherHighStatsCount > 0) {
+        // Multiplicative penalty for each additional high stat
+        multiplier *= Math.pow(0.5, otherHighStatsCount); 
+    }
+
+    // Epic events can overcome some of the harshest scaling
+    if (isEpic && currentValue >= 95) {
+        multiplier = Math.max(multiplier, 0.25); // Epic events have at least a 25% multiplier
+    }
+    
+    // A hard cap that can't be passed by normal events
+    if (currentValue >= 99 && !isEpic) {
+        return 0; // Only epic events can push to 100
     }
 
     const scaledChange = change * multiplier;
+    // Always grant at least 1 point on a successful epic gain, if the change was positive.
+    if (isEpic && change > 0 && scaledChange < 1) {
+        return 1;
+    }
+    
     return Math.round(scaledChange);
 };
 
@@ -149,13 +175,23 @@ export const applyChoiceToCharacter = (character: Character, choice: Choice, isE
 
     // Apply stat changes
     if (choice.statChanges) {
+        const coreStats: (keyof StatChanges)[] = ['intelligence', 'charisma', 'creativity', 'discipline', 'health'];
+        
+        // Pre-calculate high stats count for the penalty
+        const highStatsCount = coreStats.reduce((count, stat) => {
+            const currentValue = updatedChar[stat as keyof Character] as number;
+            return currentValue >= 95 ? count + 1 : count;
+        }, 0);
+
         for (const key in choice.statChanges) {
             const stat = key as keyof StatChanges;
             const change = choice.statChanges[stat] || 0;
 
-            if (['health', 'intelligence', 'charisma', 'creativity', 'discipline'].includes(stat)) {
+            if (coreStats.includes(stat)) {
                 const currentValue = updatedChar[stat as keyof Character] as number;
-                (updatedChar[stat] as number) += getScaledStatChange(currentValue, change);
+                // Check how many OTHER stats are high
+                const otherHighStatsCount = currentValue >= 95 ? highStatsCount - 1 : highStatsCount;
+                (updatedChar[stat] as number) += getScaledStatChange(currentValue, change, isEpicEvent, otherHighStatsCount);
             } else if (['fame', 'influence'].includes(stat)) {
                 const currentValue = updatedChar[stat as keyof Character] as number;
                 (updatedChar[stat] as number) += getReputationScaledStatChange(currentValue, change);

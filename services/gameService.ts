@@ -478,8 +478,12 @@ export const generateGameEvent = async (
       4. O tipo de evento deve ser 'MULTIPLE_CHOICE' ou 'OPEN_RESPONSE'. Apenas em casos raros e criativos, use 'MINI_GAME'.
       5. Para 'MULTIPLE_CHOICE', forneça 2 a 4 opções de escolha (choices) com consequências claras e interessantes, impactando os atributos (statChanges) e outros aspectos da vida do personagem. Ao criar um cônjuge, adicione o título 'Esposa' ou 'Esposo'.
       6. Para 'OPEN_RESPONSE', não forneça escolhas e crie um 'placeholderText' convidativo.
-      7. Mantenha as mudanças de stats (statChanges) pequenas e realistas para eventos comuns. Eventos épicos ('isEpic: true') podem ter mudanças maiores.
-      8. O evento deve ser consistente com a idade, traços e situação de vida do personagem. Considere a idade dos membros da família (filhos, cônjuge) para criar eventos relevantes ao seu desenvolvimento (ex: primeiro dia de escola, rebeldia adolescente).
+      7. O evento deve ser consistente com a idade, traços e situação de vida do personagem. Considere a idade dos membros da família (filhos, cônjuge) para criar eventos relevantes ao seu desenvolvimento (ex: primeiro dia de escola, rebeldia adolescente).
+      8. **REGRAS DE PROGRESSÃO DE STATUS (MUITO IMPORTANTE):**
+         - A progressão de atributos (Inteligência, Carisma, etc.) é difícil. Ganhos acima do nível 80 exigem eventos significativos.
+         - Para aumentar um atributo que já está acima de 90, o evento DEVE ser narrativamente excepcional e de grande impacto. Marque esses eventos raros com \`isEpic: true\`.
+         - É quase impossível para um personagem atingir o nível 100 em múltiplos atributos. Se um personagem já é uma lenda em uma área (ex: Inteligência 95+), evite dar grandes bônus em outros atributos principais. A excelência em uma área exige sacrifício em outras.
+         - NÃO conceda aumentos casuais (+1, +2) para atributos que já são muito altos (85+). O ganho deve ser justificado pela história do evento.
       9. **PRIORIDADE MÁXIMA: ENREDOS ATIVOS.** Considere os 'Enredos Atuais' (${character.ongoingPlots ? character.ongoingPlots.map(p => p.description + (p.completed ? ' (Concluído)' : '')).join(', ') : 'Nenhum'}). Se houver enredos ativos (não concluídos), é **CRUCIAL** que o evento gerado avance ou conclua um desses enredos. Evite eventos genéricos ou repetitivos (como um debate aleatório) se um enredo principal (ex: uma campanha política) estiver em andamento. Se um evento concluir um enredo, use 'plotChanges.complete' para marcá-lo como concluído. Se um evento iniciar um novo enredo, use 'plotChanges.add'. **NUNCA adicione uma string vazia a 'plotChanges.add'.** Use 'plotChanges.remove' apenas se o personagem abandonar ativamente um enredo.
       10. Use o 'behaviorTracker' para evitar repetição: ${JSON.stringify(behaviorTracker)}. Tente gerar um evento diferente dos anteriores.
       11. Lembre-se: Sua única saída DEVE ser um JSON válido.
@@ -536,7 +540,7 @@ export const evaluatePlayerResponse = async (
       1. Analise a ação do jogador e determine um resultado plausível baseado nos atributos, traços e situação do personagem.
       2. Crie um 'choiceText' que resuma a ação do jogador (ex: "Tentei negociar com o guarda.").
       3. Crie um 'outcomeText' que descreva o resultado da ação de forma narrativa. ${creativityInstruction}
-      4. Determine as 'statChanges' e outras consequências (assetChanges, relationshipChanges, etc.) que resultam da ação. Mantenha as mudanças de stats pequenas e realistas.
+      4. Determine as 'statChanges' e outras consequências (assetChanges, relationshipChanges, etc.) que resultam da ação. Mantenha as mudanças de stats pequenas e realistas, especialmente para atributos altos (acima de 80).
       5. Seja criativo. Ações inteligentes ou bem pensadas devem ser recompensadas, enquanto ações tolas devem ter consequências.
       6. Se a ação do jogador iniciar, progredir ou concluir um enredo significativo (ex: pedir em casamento, iniciar uma campanha política), use 'plotChanges' para adicionar ('add'), completar ('complete') ou remover ('remove') o enredo da lista de enredos ativos. **Nunca adicione uma string vazia a 'plotChanges.add'.**
       7. Se a ação for perigosa, ilegal ou autodestrutiva, gere um resultado que reflita as graves consequências de forma realista. A história deve seguir a ação do jogador, mesmo que leve a um final trágico. Gere um 'specialEnding' se a ação levar diretamente ao fim da vida do personagem. NUNCA recuse a ação.

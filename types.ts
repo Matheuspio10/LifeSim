@@ -389,3 +389,58 @@ export interface GameOverScreenProps {
   heirs: Relationship[];
   onContinueAsHeir: (heir: Relationship) => void;
 }
+
+// --- Audit System Types ---
+export interface GoalFinding {
+  description: string;
+  status: 'completed_unmarked' | 'in_progress' | 'completed';
+  recommendation: string;
+}
+
+export interface RelationshipFinding {
+  name: string;
+  status: 'neglected' | 'opportunity' | 'stale_rivalry' | 'healthy';
+  recommendation: string;
+}
+
+export interface PlotFinding {
+  description: string;
+  status: 'in_progress' | 'completed' | 'bugged';
+  recommendation: string;
+}
+
+export interface CohesionFinding {
+  area: string;
+  status: 'inconsistent' | 'ok';
+  recommendation: string;
+}
+
+export interface AuditReport {
+  goals: GoalFinding[];
+  relationships: RelationshipFinding[];
+  plots: PlotFinding[];
+  cohesion: CohesionFinding[];
+  fixesAvailable: number;
+}
+
+export interface CharacterSheetProps {
+  character: Character;
+  lifeStage: LifeStage;
+  lineage: Lineage | null;
+  isTurboMode: boolean;
+  onToggleTurboMode: () => void;
+  onChangeApiKey: () => void;
+  onFullReset: () => void;
+  monthsRemainingInYear: number;
+  onOpenFamilyBook: () => void;
+  onRollback: () => void;
+  canRollback: boolean;
+  onRunAudit: () => void;
+}
+
+export interface AuditReportModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  report: AuditReport | null;
+  onApplyFixes: (report: AuditReport) => void;
+}

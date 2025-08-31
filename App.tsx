@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Skill, FamilyBackground, Checkpoint, Ancestor, WorldEvent, Relationship } from './types';
+import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Skill, FamilyBackground, Checkpoint, Ancestor, WorldEvent, Relationship, AuditReport } from './types';
 import { generateGameEvent, evaluatePlayerResponse, processMetaCommand, generateWorldEvent } from './services/gameService';
 import { applyChoiceToCharacter, checkLifeGoals, determineCauseOfDeath, applyCriticalStatPenalties, checkForNewHealthConditions } from './services/characterService';
+import { runCharacterAudit } from './services/auditService';
 import { WEEKLY_CHALLENGES, LAST_NAMES, PORTRAIT_COLORS, HEALTH_CONDITIONS, LINEAGE_TITLES, TOTAL_MONTHS_PER_YEAR, SKIN_TONES, HAIR_STYLES, ACCESSORIES } from './constants';
 import { createHeirCharacter } from './services/characterCreationService';
 import { CREST_COLORS, CREST_ICONS, CREST_SHAPES } from './lineageConstants';
@@ -21,6 +22,7 @@ import DowntimeActivities, { MicroActionResult } from './components/DowntimeActi
 import EmergencyRollbackModal from './components/EmergencyRollbackModal';
 import FamilyBookModal from './components/FamilyBookModal';
 import WorldEventToast from './components/WorldEventToast';
+import AuditReportModal from './components/AuditReportModal';
 
 const getRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const getRandomKey = <T extends object>(obj: T): keyof T => {
@@ -55,6 +57,8 @@ const App: React.FC = () => {
   const [isFamilyBookOpen, setIsFamilyBookOpen] = useState(false);
   const [ancestors, setAncestors] = useState<Ancestor[]>([]);
   const [worldEventNotification, setWorldEventNotification] = useState<WorldEvent | null>(null);
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
+  const [auditReport, setAuditReport] = useState<AuditReport | null>(null);
 
 
   // Legacy State
@@ -810,6 +814,44 @@ const App: React.FC = () => {
         processNextDecision(character);
     }
   };
+  
+  const handleRunAudit = () => {
+    if (!character) return;
+    const report = runCharacterAudit(character);
+    setAuditReport(report);
+    setIsAuditModalOpen(true);
+  };
+
+  const handleApplyAuditFixes = (report: AuditReport) => {
+    if (!character) return;
+    let updatedChar = { ...character };
+
+    // Apply goal fixes
+    const goalsToComplete = report.goals
+        .filter(g => g.status === 'completed_unmarked')
+        .map(g => g.description);
+        
+    if (goalsToComplete.length > 0) {
+        updatedChar.lifeGoals = updatedChar.lifeGoals.map(g =>
+            goalsToComplete.includes(g.description) ? { ...g, completed: true } : g
+        );
+    }
+    
+    // Apply plot fixes (remove bugged ones)
+    const plotsToRemove = report.plots
+        .filter(p => p.status === 'bugged')
+        .map(p => p.description);
+
+    if (plotsToRemove.length > 0) {
+        if (updatedChar.ongoingPlots) {
+            updatedChar.ongoingPlots = updatedChar.ongoingPlots.filter(p => p.description);
+        }
+    }
+
+    setCharacter(updatedChar);
+    setLifeSummary(prev => [...prev, { text: "Uma verificação de pendências foi realizada, organizando os objetivos e tramas da vida.", isEpic: false }]);
+    setIsAuditModalOpen(false);
+  };
 
     useEffect(() => {
         if (gameState === GameState.YEAR_END_PROCESSING && character && apiKey) {
@@ -896,7 +938,7 @@ const App: React.FC = () => {
 
   return (
     <main className="min-h-screen flex flex-col md:flex-row items-start justify-center gap-8 p-4 md:p-8 bg-slate-900 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]">
-        {character && <CharacterSheet character={character} lifeStage={getCurrentLifeStage(character.age)} lineage={lineage} isTurboMode={isTurboMode} onToggleTurboMode={handleToggleTurboMode} onChangeApiKey={handleChangeApiKey} onFullReset={handleFullReset} monthsRemainingInYear={monthsRemainingInYear} onOpenFamilyBook={() => setIsFamilyBookOpen(true)} onRollback={handleOpenRollbackModal} canRollback={history.length > 0} />}
+        {character && <CharacterSheet character={character} lifeStage={getCurrentLifeStage(character.age)} lineage={lineage} isTurboMode={isTurboMode} onToggleTurboMode={handleToggleTurboMode} onChangeApiKey={handleChangeApiKey} onFullReset={handleFullReset} monthsRemainingInYear={monthsRemainingInYear} onOpenFamilyBook={() => setIsFamilyBookOpen(true)} onRollback={handleOpenRollbackModal} canRollback={history.length > 0} onRunAudit={handleRunAudit} />}
         <div className="flex-grow flex items-center justify-center w-full">
             {renderMainContent()}
         </div>
@@ -922,6 +964,14 @@ const App: React.FC = () => {
                 onClose={() => setIsFamilyBookOpen(false)}
                 ancestors={ancestors}
                 lastName={lineage.lastName}
+            />
+        )}
+        {isAuditModalOpen && (
+            <AuditReportModal
+                isOpen={isAuditModalOpen}
+                onClose={() => setIsAuditModalOpen(false)}
+                report={auditReport}
+                onApplyFixes={handleApplyAuditFixes}
             />
         )}
         {showDebug && (

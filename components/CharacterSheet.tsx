@@ -1,24 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Character, LifeStage, Lineage, Mood } from '../types';
+import { Character, LifeStage, Lineage, Mood, CharacterSheetProps } from '../types';
 import StatDisplay from './StatDisplay';
 import { HeartIcon, BrainIcon, UserGroupIcon, CurrencyDollarIcon, LightBulbIcon, ShieldCheckIcon, PlusCircleIcon, MinusCircleIcon, GlobeAltIcon, HomeIcon, StarIcon, UsersIcon, BriefcaseIcon, ScaleIcon, BookOpenIcon, ExclamationTriangleIcon, ClipboardDocumentListIcon, SparklesIcon, CheckCircleIcon, ChartBarIcon, SpeakerWaveIcon, PixelArtPortraitIcon, FaceSmileIcon, FaceFrownIcon, FireIcon, HandThumbUpIcon, CloudIcon, PencilSquareIcon, MusicalNoteIcon, PaintBrushIcon, BeakerIcon, TrophyIcon, Cog6ToothIcon, PuzzlePieceIcon, MapPinIcon, ArrowUturnLeftIcon } from './Icons';
 import SpectrumDisplay from './SpectrumDisplay';
 import LineageCrestDisplay from './LineageCrestDisplay';
 import { TOTAL_MONTHS_PER_YEAR } from '../constants';
-
-interface CharacterSheetProps {
-  character: Character;
-  lifeStage: LifeStage;
-  lineage: Lineage | null;
-  isTurboMode: boolean;
-  onToggleTurboMode: () => void;
-  onChangeApiKey: () => void;
-  onFullReset: () => void;
-  monthsRemainingInYear: number;
-  onOpenFamilyBook: () => void;
-  onRollback: () => void;
-  canRollback: boolean;
-}
 
 const RelationshipBar: React.FC<{ intimacy: number }> = ({ intimacy }) => {
     const percentage = ((intimacy + 100) / 200) * 100;
@@ -96,7 +82,7 @@ const SkillBar: React.FC<{ level: number, color: string }> = ({ level, color }) 
 }
 
 
-const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, lineage, isTurboMode, onToggleTurboMode, onChangeApiKey, onFullReset, monthsRemainingInYear, onOpenFamilyBook, onRollback, canRollback }) => {
+const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, lineage, isTurboMode, onToggleTurboMode, onChangeApiKey, onFullReset, monthsRemainingInYear, onOpenFamilyBook, onRollback, canRollback, onRunAudit }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
   const displayName = lineage?.title ? `${lineage.title} dos ${character.lastName}` : `${character.name} ${character.lastName}`;
@@ -183,14 +169,23 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
         <p className="mt-2 text-sm bg-cyan-900/50 text-cyan-300 rounded-full px-3 py-1 inline-block">{lifeStage}</p>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-6 grid grid-cols-2 gap-2">
         <button
             onClick={onRollback}
             disabled={!canRollback}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-yellow-800 text-yellow-200 font-semibold rounded-lg border border-yellow-700 hover:bg-yellow-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-yellow-800 text-yellow-200 text-sm font-semibold rounded-lg border border-yellow-700 hover:bg-yellow-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Restaurar para um ponto anterior"
         >
             <span className="w-5 h-5"><ArrowUturnLeftIcon /></span>
-            <span>Restaurar Jogo</span>
+            <span>Restaurar</span>
+        </button>
+        <button
+            onClick={onRunAudit}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-sky-800 text-sky-200 text-sm font-semibold rounded-lg border border-sky-700 hover:bg-sky-700 transition-colors"
+            title="Verificar pendências de metas, tramas e relacionamentos"
+        >
+            <span className="w-5 h-5"><ClipboardDocumentListIcon /></span>
+            <span>Pendências</span>
         </button>
       </div>
 
