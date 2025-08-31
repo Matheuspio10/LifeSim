@@ -653,3 +653,44 @@ export const generateWorldEvent = async (
 
     return cleanAndParseJson<WorldEvent>(response.text);
 };
+
+export const processAuditModificationRequest = async (
+    character: Character,
+    request: string,
+    apiKey: string,
+): Promise<Choice> => {
+    const ai = new GoogleGenAI({ apiKey });
+    const model = 'gemini-2.5-flash';
+
+    const characterSummary = getCharacterSummary(character, false); // use full summary
+
+    const prompt = `
+      **Resumo do Personagem (Estado Atual):**
+      ${characterSummary}
+      
+      **Solicitação do Jogador (Correção Manual):**
+      "${request}"
+
+      **Instruções para o Mestre de Jogo (IA):**
+      1. Você é um "Assistente de Mestre de Jogo". Sua tarefa é interpretar a solicitação do jogador e traduzi-la em uma ÚNICA E PRECISA modificação no estado do jogo.
+      2. A solicitação é uma correção de algo que o jogador acredita estar errado na simulação (ex: "Eu já completei esta meta", "A intimidade com meu pai deveria ser maior", "Remova a trama 'investigar o barulho' pois não faz sentido").
+      3. Gere um objeto JSON no formato 'Choice' que aplique a correção solicitada.
+      4. Crie um 'choiceText' que resuma a solicitação do jogador (ex: "Solicitou a conclusão da meta 'Vencer o debate'").
+      5. Crie um 'outcomeText' que descreva a correção de forma narrativa (ex: "Os anais da história foram corrigidos para refletir sua vitória no debate contra Patrick O'Malley.").
+      6. Use os campos de mudança apropriados ('goalChanges', 'relationshipChanges', 'plotChanges', 'statChanges', etc.) para aplicar a correção. Seja o mais preciso possível. Se o jogador pedir para completar uma meta, use 'goalChanges.complete' com a descrição EXATA da meta.
+      7. NÃO gere novos eventos ou consequências inesperadas. Apenas realize a correção solicitada.
+      8. Lembre-se: Sua única saída DEVE ser um JSON válido que siga o schema 'choiceSchema'.
+    `;
+    
+    const response = await ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: choiceSchema,
+            systemInstruction
+        }
+    });
+
+    return cleanAndParseJson<Choice>(response.text);
+};

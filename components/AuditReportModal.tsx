@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AuditReport, AuditReportModalProps } from '../types';
 import { 
     ClipboardDocumentListIcon, 
@@ -44,8 +44,17 @@ const getStatusColor = (status: string): string => {
     }
 };
 
-const AuditReportModal: React.FC<AuditReportModalProps> = ({ isOpen, onClose, report, onApplyFixes }) => {
+const AuditReportModal: React.FC<AuditReportModalProps> = ({ isOpen, onClose, report, onApplyFixes, onRequestModification, isLoading }) => {
+  const [modificationText, setModificationText] = useState('');
+
   if (!isOpen || !report) return null;
+
+  const handleModificationSubmit = () => {
+      if (modificationText.trim()) {
+          onRequestModification(modificationText.trim());
+          setModificationText('');
+      }
+  };
 
   return (
     <div
@@ -155,25 +164,54 @@ const AuditReportModal: React.FC<AuditReportModalProps> = ({ isOpen, onClose, re
             </div>
         </div>
 
-        <div className="flex-shrink-0 pt-4 border-t border-slate-700 flex flex-col sm:flex-row items-center justify-end gap-3">
-             {report.fixesAvailable > 0 && 
-                <p className="text-sm text-yellow-400 flex-grow text-center sm:text-left">
-                    {report.fixesAvailable} correção(ões) automática(s) encontrada(s).
+        <div className="flex-shrink-0 pt-4 border-t border-slate-700 space-y-4">
+             {/* Assistant Section */}
+            <div>
+                <h3 className="text-lg font-bold text-amber-400 mb-2">Assistente do Mestre</h3>
+                <p className="text-sm text-slate-400 mb-3">
+                    Encontrou algo inconsistente? Peça uma correção manual para a IA. Ex: "A meta 'Vencer o debate' já foi concluída."
                 </p>
-            }
-            <button
-                onClick={onClose}
-                className="w-full sm:w-auto px-6 py-2 bg-slate-600 text-white font-semibold rounded-lg hover:bg-slate-500 transition-colors"
-            >
-                Fechar
-            </button>
-            <button
-                onClick={() => onApplyFixes(report)}
-                disabled={report.fixesAvailable === 0}
-                className="w-full sm:w-auto px-6 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-500 transition-colors disabled:bg-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed"
-            >
-                Aplicar Correções Automáticas
-            </button>
+                <div className="flex flex-col sm:flex-row gap-2">
+                    <textarea
+                        value={modificationText}
+                        onChange={(e) => setModificationText(e.target.value)}
+                        placeholder="Descreva a correção que você deseja..."
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors resize-none flex-grow"
+                        aria-label="Pedido de modificação"
+                        disabled={isLoading}
+                    />
+                    <button
+                        onClick={handleModificationSubmit}
+                        disabled={!modificationText.trim() || isLoading}
+                        className="px-6 py-2 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-500 transition-colors disabled:bg-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed flex-shrink-0"
+                    >
+                        {isLoading ? 'Processando...' : 'Solicitar Modificação'}
+                    </button>
+                </div>
+            </div>
+
+            {/* Buttons Section */}
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-slate-700">
+                {report.fixesAvailable > 0 && 
+                    <p className="text-sm text-yellow-400 flex-grow text-center sm:text-left">
+                        {report.fixesAvailable} correção(ões) automática(s) encontrada(s).
+                    </p>
+                }
+                <button
+                    onClick={onClose}
+                    disabled={isLoading}
+                    className="w-full sm:w-auto px-6 py-2 bg-slate-600 text-white font-semibold rounded-lg hover:bg-slate-500 transition-colors disabled:opacity-60"
+                >
+                    Fechar
+                </button>
+                <button
+                    onClick={() => onApplyFixes(report)}
+                    disabled={report.fixesAvailable === 0 || isLoading}
+                    className="w-full sm:w-auto px-6 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-500 transition-colors disabled:bg-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed"
+                >
+                    {isLoading ? 'Aguarde...' : 'Aplicar Correções Automáticas'}
+                </button>
+            </div>
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Skill, FamilyBackground, Checkpoint, Ancestor, WorldEvent, Relationship, AuditReport } from './types';
-import { generateGameEvent, evaluatePlayerResponse, processMetaCommand, generateWorldEvent } from './services/gameService';
+import { generateGameEvent, evaluatePlayerResponse, processMetaCommand, generateWorldEvent, processAuditModificationRequest } from './services/gameService';
 import { applyChoiceToCharacter, checkLifeGoals, determineCauseOfDeath, applyCriticalStatPenalties, checkForNewHealthConditions } from './services/characterService';
 import { runCharacterAudit } from './services/auditService';
 import { WEEKLY_CHALLENGES, LAST_NAMES, PORTRAIT_COLORS, HEALTH_CONDITIONS, LINEAGE_TITLES, TOTAL_MONTHS_PER_YEAR, SKIN_TONES, HAIR_STYLES, ACCESSORIES } from './constants';
@@ -59,6 +59,7 @@ const App: React.FC = () => {
   const [worldEventNotification, setWorldEventNotification] = useState<WorldEvent | null>(null);
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
   const [auditReport, setAuditReport] = useState<AuditReport | null>(null);
+  const [isAuditLoading, setIsAuditLoading] = useState<boolean>(false);
 
 
   // Legacy State
@@ -853,6 +854,35 @@ const App: React.FC = () => {
     setIsAuditModalOpen(false);
   };
 
+  const handleRequestAuditModification = async (request: string) => {
+    if (!character || !apiKey) return;
+    setIsAuditLoading(true);
+    try {
+        const modificationChoice = await processAuditModificationRequest(character, request, apiKey);
+        
+        // Apply changes
+        let updatedChar = applyChoiceToCharacter(character, modificationChoice);
+        updatedChar = checkLifeGoals(updatedChar);
+        setCharacter(updatedChar);
+
+        // Log the change
+        const logText = `O Mestre do Jogo interveio para ajustar a realidade: ${modificationChoice.outcomeText}`;
+        setLifeSummary(prev => [...prev, { text: logText, isEpic: false }]);
+
+        // Re-run audit to refresh the modal
+        const newReport = runCharacterAudit(updatedChar);
+        setAuditReport(newReport);
+
+    } catch (err) {
+        console.error("Falha ao processar a modificação da auditoria:", err);
+        const errorString = err instanceof Error ? `${err.name}: ${err.message}` : JSON.stringify(err);
+        setError(`Falha ao aplicar a correção. Detalhes: ${errorString}`);
+        setIsAuditModalOpen(false); // Close modal on error
+    } finally {
+        setIsAuditLoading(false);
+    }
+  };
+
     useEffect(() => {
         if (gameState === GameState.YEAR_END_PROCESSING && character && apiKey) {
             const processYearEnd = async () => {
@@ -972,6 +1002,8 @@ const App: React.FC = () => {
                 onClose={() => setIsAuditModalOpen(false)}
                 report={auditReport}
                 onApplyFixes={handleApplyAuditFixes}
+                onRequestModification={handleRequestAuditModification}
+                isLoading={isAuditLoading}
             />
         )}
         {showDebug && (

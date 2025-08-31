@@ -443,4 +443,6 @@ export interface AuditReportModalProps {
   onClose: () => void;
   report: AuditReport | null;
   onApplyFixes: (report: AuditReport) => void;
+  onRequestModification: (request: string) => void;
+  isLoading: boolean;
 }
