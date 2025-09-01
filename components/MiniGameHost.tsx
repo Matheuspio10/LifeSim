@@ -27,7 +27,7 @@ const useMiniGameResult = (onComplete: (choice: Choice) => void) => {
     };
 
     const ResultDisplay = resultText ? (
-        <div className="w-full max-w-lg bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border border-slate-700 text-center animate-fade-in">
+        <div className="w-full max-w-3xl bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border border-slate-700 text-center animate-fade-in">
              <div className="w-12 h-12 border-4 border-dashed rounded-full animate-spin border-cyan-400 mx-auto mb-4"></div>
              <h2 className="text-2xl font-bold text-cyan-400 mb-4">{title}</h2>
              <p className="text-slate-300 leading-relaxed">{resultText}</p>
@@ -97,7 +97,7 @@ const SpeakeasySmugglingGame: React.FC<MiniGameProps> = ({ event, character, onC
     }
 
     return (
-        <div className="w-full max-w-lg bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border border-slate-700">
+        <div className="w-full max-w-3xl bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border border-slate-700">
             <h2 className="text-2xl font-bold text-cyan-400 text-center mb-2 flex items-center justify-center gap-3">
                 <span className="w-8 h-8"><BriefcaseIcon /></span>
                 Contrabando na Lei Seca
@@ -143,7 +143,7 @@ const BlackMarketGame: React.FC<MiniGameProps> = ({ event, onComplete }) => {
     };
 
     return (
-        <div className="w-full max-w-lg bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border border-slate-700">
+        <div className="w-full max-w-3xl bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border border-slate-700">
             <h2 className="text-2xl font-bold text-cyan-400 text-center mb-2 flex items-center justify-center gap-3">
                 <span className="w-8 h-8"><ScaleIcon /></span>
                 Comércio no Mercado Negro
@@ -214,7 +214,7 @@ const TacticChoiceGame: React.FC<TacticChoiceGameProps> = ({ event, character, o
     }
 
     return (
-        <div className="w-full max-w-lg bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border border-slate-700">
+        <div className="w-full max-w-3xl bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border border-slate-700">
             <h2 className="text-2xl font-bold text-cyan-400 text-center mb-2 flex items-center justify-center gap-3">
                 <span className="w-8 h-8">{icon}</span>
                 {title}
@@ -249,7 +249,7 @@ interface MoralChoiceGameProps extends MiniGameProps {
 
 const MoralChoiceGame: React.FC<MoralChoiceGameProps> = ({ event, onComplete, title, icon, choices }) => {
     return (
-         <div className="w-full max-w-lg bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border border-slate-700">
+         <div className="w-full max-w-3xl bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border border-slate-700">
             <h2 className="text-2xl font-bold text-cyan-400 text-center mb-2 flex items-center justify-center gap-3">
                 <span className="w-8 h-8">{icon}</span>
                 {title}
@@ -329,7 +329,7 @@ const PublicDebateGame: React.FC<MiniGameProps> = ({ event, character, onComplet
     }
 
     return (
-        <div className="w-full max-w-lg bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border border-slate-700">
+        <div className="w-full max-w-3xl bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border border-slate-700">
             <h2 className="text-2xl font-bold text-cyan-400 text-center mb-2 flex items-center justify-center gap-3">
                 <span className="w-8 h-8"><SpeakerWaveIcon /></span>
                 Debate Público
@@ -435,7 +435,7 @@ const PistolDuelGame: React.FC<MiniGameProps> = ({ event, character, onComplete 
     }
 
     return (
-        <div className="w-full max-w-lg bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border-2 border-red-800/80 shadow-lg shadow-red-900/30">
+        <div className="w-full max-w-3xl bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border-2 border-red-800/80 shadow-lg shadow-red-900/30">
             <h2 className="text-2xl font-bold text-red-500 text-center mb-2 flex items-center justify-center gap-3">
                 <span className="w-8 h-8"><ShieldExclamationIcon /></span>
                 Duelo de Pistolas!
@@ -528,7 +528,7 @@ const MiniGameHost: React.FC<MiniGameProps> = ({ event, character, onComplete })
   };
 
   return (
-    <div className="w-full max-w-lg animate-fade-in">
+    <div className="w-full max-w-3xl animate-fade-in">
         {renderMiniGame()}
     </div>
   );

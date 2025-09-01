@@ -33,7 +33,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, onChoice, onOpenResponseSu
   };
 
   return (
-    <div className={`w-full max-w-lg bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 animate-fade-in transition-all duration-300 ${getCardStyle()}`}>
+    <div className={`w-full max-w-3xl bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 animate-fade-in transition-all duration-300 ${getCardStyle()}`}>
       <p className="text-lg text-slate-300 leading-relaxed mb-8">
         {event.eventText}
       </p>

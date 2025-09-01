@@ -122,7 +122,7 @@ const DowntimeActivities: React.FC<DowntimeActivitiesProps> = ({ character, onMi
 
 
     return (
-        <div className="w-full max-w-lg bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 animate-fade-in border border-slate-700 text-center">
+        <div className="w-full max-w-3xl bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 animate-fade-in border border-slate-700 text-center">
             <div className="w-12 h-12 border-4 border-dashed rounded-full animate-spin border-cyan-400 mx-auto"></div>
             <h2 className="text-xl font-bold text-white mt-4">Enquanto o tempo passa...</h2>
             <p className="text-slate-400 mb-6">A vida continua. O que você faz enquanto espera?</p>

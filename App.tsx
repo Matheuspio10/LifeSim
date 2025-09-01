@@ -1053,7 +1053,7 @@ const App: React.FC = () => {
             onRunAudit={handleRunAudit}
           />
         )}
-        <div className="flex-grow flex items-center justify-center min-h-[80vh] w-full max-w-lg">
+        <div className="flex-grow flex items-center justify-center min-h-[80vh] w-full max-w-3xl">
             {renderMainContent()}
         </div>
         

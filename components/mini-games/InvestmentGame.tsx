@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { GameEvent, Choice, Character } from '../../types';
 import { ChartPieIcon, CurrencyDollarIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, ExclamationTriangleIcon } from '../Icons';
@@ -105,7 +106,7 @@ const InvestmentGame: React.FC<InvestmentGameProps> = ({ event, character, onCom
   // Check for blocking conditions: no money or no options
   if (character.wealth <= 0 || !options || options.length === 0) {
       return (
-          <div className="w-full max-w-lg bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border border-slate-700 text-center">
+          <div className="w-full max-w-3xl bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border border-slate-700 text-center">
               <div className="w-12 h-12 text-yellow-400 mx-auto mb-4">
                   <ExclamationTriangleIcon />
               </div>
@@ -128,7 +129,7 @@ const InvestmentGame: React.FC<InvestmentGameProps> = ({ event, character, onCom
 
 
   return (
-    <div className="w-full max-w-lg bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border border-slate-700">
+    <div className="w-full max-w-3xl bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border border-slate-700">
         <h2 className="text-2xl font-bold text-cyan-400 text-center mb-2 flex items-center justify-center gap-3">
             <span className="w-8 h-8"><ChartPieIcon /></span>
             Oportunidade de Investimento

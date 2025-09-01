@@ -81,7 +81,7 @@ const RoutineScreen: React.FC<RoutineScreenProps> = ({ character, onConfirm, isL
 
   if (isLoading) {
     return (
-        <div className="w-full max-w-2xl text-center p-8 bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl shadow-2xl animate-fade-in flex flex-col items-center justify-center min-h-[500px]">
+        <div className="w-full max-w-3xl text-center p-8 bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl shadow-2xl animate-fade-in flex flex-col items-center justify-center min-h-[500px]">
              <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-cyan-400"></div>
              <h2 className="text-2xl font-bold text-white mt-6">Preparando sua vida...</h2>
              <p className="text-slate-300 mt-2">Suas escolhas estão moldando o futuro.</p>
@@ -90,7 +90,7 @@ const RoutineScreen: React.FC<RoutineScreenProps> = ({ character, onConfirm, isL
   }
 
   return (
-    <div className="w-full max-w-2xl text-center p-8 bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl shadow-2xl animate-fade-in">
+    <div className="w-full max-w-3xl text-center p-8 bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl shadow-2xl animate-fade-in">
       <h2 className="text-3xl font-bold text-white mb-2">Planeje seu Ano</h2>
       <p className="text-slate-300 mb-6">A vida é feita de escolhas. Em que você vai focar suas energias agora?</p>
 
