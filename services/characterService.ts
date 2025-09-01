@@ -15,9 +15,10 @@ import {
     Trait,
     RelationshipType,
     PlotChanges,
-    Plot
+    Plot,
+    HiddenGoal
 } from '../types';
-import { HEALTH_CONDITIONS } from '../constants';
+import { HEALTH_CONDITIONS, HIDDEN_GOALS } from '../constants';
 
 // Helper to ensure a stat stays within a given min/max range.
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
@@ -159,6 +160,24 @@ export const checkLifeGoals = (character: Character): Character => {
     });
 
     return { ...character, lifeGoals: updatedGoals };
+};
+
+export const checkHiddenGoals = (character: Character, previouslyCompletedIds: string[]): HiddenGoal[] => {
+    const newlyCompletedGoals: HiddenGoal[] = [];
+
+    HIDDEN_GOALS.forEach(goal => {
+        if (!previouslyCompletedIds.includes(goal.id)) {
+            try {
+                if (goal.condition(character)) {
+                    newlyCompletedGoals.push(goal);
+                }
+            } catch (e) {
+                console.error(`Error checking hidden goal "${goal.name}":`, e);
+            }
+        }
+    });
+
+    return newlyCompletedGoals;
 };
 
 

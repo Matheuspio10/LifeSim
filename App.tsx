@@ -1,8 +1,8 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Skill, FamilyBackground, Checkpoint, Ancestor, WorldEvent, Relationship, AuditReport, StatChanges, SkillChanges } from './types';
+import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Skill, FamilyBackground, Checkpoint, Ancestor, WorldEvent, Relationship, AuditReport, StatChanges, SkillChanges, HiddenGoal } from './types';
 import { generateGameEvent, evaluatePlayerResponse, processMetaCommand, generateWorldEvent, processAuditModificationRequest, generateCatastrophicEvent } from './services/gameService';
-import { applyChoiceToCharacter, checkLifeGoals, determineCauseOfDeath, applyCriticalStatPenalties, checkForNewHealthConditions } from './services/characterService';
+import { applyChoiceToCharacter, checkLifeGoals, determineCauseOfDeath, applyCriticalStatPenalties, checkForNewHealthConditions, checkHiddenGoals } from './services/characterService';
 import { getDynamicFocusCost } from './services/economyService';
 import { runCharacterAudit } from './services/auditService';
 import { WEEKLY_CHALLENGES, LAST_NAMES, PORTRAIT_COLORS, HEALTH_CONDITIONS, TOTAL_MONTHS_PER_YEAR, SKIN_TONES, HAIR_STYLES, ACCESSORIES } from './constants';
@@ -25,6 +25,7 @@ import EmergencyRollbackModal from './components/EmergencyRollbackModal';
 import FamilyBookModal from './components/FamilyBookModal';
 import WorldEventToast from './components/WorldEventToast';
 import AuditReportModal from './components/AuditReportModal';
+import HiddenGoalToast from './components/HiddenGoalToast';
 
 const getRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const getRandomKey = <T extends object>(obj: T): keyof T => {
@@ -62,6 +63,7 @@ const App: React.FC = () => {
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
   const [auditReport, setAuditReport] = useState<AuditReport | null>(null);
   const [isAuditLoading, setIsAuditLoading] = useState<boolean>(false);
+  const [hiddenGoalToast, setHiddenGoalToast] = useState<HiddenGoal | null>(null);
 
 
   // Legacy State
@@ -69,6 +71,7 @@ const App: React.FC = () => {
   const [legacyPoints, setLegacyPoints] = useState<number>(0);
   const [legacyBonuses, setLegacyBonuses] = useState<LegacyBonuses | null>(null);
   const [completedChallenges, setCompletedChallenges] = useState<{ name: string; reward: number }[]>([]);
+  const [completedHiddenGoals, setCompletedHiddenGoals] = useState<HiddenGoal[]>([]);
   
   // --- Game Balancing Helpers ---
   const getScaledStatChange = (currentValue: number, change: number): number => {
@@ -95,6 +98,21 @@ const App: React.FC = () => {
         setApiKey(savedKey);
     }
   }, []);
+
+  useEffect(() => {
+    if (character && gameState !== GameState.NOT_STARTED && gameState !== GameState.LEGACY) {
+        const previouslyCompletedIds = completedHiddenGoals.map(g => g.id);
+        const newGoals = checkHiddenGoals(character, previouslyCompletedIds);
+
+        if (newGoals.length > 0) {
+            setCompletedHiddenGoals(prev => [...prev, ...newGoals]);
+            const totalReward = newGoals.reduce((sum, goal) => sum + goal.reward, 0);
+            setLegacyPoints(prev => prev + totalReward);
+            setHiddenGoalToast(newGoals[0]); // Show toast for the first new goal achieved
+        }
+    }
+  }, [character, gameState]); // Reruns whenever character state changes
+
 
   const recordAncestor = useCallback((char: Character, currentLineage: Lineage | null, summary: LifeSummaryEntry[]) => {
       if (!currentLineage) return;
@@ -127,7 +145,7 @@ const App: React.FC = () => {
         gameState, character, currentEvent, lifeSummary, currentYear,
         economicClimate, isMultiplayerCycle, monthsRemainingInYear,
         currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode,
-        ancestors,
+        ancestors, completedHiddenGoals,
     };
 
     let name = `Ponto de Restauração`;
@@ -150,7 +168,7 @@ const App: React.FC = () => {
     };
 
     setHistory(prev => [newCheckpoint, ...prev].slice(0, 10));
-  }, [gameState, character, currentEvent, lifeSummary, currentYear, economicClimate, isMultiplayerCycle, monthsRemainingInYear, currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode, ancestors]);
+  }, [gameState, character, currentEvent, lifeSummary, currentYear, economicClimate, isMultiplayerCycle, monthsRemainingInYear, currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode, ancestors, completedHiddenGoals]);
 
   // --- Save/Load Logic ---
   const loadGame = useCallback(() => {
@@ -173,6 +191,7 @@ const App: React.FC = () => {
             setIsTurboMode(parsedData.isTurboMode ?? true);
             setHistory(parsedData.history ?? []);
             setAncestors(parsedData.ancestors ?? []);
+            setCompletedHiddenGoals(parsedData.completedHiddenGoals ?? []);
         } catch (e) {
             console.error("Falha ao carregar o jogo salvo", e);
             localStorage.removeItem(SAVE_GAME_KEY);
@@ -196,10 +215,11 @@ const App: React.FC = () => {
     const gameToSave = {
         gameState, character, currentEvent, lifeSummary, currentYear,
         economicClimate, isMultiplayerCycle, monthsRemainingInYear,
-        currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode, history, ancestors
+        currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode, history, ancestors,
+        completedHiddenGoals
     };
     localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameToSave));
-  }, [gameState, character, currentEvent, lifeSummary, currentYear, economicClimate, isMultiplayerCycle, monthsRemainingInYear, currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode, history, ancestors]);
+  }, [gameState, character, currentEvent, lifeSummary, currentYear, economicClimate, isMultiplayerCycle, monthsRemainingInYear, currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode, history, ancestors, completedHiddenGoals]);
 
   const resetGameAndClearSave = () => {
     localStorage.removeItem(SAVE_GAME_KEY);
@@ -221,6 +241,7 @@ const App: React.FC = () => {
     setLegacyPoints(0);
     setLegacyBonuses(null);
     setCompletedChallenges([]);
+    setCompletedHiddenGoals([]);
     setIsTurboMode(true);
     setHistory([]);
     setAncestors([]);
@@ -271,6 +292,7 @@ const App: React.FC = () => {
         setLegacyPoints(stateSnapshot.legacyPoints);
         setIsTurboMode(stateSnapshot.isTurboMode);
         setAncestors(stateSnapshot.ancestors);
+        setCompletedHiddenGoals(stateSnapshot.completedHiddenGoals);
 
         const checkpointIndex = history.findIndex(h => h.id === checkpoint.id);
         if (checkpointIndex > -1) {
@@ -430,6 +452,7 @@ const App: React.FC = () => {
     setLegacyPoints(0);
     setCurrentEvent(null);
     setCompletedChallenges([]);
+    setCompletedHiddenGoals([]);
     setIsMultiplayerCycle(false);
     setGameState(GameState.NOT_STARTED);
     setAncestors([]);
@@ -443,6 +466,7 @@ const App: React.FC = () => {
     setLegacyBonuses(bonuses);
     setCurrentEvent(null);
     setCompletedChallenges([]);
+    setCompletedHiddenGoals([]);
     setGameState(GameState.NOT_STARTED);
   }
   
@@ -780,7 +804,7 @@ const App: React.FC = () => {
             {gameState === GameState.IN_PROGRESS && currentEvent && currentEvent.type !== 'MINI_GAME' && <EventCard event={currentEvent} onChoice={handleChoice} onOpenResponseSubmit={handleOpenResponseSubmit} />}
             {gameState === GameState.IN_PROGRESS && currentEvent && currentEvent.type === 'MINI_GAME' && character && <MiniGameHost event={currentEvent} character={character} onComplete={handleChoice} />}
             {gameState === GameState.ROUTINE_PLANNING && character && <RoutineScreen character={character} onConfirm={handleRoutineConfirm} isLoading={isLoading} />}
-            {gameState === GameState.GAME_OVER && character && <GameOverScreen finalCharacter={character} lifeSummary={lifeSummary} legacyPoints={legacyPoints} completedChallenges={completedChallenges} isMultiplayerCycle={isMultiplayerCycle} onContinueLineage={continueLineage} onStartNewLineage={startNewLineage} lineage={lineage} heirs={character.relationships.filter(r => (r.title === 'Filho' || r.title === 'Filha') && (r.age || 0) >= 18)} onContinueAsHeir={handleContinueAsHeir} />}
+            {gameState === GameState.GAME_OVER && character && <GameOverScreen finalCharacter={character} lifeSummary={lifeSummary} legacyPoints={legacyPoints} completedChallenges={completedChallenges} completedHiddenGoals={completedHiddenGoals} isMultiplayerCycle={isMultiplayerCycle} onContinueLineage={continueLineage} onStartNewLineage={startNewLineage} lineage={lineage} heirs={character.relationships.filter(r => (r.title === 'Filho' || r.title === 'Filha') && (r.age || 0) >= 18)} onContinueAsHeir={handleContinueAsHeir} />}
             {gameState === GameState.LEGACY && <LegacyScreen points={legacyPoints} onStart={startNextGeneration} finalCharacter={character} lineage={lineage} />}
           </>
         )}
@@ -800,6 +824,9 @@ const App: React.FC = () => {
       {/* World Event Toast */}
       {worldEventNotification && <WorldEventToast event={worldEventNotification} onClose={() => setWorldEventNotification(null)} />}
     
+      {/* Hidden Goal Toast */}
+      {hiddenGoalToast && <HiddenGoalToast goal={hiddenGoalToast} onClose={() => setHiddenGoalToast(null)} />}
+
       {/* Debug Overlay */}
       {showDebug && lastError && (
         <div className="fixed inset-0 bg-black/80 z-50 p-8 overflow-auto">

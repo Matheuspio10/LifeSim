@@ -392,7 +392,15 @@ const worldEventSchema = {
     required: ['title', 'description', 'effects']
 };
 
-const systemInstruction = `Você é um mestre de jogo (Game Master) para um simulador de vida. Sua única função é gerar respostas em formato JSON que sigam o schema fornecido. É CRÍTICO que sua resposta seja SEMPRE um JSON válido. NÃO inclua texto explicativo, recusas ou qualquer coisa fora da estrutura JSON. Se a solicitação do usuário levar a um resultado sombrio, violento ou trágico (como ferimentos graves, crime, ou morte, incluindo autodestruição), modele essas consequências de forma realista dentro da narrativa do jogo em vez de evitá-las. A história deve refletir as escolhas do jogador, mesmo que sejam perigosas ou eticamente questionáveis. Gere um 'specialEnding' se a ação levar diretamente ao fim da vida do personagem. Evite conteúdo gráfico explícito.`;
+const systemInstruction = `Você é um mestre de jogo (Game Master) e um contador de histórias sofisticado para um simulador de vida. Sua única função é gerar respostas em formato JSON que sigam o schema fornecido. É CRÍTICO que sua resposta seja SEMPRE um JSON válido.
+
+**Princípios Narrativos:**
+1.  **Coerência é Rei:** A história deve ser sempre plausível dentro do contexto do personagem (idade, traços, riqueza, era histórica). Evite anacronismos. Um camponês do século 18 não deve encontrar um smartphone.
+2.  **Consequências Reais:** As escolhas do jogador devem ter impacto. Se a solicitação do usuário levar a um resultado sombrio, violento ou trágico (como ferimentos graves, crime, ou morte), modele essas consequências de forma realista dentro da narrativa do jogo. Gere um 'specialEnding' se a ação levar diretamente ao fim da vida do personagem. Evite conteúdo gráfico explícito, mas não fuja de temas maduros.
+3.  **Variação de Tom:** A vida não é um único gênero. Alterne o tom dos eventos entre cômico, trágico, banal e épico para criar uma experiência dinâmica e imprevisível.
+4.  **Foco em Arcos Longos:** Priorize a continuidade. Se houver 'ongoingPlots', o evento gerado deve, preferencialmente, avançar essa narrativa.
+
+NÃO inclua texto explicativo, recusas ou qualquer coisa fora da estrutura JSON. Apenas o JSON.`;
 
 // Helper to create the character summary string for the prompt
 const getCharacterSummary = (character: Character, isTurboMode: boolean = false) => {
@@ -444,13 +452,6 @@ export const generateGameEvent = async (
     const zeitgeist = getZeitgeist(year);
 
     const isBossBattle = Math.random() < 0.10; // 10% chance of a boss battle event
-    const eventTypeInstructions = isBossBattle
-        ? `Gere um evento de "batalha de chefe" de alto risco, apropriado para a fase da vida. Descrição do desafio: ${getBossBattlePrompt(lifeStage)}`
-        : `Gere um evento de vida interessante. Pode ser uma oportunidade, um desafio ou uma interação social. Eventos que podem levar à morte (devido a doença, acidente ou violência) são permitidos e devem ser gerados se forem narrativamente apropriados para a idade, saúde, traços e situação de vida do personagem.`;
-
-    const creativityInstruction = isTurboMode 
-        ? "Mantenha o texto do evento e os resultados concisos e diretos." 
-        : "Seja mais descritivo e criativo. Adicione detalhes narrativos inesperados ao texto do evento e aos resultados das escolhas para aprofundar a imersão.";
     
     const promptContext = isTurboMode
         ? `
@@ -471,23 +472,33 @@ export const generateGameEvent = async (
       **Resumo do Personagem:**
       ${characterSummary}
 
-      **Instruções para Geração de Evento:**
-      1. ${eventTypeInstructions}
-      2. ${creativityInstruction}
-      3. O texto do evento deve ser narrativo e imersivo.
-      4. O tipo de evento deve ser 'MULTIPLE_CHOICE' ou 'OPEN_RESPONSE'. Apenas em casos raros e criativos, use 'MINI_GAME'.
-      5. Para 'MULTIPLE_CHOICE', forneça 2 a 4 opções de escolha (choices) com consequências claras e interessantes. Ao criar QUALQUER NOVO PERSONAGEM (em 'relationshipChanges.add' ou 'childBorn'), ele DEVE receber um nome próprio (ex: "João", "Maria") no campo 'name'. O parentesco (ex: "Filho", "Esposa", "Amigo") deve ser colocado no campo 'title' ou 'type'. NUNCA use um parentesco como "Pai" ou "Amigo" no campo 'name'.
-      6. Para 'OPEN_RESPONSE', não forneça escolhas e crie um 'placeholderText' convidativo.
-      7. O evento deve ser consistente com a idade, traços e situação de vida do personagem. Considere a idade dos membros da família (filhos, cônjuge) para criar eventos relevantes ao seu desenvolvimento (ex: primeiro dia de escola, rebeldia adolescente).
-      8. **REGRAS DE PROGRESSÃO DE STATUS (MUITO IMPORTANTE):**
-         - A progressão de atributos (Inteligência, Carisma, etc.) é difícil. Ganhos acima do nível 80 exigem eventos significativos.
-         - Para aumentar um atributo que já está acima de 90, o evento DEVE ser narrativamente excepcional e de grande impacto. Marque esses eventos raros com \`isEpic: true\`.
-         - É quase impossível para um personagem atingir o nível 100 em múltiplos atributos. Se um personagem já é uma lenda em uma área (ex: Inteligência 95+), evite dar grandes bônus em outros atributos principais. A excelência em uma área exige sacrifício em outras.
-         - NÃO conceda aumentos casuais (+1, +2) para atributos que já são muito altos (85+). O ganho deve ser justificado pela história do evento.
-      9. **PRIORIDADE MÁXIMA: ENREDOS ATIVOS.** Considere os 'Enredos Atuais' (${character.ongoingPlots ? character.ongoingPlots.map(p => p.description + (p.completed ? ' (Concluído)' : '')).join(', ') : 'Nenhum'}). Se houver enredos ativos (não concluídos), é **CRUCIAL** que o evento gerado avance ou conclua um desses enredos. Evite eventos genéricos ou repetitivos (como um debate aleatório) se um enredo principal (ex: uma campanha política) estiver em andamento. Se um evento concluir um enredo, use 'plotChanges.complete' para marcá-lo como concluído. Se um evento iniciar um novo enredo, use 'plotChanges.add'. **NUNCA adicione uma string vazia a 'plotChanges.add'.** Use 'plotChanges.remove' apenas se o personagem abandonar ativamente um enredo.
-      10. **COERÊNCIA FINANCEIRA:** Gere custos e recompensas financeiras (em \`statChanges.wealth\`) que sejam proporcionais à riqueza e ao status atuais do personagem. Um personagem com milhões não deve se preocupar com decisões de $20. As apostas financeiras devem ser sempre significativas.
-      11. Use o 'behaviorTracker' para evitar repetição: ${JSON.stringify(behaviorTracker)}. Tente gerar um evento diferente dos anteriores.
-      12. Lembre-se: Sua única saída DEVE ser um JSON válido.
+      **REGRAS DE OURO PARA GERAÇÃO DE EVENTOS:**
+
+      **1. COERÊNCIA NARRATIVA (OBRIGATÓRIO):**
+         - **Era Histórica:** O evento DEVE ser apropriado para o ano de ${year} e o contexto: ${zeitgeist}. Sem anacronismos.
+         - **Perfil do Personagem:** O evento deve fazer sentido para um(a) personagem de ${character.age} anos com os traços, riqueza e reputação descritos. Um bilionário não se preocupa com uma conta de $50. Um personagem com 'Índole Criminosa' tem mais chances de encontrar problemas com a lei.
+
+      **2. TIPO E TOM DO EVENTO:**
+         - **Variedade:** Gere uma mistura de eventos:
+           - **Eventos Simples:** Pequenos dilemas do dia a dia.
+           - **Eventos de Bifurcação (Ocasional):** Crie eventos de alto impacto que possam mudar drasticamente o rumo da vida (ex: uma proposta de emprego em outro país, um convite para entrar no crime, uma crise existencial que leva a uma mudança de carreira radical).
+         - **Tom Narrativo:** Varie o tom. Nem tudo é um drama. Insira momentos de humor, banalidade, romance ou tragédia, conforme apropriado.
+         - ${isBossBattle ? `Gere um evento de "batalha de chefe" de alto risco, apropriado para a fase da vida. Descrição do desafio: ${getBossBattlePrompt(lifeStage)}` : `Gere um evento de vida interessante. Pode ser uma oportunidade, um desafio ou uma interação social. Eventos que podem levar à morte (devido a doença, acidente ou violência) são permitidos e devem ser gerados se forem narrativamente apropriados.`}
+
+      **3. ARCOS DE HISTÓRIA (PRIORIDADE MÁXIMA):**
+         - **Enredos Ativos:** ${character.ongoingPlots && character.ongoingPlots.filter(p => !p.completed).length > 0 ? `O personagem tem os seguintes enredos ativos: ${character.ongoingPlots.filter(p => !p.completed).map(p => `"${p.description}"`).join(', ')}. **É CRUCIAL que o evento gerado avance ou conclua um desses enredos.**` : "Não há enredos de longo prazo ativos. Você pode criar um evento que inicie um novo arco narrativo interessante usando 'plotChanges.add'."}
+         - **Continuidade:** Se um evento concluir um enredo, use 'plotChanges.complete'. Se iniciar um novo, use 'plotChanges.add'. **NUNCA adicione uma string vazia a 'plotChanges.add'.**
+
+      **4. REGRAS DE ESCOLHA E CONSEQUÊNCIA:**
+         - **Sem Escolhas Vazias:** Cada escolha deve ter consequências claras, interessantes e distintas.
+         - **Novos Personagens:** Ao criar QUALQUER NOVO PERSONAGEM (em 'relationshipChanges.add' ou 'childBorn'), ele DEVE receber um nome próprio (ex: "João") no campo 'name'. O parentesco (ex: "Filho", "Amigo") deve ser colocado no campo 'title' ou 'type'.
+         - **Progressão de Stats:** A progressão de atributos (Inteligência, etc.) acima de 85 é DIFÍCIL e exige eventos significativos. Um ganho acima de 95 DEVE ser de um evento 'isEpic: true'.
+         - **Coerência Financeira:** Custos e recompensas financeiras devem ser proporcionais à riqueza do personagem.
+
+      **5. EVITAR REPETIÇÃO:**
+         - Use o 'behaviorTracker' para evitar eventos repetidos: ${JSON.stringify(behaviorTracker)}.
+
+      Sua única saída DEVE ser um JSON válido que siga o schema.
     `;
 
     const config: any = {

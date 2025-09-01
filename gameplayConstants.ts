@@ -1,4 +1,4 @@
-import { LifeStage, WeeklyChallenge, Character, RelationshipType, WeeklyFocus } from './types';
+import { LifeStage, WeeklyChallenge, Character, RelationshipType, WeeklyFocus, FamilyBackground, HiddenGoal } from './types';
 
 export const MAX_FOCUS_POINTS = 3;
 export const TOTAL_MONTHS_PER_YEAR = 12;
@@ -39,6 +39,50 @@ export const LIFE_GOALS: string[] = [
     'Viver uma vida de hedonismo puro, buscando prazer acima de tudo.',
     'Construir um império financeiro, não importa o custo ético.',
     'Alcançar a fama a qualquer preço, mesmo que seja pela infâmia.',
+];
+
+export const HIDDEN_GOALS: HiddenGoal[] = [
+    {
+        id: 'self_made',
+        name: 'Do Nada ao Tudo',
+        description: 'Começou pobre e se tornou um milionário por mérito próprio.',
+        condition: (char: Character) => char.familyBackground === FamilyBackground.POOR && (char.wealth + char.investments) >= 1000000,
+        reward: 200
+    },
+    {
+        id: 'late_parent',
+        name: 'Paternidade Tardia',
+        description: 'Teve um filho após os 50 anos de idade.',
+        condition: (char: Character) => {
+            return char.age > 50 && char.relationships.some(r => 
+                (r.title === 'Filho' || r.title === 'Filha') && 
+                r.age !== undefined && 
+                r.age < (char.age - 50)
+            );
+        },
+        reward: 50
+    },
+    {
+        id: 'polymath',
+        name: 'O Polímata',
+        description: 'Atingiu o nível de mestre (90+) em Inteligência, Criatividade e Disciplina.',
+        condition: (char: Character) => char.intelligence >= 90 && char.creativity >= 90 && char.discipline >= 90,
+        reward: 150
+    },
+    {
+        id: 'perfect_stat',
+        name: 'A Perfeição',
+        description: 'Alcançou o ápice do potencial humano, atingindo 100 em um atributo.',
+        condition: (char: Character) => char.intelligence === 100 || char.charisma === 100 || char.creativity === 100 || char.discipline === 100,
+        reward: 100
+    },
+    {
+        id: 'debt_free_elder',
+        name: 'Velhice Dourada',
+        description: 'Chegou aos 80 anos sem nenhuma dívida.',
+        condition: (char: Character) => char.age >= 80 && char.wealth >= 0,
+        reward: 75
+    },
 ];
 
 export const LIFE_STAGES: Record<LifeStage, { minAge: number; maxAge: number }> = {

@@ -408,11 +408,25 @@ export interface WorldEvent {
   effects: StatChanges;
 }
 
+export interface HiddenGoal {
+  id: string;
+  name: string;
+  description: string;
+  condition: (char: Character) => boolean;
+  reward: number;
+}
+
+export interface HiddenGoalToastProps {
+  goal: HiddenGoal;
+  onClose: () => void;
+}
+
 export interface GameOverScreenProps {
   finalCharacter: Character;
   lifeSummary: LifeSummaryEntry[];
   legacyPoints: number;
   completedChallenges: { name: string; reward: number }[];
+  completedHiddenGoals: HiddenGoal[];
   isMultiplayerCycle: boolean;
   onContinueLineage: () => void;
   onStartNewLineage: () => void;

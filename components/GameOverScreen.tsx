@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { Character, LifeSummaryEntry, MemoryItem, MemoryItemType, ParallelLifeData, Lineage, Relationship, GameOverScreenProps } from '../types';
-import { StarIcon, DocumentTextIcon, PhotoIcon, EnvelopeIcon, TrophyIcon, SparklesIcon, TicketIcon, CheckCircleIcon, UsersIcon } from './Icons';
+import { Character, LifeSummaryEntry, MemoryItem, MemoryItemType, ParallelLifeData, Lineage, Relationship, GameOverScreenProps, HiddenGoal } from '../types';
+import { StarIcon, DocumentTextIcon, PhotoIcon, EnvelopeIcon, TrophyIcon, SparklesIcon, TicketIcon, CheckCircleIcon, UsersIcon, ShieldExclamationIcon } from './Icons';
 import { WEEKLY_CHALLENGES } from '../constants';
 import { LINEAGE_TITLES } from '../lineageConstants';
 
@@ -16,7 +16,7 @@ const MemoryIcon: React.FC<{ type: MemoryItemType }> = ({ type }) => {
     return <div className="w-8 h-8 text-cyan-400">{icons[type] || null}</div>;
 };
 
-const GameOverScreen: React.FC<GameOverScreenProps> = ({ finalCharacter, lifeSummary, legacyPoints, completedChallenges, isMultiplayerCycle, onContinueLineage, onStartNewLineage, lineage, heirs, onContinueAsHeir }) => {
+const GameOverScreen: React.FC<GameOverScreenProps> = ({ finalCharacter, lifeSummary, legacyPoints, completedChallenges, completedHiddenGoals, isMultiplayerCycle, onContinueLineage, onStartNewLineage, lineage, heirs, onContinueAsHeir }) => {
   const completedGoals = finalCharacter.lifeGoals.filter(g => g.completed);
   const specialEnding = finalCharacter.specialEnding;
   
@@ -139,6 +139,24 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({ finalCharacter, lifeSum
                      </ul>
                 ) : (
                     <p className="text-slate-500 italic text-center pt-4">Você não completou nenhum objetivo de vida marcante.</p>
+                )}
+            </div>
+             <div>
+                <h3 className="text-xl font-bold text-purple-400 mb-4 sticky top-0 bg-slate-900/80 backdrop-blur-sm py-2">Conquistas Secretas</h3>
+                {completedHiddenGoals.length > 0 ? (
+                    <ul className="space-y-2">
+                        {completedHiddenGoals.map((goal) => (
+                            <li key={goal.id} className="flex items-center gap-3 bg-slate-800/70 p-3 rounded-lg border border-slate-700">
+                                <span className="w-6 h-6 text-purple-400 flex-shrink-0"><ShieldExclamationIcon /></span>
+                                <div>
+                                    <p className="font-semibold text-slate-200">{goal.name}</p>
+                                    <p className="text-sm font-bold text-amber-500">+ {goal.reward} Pontos de Legado</p>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="text-slate-500 italic text-center pt-4">Nenhuma conquista secreta foi desbloqueada nesta vida.</p>
                 )}
             </div>
             {isMultiplayerCycle ? (
