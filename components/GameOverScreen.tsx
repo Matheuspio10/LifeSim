@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { Character, LifeSummaryEntry, MemoryItem, MemoryItemType, ParallelLifeData, Lineage, Relationship, GameOverScreenProps } from '../types';
 import { StarIcon, DocumentTextIcon, PhotoIcon, EnvelopeIcon, TrophyIcon, SparklesIcon, TicketIcon, CheckCircleIcon, UsersIcon } from './Icons';
-import { WEEKLY_CHALLENGES, LINEAGE_TITLES } from '../constants';
+import { WEEKLY_CHALLENGES } from '../constants';
+import { LINEAGE_TITLES } from '../lineageConstants';
 
 const MemoryIcon: React.FC<{ type: MemoryItemType }> = ({ type }) => {
     const icons: Record<MemoryItemType, React.ReactNode> = {

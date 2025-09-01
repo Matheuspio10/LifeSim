@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { LineageCrest } from '../types';
-import { ICON_MAP } from '../constants';
+import { ICON_MAP } from '../lineageConstants';
 
 interface LineageCrestDisplayProps {
   crest: LineageCrest;

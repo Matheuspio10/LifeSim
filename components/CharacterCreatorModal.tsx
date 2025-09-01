@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Character, FamilyBackground, RelationshipType, LegacyBonuses, Trait, Lineage, Mood, Relationship, Skill, FounderTraits, LineageCrest } from '../types';
-import { BIRTHPLACES, POSITIVE_TRAITS, NEGATIVE_TRAITS, LIFE_GOALS, LAST_NAMES, FIRST_NAMES, LINEAGE_TITLES, HAIR_COLORS, EYE_COLORS, CREST_ICONS, CREST_COLORS, CREST_SHAPES, ICON_MAP } from '../constants';
+import { BIRTHPLACES, POSITIVE_TRAITS, NEGATIVE_TRAITS, LIFE_GOALS, LAST_NAMES, FIRST_NAMES, HAIR_COLORS, EYE_COLORS } from '../constants';
+import { LINEAGE_TITLES, CREST_ICONS, CREST_COLORS, CREST_SHAPES, ICON_MAP } from '../lineageConstants';
 import { 
     GENDERS, SKIN_TONES, HAIR_STYLES, ACCESSORIES, PERSONALITY_PROFILES, BACKSTORIES, 
     ATTRIBUTE_POOL, ATTRIBUTE_BASE, ATTRIBUTE_MIN, ATTRIBUTE_MAX, FAMILY_BACKGROUNDS, HEADWEAR 

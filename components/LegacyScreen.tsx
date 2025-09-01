@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { LegacyBonuses, Trait, Character, Lineage, RelationshipType, Relationship, Skill } from '../types';
-import { LINEAGE_TITLES, POSITIVE_TRAITS, NEGATIVE_TRAITS } from '../constants';
+import { POSITIVE_TRAITS, NEGATIVE_TRAITS } from '../constants';
+import { LINEAGE_TITLES } from '../lineageConstants';
 import { 
     CrownIcon, 
     CurrencyDollarIcon, 

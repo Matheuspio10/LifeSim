@@ -460,7 +460,7 @@ export interface CharacterSheetProps {
   lineage: Lineage | null;
   isTurboMode: boolean;
   onToggleTurboMode: () => void;
-  // Fix: Removed onChangeApiKey as it's no longer needed.
+  onChangeApiKey: () => void;
   onFullReset: () => void;
   monthsRemainingInYear: number;
   onOpenFamilyBook: () => void;

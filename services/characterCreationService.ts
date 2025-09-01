@@ -1,7 +1,9 @@
 
 
+
 import { Character, FamilyBackground, RelationshipType, LegacyBonuses, Trait, Lineage, Mood, FounderTraits, Relationship } from '../types';
-import { BIRTHPLACES, LIFE_GOALS, LAST_NAMES, FIRST_NAMES, LINEAGE_TITLES, HAIR_COLORS, EYE_COLORS } from '../constants';
+import { BIRTHPLACES, LIFE_GOALS, LAST_NAMES, FIRST_NAMES, HAIR_COLORS, EYE_COLORS } from '../constants';
+import { LINEAGE_TITLES } from '../lineageConstants';
 import { GENDERS, SKIN_TONES, HAIR_STYLES, ACCESSORIES, PERSONALITY_PROFILES, BACKSTORIES, HEADWEAR } from '../characterCreatorConstants';
 
 const getRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];

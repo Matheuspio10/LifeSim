@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { Character, LifeStage, GameEvent, RelationshipType, MemoryItemType, Trait, EconomicClimate, Choice, MiniGameType, Mood, StatChanges, WorldEvent } from '../types';
 
 // Helper function to robustly parse JSON from the model's text response
@@ -434,11 +434,10 @@ export const generateGameEvent = async (
     lineageTitle: string | null,
     focusContext: string | null,
     behaviorTracker: Record<string, number>,
-    isTurboMode: boolean
-    // Fix: Removed apiKey parameter.
+    isTurboMode: boolean,
+    apiKey: string
 ): Promise<GameEvent> => {
-    // Fix: Initialize with API key from environment variables.
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
     const model = 'gemini-2.5-flash';
 
     const characterSummary = getCharacterSummary(character, isTurboMode);
@@ -501,11 +500,19 @@ export const generateGameEvent = async (
         config.thinkingConfig = { thinkingBudget: 0 };
     }
 
-    const response = await ai.models.generateContent({
-        model,
-        contents: prompt,
-        config
-    });
+    const timeout = 20000; // 20 seconds
+    const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`A solicitação para a IA demorou mais de ${timeout/1000} segundos para responder.`)), timeout)
+    );
+
+    const response = await Promise.race([
+        ai.models.generateContent({
+            model,
+            contents: prompt,
+            config
+        }),
+        timeoutPromise
+    ]);
 
     return cleanAndParseJson<GameEvent>(response.text);
 };
@@ -517,9 +524,9 @@ export const evaluatePlayerResponse = async (
     playerResponse: string,
     focusContext: string | null,
     isTurboMode: boolean,
+    apiKey: string
 ): Promise<Choice> => {
-    // Fix: Initialize with API key from environment variables.
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
     const model = 'gemini-2.5-flash';
 
     const characterSummary = getCharacterSummary(character, isTurboMode);
@@ -560,11 +567,19 @@ export const evaluatePlayerResponse = async (
         config.thinkingConfig = { thinkingBudget: 0 };
     }
 
-    const response = await ai.models.generateContent({
-        model,
-        contents: prompt,
-        config
-    });
+    const timeout = 20000; // 20 seconds
+    const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`A solicitação para a IA demorou mais de ${timeout/1000} segundos para responder.`)), timeout)
+    );
+
+    const response = await Promise.race([
+        ai.models.generateContent({
+            model,
+            contents: prompt,
+            config
+        }),
+        timeoutPromise
+    ]);
 
     return cleanAndParseJson<Choice>(response.text);
 };
@@ -574,9 +589,9 @@ export const processMetaCommand = async (
     character: Character,
     command: string,
     isTurboMode: boolean,
+    apiKey: string
 ): Promise<Choice> => {
-    // Fix: Initialize with API key from environment variables.
-     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+     const ai = new GoogleGenAI({ apiKey });
      const model = 'gemini-2.5-flash';
     
     const characterSummary = getCharacterSummary(character, isTurboMode);
@@ -613,21 +628,29 @@ export const processMetaCommand = async (
         config.thinkingConfig = { thinkingBudget: 0 };
     }
 
-    const response = await ai.models.generateContent({
-        model,
-        contents: prompt,
-        config
-    });
+    const timeout = 20000; // 20 seconds
+    const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`A solicitação para a IA demorou mais de ${timeout/1000} segundos para responder.`)), timeout)
+    );
+
+    const response = await Promise.race([
+        ai.models.generateContent({
+            model,
+            contents: prompt,
+            config
+        }),
+        timeoutPromise
+    ]);
 
     return cleanAndParseJson<Choice>(response.text);
 };
 
 export const generateWorldEvent = async (
     year: number,
-    economicClimate: EconomicClimate
+    economicClimate: EconomicClimate,
+    apiKey: string
 ): Promise<WorldEvent> => {
-    // Fix: Initialize with API key from environment variables.
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
     const model = 'gemini-2.5-flash';
     const zeitgeist = getZeitgeist(year);
 
@@ -645,15 +668,23 @@ export const generateWorldEvent = async (
       5. Lembre-se: Sua única saída DEVE ser um JSON válido.
     `;
 
-    const response = await ai.models.generateContent({
-        model,
-        contents: prompt,
-        config: {
-            responseMimeType: "application/json",
-            responseSchema: worldEventSchema,
-            systemInstruction
-        }
-    });
+    const timeout = 20000; // 20 seconds
+    const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`A solicitação para a IA demorou mais de ${timeout/1000} segundos para responder.`)), timeout)
+    );
+    
+    const response = await Promise.race([
+        ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: worldEventSchema,
+                systemInstruction
+            }
+        }),
+        timeoutPromise
+    ]);
 
     return cleanAndParseJson<WorldEvent>(response.text);
 };
@@ -661,9 +692,9 @@ export const generateWorldEvent = async (
 export const processAuditModificationRequest = async (
     character: Character,
     request: string,
+    apiKey: string
 ): Promise<Choice> => {
-    // Fix: Initialize with API key from environment variables.
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
     const model = 'gemini-2.5-flash';
 
     const characterSummary = getCharacterSummary(character, false); // use full summary
@@ -686,23 +717,32 @@ export const processAuditModificationRequest = async (
       8. Lembre-se: Sua única saída DEVE ser um JSON válido que siga o schema 'choiceSchema'.
     `;
     
-    const response = await ai.models.generateContent({
-        model,
-        contents: prompt,
-        config: {
-            responseMimeType: "application/json",
-            responseSchema: choiceSchema,
-            systemInstruction
-        }
-    });
+    const timeout = 20000; // 20 seconds
+    const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`A solicitação para a IA demorou mais de ${timeout/1000} segundos para responder.`)), timeout)
+    );
+
+    const response = await Promise.race([
+        ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: choiceSchema,
+                systemInstruction
+            }
+        }),
+        timeoutPromise
+    ]);
 
     return cleanAndParseJson<Choice>(response.text);
 };
 
 export const generateCatastrophicEvent = async (
     character: Character,
+    apiKey: string
 ): Promise<Choice> => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
     const model = 'gemini-2.5-flash';
 
     const characterSummary = getCharacterSummary(character, false); // use full summary for more context
@@ -727,15 +767,23 @@ export const generateCatastrophicEvent = async (
       8.  Sua única saída DEVE ser um JSON válido.
     `;
 
-    const response = await ai.models.generateContent({
-        model,
-        contents: prompt,
-        config: {
-            responseMimeType: "application/json",
-            responseSchema: choiceSchema,
-            systemInstruction
-        }
-    });
+    const timeout = 20000; // 20 seconds
+    const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`A solicitação para a IA demorou mais de ${timeout/1000} segundos para responder.`)), timeout)
+    );
+
+    const response = await Promise.race([
+        ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: choiceSchema,
+                systemInstruction
+            }
+        }),
+        timeoutPromise
+    ]);
 
     return cleanAndParseJson<Choice>(response.text);
 };

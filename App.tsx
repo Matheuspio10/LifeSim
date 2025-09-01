@@ -1,12 +1,13 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
-import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Skill, FamilyBackground, Checkpoint, Ancestor, WorldEvent, Relationship, AuditReport } from './types';
+import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Skill, FamilyBackground, Checkpoint, Ancestor, WorldEvent, Relationship, AuditReport, StatChanges, SkillChanges } from './types';
 import { generateGameEvent, evaluatePlayerResponse, processMetaCommand, generateWorldEvent, processAuditModificationRequest, generateCatastrophicEvent } from './services/gameService';
 import { applyChoiceToCharacter, checkLifeGoals, determineCauseOfDeath, applyCriticalStatPenalties, checkForNewHealthConditions } from './services/characterService';
 import { getDynamicFocusCost } from './services/economyService';
 import { runCharacterAudit } from './services/auditService';
-import { WEEKLY_CHALLENGES, LAST_NAMES, PORTRAIT_COLORS, HEALTH_CONDITIONS, LINEAGE_TITLES, TOTAL_MONTHS_PER_YEAR, SKIN_TONES, HAIR_STYLES, ACCESSORIES } from './constants';
+import { WEEKLY_CHALLENGES, LAST_NAMES, PORTRAIT_COLORS, HEALTH_CONDITIONS, TOTAL_MONTHS_PER_YEAR, SKIN_TONES, HAIR_STYLES, ACCESSORIES } from './constants';
 import { createHeirCharacter } from './services/characterCreationService';
-import { CREST_COLORS, CREST_ICONS, CREST_SHAPES } from './lineageConstants';
+import { CREST_COLORS, CREST_ICONS, CREST_SHAPES, LINEAGE_TITLES } from './lineageConstants';
 import CharacterSheet from './components/CharacterSheet';
 import EventCard from './components/EventCard';
 import GameOverScreen from './components/GameOverScreen';
@@ -16,7 +17,7 @@ import LegacyScreen from './components/LegacyScreen';
 import RoutineScreen from './components/RoutineScreen';
 import MiniGameHost from './components/MiniGameHost';
 import JournalScreen from './components/JournalScreen';
-// Fix: Removed ApiKeyModal as API key should be handled by environment variables.
+import ApiKeyModal from './components/ApiKeyModal';
 import QuotaErrorModal from './components/QuotaErrorModal';
 import { BookOpenIcon } from './components/Icons';
 import DowntimeActivities, { MicroActionResult } from './components/DowntimeActivities';
@@ -31,7 +32,7 @@ const getRandomKey = <T extends object>(obj: T): keyof T => {
     return keys[Math.floor(Math.random() * keys.length)];
 };
 const SAVE_GAME_KEY = 'lifeSimMMORGSaveData';
-// Fix: Removed API_KEY_KEY as API key should be handled by environment variables.
+const API_KEY_KEY = 'lifeSimMMORGApiKey';
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(GameState.NOT_STARTED);
@@ -49,7 +50,7 @@ const App: React.FC = () => {
   const [isJournalOpen, setIsJournalOpen] = useState<boolean>(false);
   const [hasSaveData, setHasSaveData] = useState<boolean>(false);
   const [isTurboMode, setIsTurboMode] = useState<boolean>(true);
-  // Fix: Removed apiKey state. The API key must be sourced from process.env.API_KEY.
+  const [apiKey, setApiKey] = useState<string | null>(null);
   const [isQuotaModalOpen, setIsQuotaModalOpen] = useState<boolean>(false);
   const [lastError, setLastError] = useState<string | null>(null);
   const [showDebug, setShowDebug] = useState<boolean>(false);
@@ -88,7 +89,12 @@ const App: React.FC = () => {
     return Math.round(scaledChange);
   };
 
-  // Fix: Removed useEffect for loading API key from local storage.
+  useEffect(() => {
+    const savedKey = localStorage.getItem(API_KEY_KEY);
+    if (savedKey) {
+        setApiKey(savedKey);
+    }
+  }, []);
   
   const saveForRollback = useCallback(() => {
     const stateToSave = {
@@ -200,10 +206,16 @@ const App: React.FC = () => {
     }
   };
 
-  // Fix: Removed handleChangeApiKey as API key is now handled by environment variables.
+  const handleChangeApiKey = () => {
+    if (window.confirm('Tem certeza de que deseja trocar sua chave de API? Você precisará inserir uma nova para continuar jogando.')) {
+        setApiKey(null);
+        localStorage.removeItem(API_KEY_KEY);
+    }
+  };
+  
   const handleFullReset = () => {
     if (window.confirm('Tem certeza de que deseja apagar TODO o progresso? Esta ação é irreversível.')) {
-        // Fix: Removed API key logic from full reset.
+        localStorage.removeItem(API_KEY_KEY);
         resetGameAndClearSave();
     }
   };
@@ -254,7 +266,11 @@ const App: React.FC = () => {
   };
   
   const fetchNextEvent = useCallback(async (char: Character, eventYear: number, newBehaviorTracker?: Record<string, number>) => {
-    // Fix: Removed API key check.
+    if (!apiKey) {
+        setError("Chave de API não configurada.");
+        setIsLoading(false);
+        return;
+    }
     setIsLoading(true);
     setError(null);
 
@@ -263,8 +279,7 @@ const App: React.FC = () => {
         try {
             const lifeStage = getCurrentLifeStage(char.age);
             const lineageTitle = lineage ? lineage.title : null;
-            // Fix: Removed apiKey from arguments.
-            const event = await generateGameEvent(char, lifeStage, eventYear, economicClimate, lineageTitle, currentFocusContext, newBehaviorTracker ?? behaviorTracker, isTurboMode);
+            const event = await generateGameEvent(char, lifeStage, eventYear, economicClimate, lineageTitle, currentFocusContext, newBehaviorTracker ?? behaviorTracker, isTurboMode, apiKey);
             
             if (!event || !event.eventText || !event.type) {
                 throw new Error("A resposta da IA estava vazia ou malformada.");
@@ -296,7 +311,7 @@ const App: React.FC = () => {
             }
         }
     }
-  }, [economicClimate, lineage, currentFocusContext, behaviorTracker, isTurboMode]);
+  }, [economicClimate, lineage, currentFocusContext, behaviorTracker, isTurboMode, apiKey]);
 
 
   const processNextDecision = useCallback(async (char: Character) => {
@@ -405,684 +420,377 @@ const App: React.FC = () => {
     setGameState(GameState.NOT_STARTED);
   }
   
-  const updateLineageTitle = (char: Character, currentLineage: Lineage): string | null => {
-      for (const title of LINEAGE_TITLES) {
-          if (title.condition(char)) {
-              return title.name;
-          }
-      }
-      return currentLineage.title;
-  }
-  
-  const createAncestorFromCharacter = (char: Character, finalLineage: Lineage | null): Ancestor => {
-    const achievements: Ancestor['achievements'] = [];
-    if (char.birthplace !== char.currentLocation) {
-        achievements.push({ text: `Viajou e viveu em ${char.currentLocation}`, icon: 'GlobeAltIcon' });
-    }
-    if (char.lifeGoals.filter(g => g.completed).length > 0) {
-        achievements.push({ text: `Completou ${char.lifeGoals.filter(g => g.completed).length} objetivo(s) de vida`, icon: 'CheckCircleIcon' });
-    }
-    if ((char.wealth + char.investments) > 500000) {
-        achievements.push({ text: `Acumulou mais de $${(char.wealth + char.investments).toLocaleString()}`, icon: 'CurrencyDollarIcon' });
-    }
-    if (char.careerLevel > 80 && char.jobTitle) {
-        achievements.push({ text: `Atingiu o ápice como ${char.jobTitle}`, icon: 'BriefcaseIcon' });
-    }
-    if (char.fame > 80) {
-        achievements.push({ text: 'Alcançou fama mundial', icon: 'StarIcon' });
-    } else if (char.fame < -80) {
-        achievements.push({ text: 'Tornou-se globalmente infame', icon: 'ShieldExclamationIcon' });
+  const updateLineageTitle = (char: Character, currentLineage: Lineage | null): Lineage | null => {
+    if (!currentLineage) return null;
+    const existingTitleInfo = LINEAGE_TITLES.find(t => t.name === currentLineage.title);
+    
+    // Find the best new title the character qualifies for
+    const bestNewTitle = LINEAGE_TITLES
+        .filter(titleInfo => titleInfo.condition(char))
+        .sort((a, b) => (LINEAGE_TITLES.indexOf(b) - LINEAGE_TITLES.indexOf(a)))[0]; // Get the highest-ranking title
+
+    // If there's a new, better title, update it
+    if (bestNewTitle && (!existingTitleInfo || LINEAGE_TITLES.indexOf(bestNewTitle) > LINEAGE_TITLES.indexOf(existingTitleInfo))) {
+        setCompletedChallenges(prev => [...prev.filter(c => !LINEAGE_TITLES.some(t => t.name === c.name)), { name: bestNewTitle.name, reward: 50 }]);
+        return { ...currentLineage, title: bestNewTitle.name };
     }
     
-    const positiveTraits = char.traits.filter(t => t.type === 'positive').slice(0, 2).map(t => t.name);
-    const negativeTraits = char.traits.filter(t => t.type === 'negative').slice(0, 1).map(t => t.name);
-    const definingTraits = [...positiveTraits, ...negativeTraits];
-
-    const finalStatus = char.specialEnding || char.causeOfDeath || 'Faleceu de causas naturais.';
-
-    const narrative = `${char.name} foi um(a) ${definingTraits.join(', ')} que marcou sua época. Nascido(a) em ${char.birthplace}, sua jornada o(a) levou até ${char.currentLocation}. Sua vida foi definida por ${achievements.length > 0 ? achievements[0].text.toLowerCase() : 'uma vida de momentos simples'}. ${finalStatus}`;
-    
-    const finalWealth = char.wealth + char.investments;
-    
-    const keyRelationships = [...char.relationships]
-        .sort((a, b) => Math.abs(b.intimacy) - Math.abs(a.intimacy))
-        .slice(0, 4) // Get top 4 most impactful relationships (good or bad)
-        .map(r => ({ name: r.name, title: r.title, intimacy: r.intimacy }));
-
-    return {
-        id: `${char.generation}-${char.lastName}`,
-        generation: char.generation,
-        name: char.name,
-        lastName: char.lastName,
-        eraLived: `${char.birthYear} - ${char.birthYear + char.age}`,
-        portraitTraits: char.founderTraits,
-        title: finalLineage?.title || null,
-        achievements: achievements.slice(0, 3), // Max 3 achievements
-        definingTraits,
-        finalStatus,
-        narrative,
-        finalStats: {
-            intelligence: char.intelligence,
-            charisma: char.charisma,
-            creativity: char.creativity,
-            discipline: char.discipline,
-            morality: char.morality,
-            fame: char.fame,
-            influence: char.influence,
-        },
-        finalWealth: finalWealth,
-        careerSummary: {
-            jobTitle: char.jobTitle,
-            careerLevel: char.careerLevel,
-        },
-        keyRelationships: keyRelationships,
-    };
+    return currentLineage;
   };
 
-  const handleEndOfLife = (char: Character) => {
-    let finalSummary = [...lifeSummary];
-    const challengesDone = WEEKLY_CHALLENGES.filter(c => c.condition(char));
-    const challengePoints = challengesDone.reduce((sum, c) => sum + c.reward, 0);
-    setCompletedChallenges(challengesDone.map(({ name, reward }) => ({ name, reward })));
-
-    let basePoints = calculateLegacyPoints(char);
-    
-    if (char.specialEnding) {
-        basePoints += 100;
-        finalSummary.push({ text: `Por trilhar um caminho único, sua linhagem ganhou um bônus de 100 Pontos de Legado.`, isEpic: true });
-    }
-    
-    let finalLineage = lineage;
-    if (lineage) {
-        const newTitle = updateLineageTitle(char, lineage);
-        const finalWealth = char.wealth + char.investments;
-        let wealthTier: FamilyBackground;
-        if (finalWealth < 10000) wealthTier = FamilyBackground.POOR;
-        else if (finalWealth < 500000) wealthTier = FamilyBackground.MIDDLE_CLASS;
-        else wealthTier = FamilyBackground.WEALTHY;
-
-        finalLineage = { 
-            ...lineage, 
-            title: newTitle, 
-            lastKnownLocation: char.currentLocation, 
-            lastKnownWealthTier: wealthTier 
-        };
-        setLineage(finalLineage);
-    }
-    
-    const newAncestor = createAncestorFromCharacter(char, finalLineage);
-    setAncestors(prev => [...prev, newAncestor]);
-
-    setLegacyPoints(basePoints + challengePoints);
-
-    setCurrentYear(char.birthYear + char.age);
-    setCharacter(char);
-    setGameState(GameState.GAME_OVER);
-    
-    const endMessage = char.specialEnding 
-        ? char.specialEnding 
-        : `Sua vida terminou aos ${char.age} anos, em ${char.birthYear + char.age}.`;
-        
-    finalSummary.push({ text: endMessage, isEpic: true });
-    setLifeSummary(finalSummary);
-  };
-  
-   const handleContinueAsHeir = (heir: Relationship) => {
-        if (!character || !lineage) return;
-
-        const newCharacter = createHeirCharacter(heir, character, lineage, legacyPoints);
-        
-        const updatedLineage = { ...lineage, generation: newCharacter.generation };
-        setLineage(updatedLineage);
-
-        setCharacter(newCharacter);
-        setLifeSummary([{ text: `${newCharacter.name}, filho(a) de ${character.name}, agora continua o legado da família ${character.lastName}.`, isEpic: true }]);
-        setCurrentYear(newCharacter.birthYear + newCharacter.age);
-        setMonthsRemainingInYear(TOTAL_MONTHS_PER_YEAR);
-        setBehaviorTracker({});
-        setCurrentFocusContext(null);
-        setLegacyBonuses(null);
-        setCompletedChallenges([]);
-        
-        setGameState(GameState.ROUTINE_PLANNING);
-    };
-
-  const applyEconomicPhase = (char: Character, currentClimate: EconomicClimate): Character => {
-    const updatedChar = { ...char };
-    let wealthChange = 0;
-    let investmentChange = 0;
-
-    const rand = Math.random();
-
-    switch (currentClimate) {
-        case EconomicClimate.RECESSION:
-            investmentChange = -Math.floor(updatedChar.investments * (0.05 + Math.random() * 0.10)); // Lose 5-15%
-            wealthChange = -Math.floor(updatedChar.wealth * 0.01); // Higher cost of living
-            if (updatedChar.profession && rand < 0.05) { // 5% chance of layoff
-                updatedChar.profession = null;
-                updatedChar.jobTitle = null;
-                updatedChar.careerLevel = Math.max(0, updatedChar.careerLevel - 10);
-            }
-            break;
-        case EconomicClimate.STABLE:
-            investmentChange = Math.floor(updatedChar.investments * (Math.random() * 0.06 - 0.01)); // -1% to +5%
-            break;
-        case EconomicClimate.BOOM:
-            investmentChange = Math.floor(updatedChar.investments * (0.05 + Math.random() * 0.15)); // Gain 5-20%
-            wealthChange = Math.floor(updatedChar.wealth * 0.02); // Small bonus
-            if (updatedChar.profession && rand < 0.1) { // 10% chance of promotion
-                updatedChar.careerLevel += 5;
-            }
-            break;
-    }
-
-    updatedChar.wealth += wealthChange;
-    updatedChar.investments += investmentChange;
-
-    return updatedChar;
-  };
-
-   const advanceTime = (characterAfterChoice: Character, timeCostInMonths: number): boolean => {
-    const newMonthsRemaining = monthsRemainingInYear - timeCostInMonths;
-
-    if (newMonthsRemaining <= 0) {
-        // --- End of Year Logic ---
-        let updatedChar = { ...characterAfterChoice, age: characterAfterChoice.age + 1 };
-        
-        // Age up relationships that have an age property
-        if (updatedChar.relationships) {
-            updatedChar.relationships = updatedChar.relationships.map(r => {
-                if (r.age !== undefined) {
-                    return { ...r, age: r.age + 1 };
-                }
-                return r;
-            });
-        }
-        
-        // Passive stat changes per year
-        if (updatedChar.stress > 75) {
-            updatedChar.health = Math.max(0, updatedChar.health - 2);
-            updatedChar.happiness = Math.max(0, updatedChar.happiness - 5);
-        }
-        if (updatedChar.stress < 50) { // Stress slowly decreases if not high
-            updatedChar.stress = Math.max(0, updatedChar.stress - 3);
-        }
-        // Happiness tends to normalize towards 60
-        updatedChar.happiness += Math.round((60 - updatedChar.happiness) / 10);
-        // Energy is partially restored at the start of a new year
-        updatedChar.energy = Math.min(100, updatedChar.energy + 40);
-
-
-        // Economic Phase
-        if (Math.random() < 0.25) { // 25% chance of economic shift per year
-            const newEconomicClimate = getRandom([EconomicClimate.BOOM, EconomicClimate.RECESSION, EconomicClimate.STABLE]);
-            if (newEconomicClimate !== economicClimate) {
-                setEconomicClimate(newEconomicClimate);
-                updatedChar = applyEconomicPhase(updatedChar, newEconomicClimate);
-            }
-        }
-
-        // Critical Stat Penalties Check
-        const penaltyCheck = applyCriticalStatPenalties(updatedChar);
-        updatedChar = penaltyCheck.updatedChar;
-        if (penaltyCheck.penaltiesApplied.length > 0) {
-            const newEntries = penaltyCheck.penaltiesApplied.map(text => ({ text, isEpic: true }));
-            setLifeSummary(prev => [...prev, ...newEntries]);
-        }
-
-        // Health degradation with age
-        if (updatedChar.age > 40) {
-          const healthDecline = Math.max(1, Math.floor((updatedChar.age - 40) / 10));
-          updatedChar.health = Math.max(0, updatedChar.health - healthDecline);
-        }
-        
-        // Annual health check for new conditions
-        const healthCheck = checkForNewHealthConditions(updatedChar);
-        updatedChar = healthCheck.updatedChar;
-        if (healthCheck.newConditionMessage) {
-            const newEntry = { text: healthCheck.newConditionMessage, isEpic: true };
-            setLifeSummary(prev => [...prev, newEntry]);
-        }
-
-        // Check for end of life
-        if (updatedChar.health <= 0 || updatedChar.age >= 105) {
-          const causeOfDeath = determineCauseOfDeath(updatedChar);
-          handleEndOfLife({ ...updatedChar, causeOfDeath });
-          return true; // End of year flow
-        }
-
-        // Set state for the new year
-        setCharacter(updatedChar);
-        setCurrentYear(prev => prev + 1);
-        setMonthsRemainingInYear(TOTAL_MONTHS_PER_YEAR + newMonthsRemaining); // Carry over negative time
-        setGameState(GameState.YEAR_END_PROCESSING);
-        return true; // Signal that it's the end of the year
-    } else {
-        // --- Mid-Year Logic ---
-        setMonthsRemainingInYear(newMonthsRemaining);
-        setCharacter(characterAfterChoice);
-        processNextDecision(characterAfterChoice);
-        return false; // Signal that it's mid-year
-    }
-  };
-  
-  const handleChoice = (choice: Choice): boolean => {
-    if (!character || !currentEvent) return false;
-    
-    saveForRollback();
-    const eventBeingProcessed = currentEvent;
-    setCurrentEvent(null); // Clear the event immediately to prevent re-rendering the old card
-
-    let updatedChar = applyChoiceToCharacter(character, choice, eventBeingProcessed.isEpic);
-    updatedChar = checkLifeGoals(updatedChar);
-
-    setLifeSummary(prev => [...prev, { text: choice.outcomeText, isEpic: eventBeingProcessed.isEpic || false }]);
-    
-    if(choice.specialEnding){
-        handleEndOfLife({...updatedChar, specialEnding: choice.specialEnding});
-        return true; // Game over is an end-of-year style transition
-    }
-    
-    let timeCost = choice.timeCostInUnits || eventBeingProcessed.timeCostInUnits || 1;
-    
-    if (updatedChar.age <= 16) {
-        timeCost *= 2;
-    }
-    
-    return advanceTime(updatedChar, timeCost);
-  };
-  
-  const handleOpenResponseSubmit = async (responseText: string) => {
-    if (!character || !currentEvent) return;
+  const advanceYear = useCallback(async (char: Character, monthsToAdvance: number = 1) => {
     saveForRollback();
     setIsLoading(true);
-    setError(null);
+    let updatedChar = { ...char };
+    let summaryAdditions: LifeSummaryEntry[] = [];
+    let shouldEndGame = false;
+    let finalMonthsRemaining = monthsRemainingInYear - monthsToAdvance;
 
-    const isMetaCommand = responseText.toUpperCase().startsWith('OFF TOPIC:');
+    if (finalMonthsRemaining <= 0) {
+        // End of year processing
+        updatedChar.age += 1;
+        finalMonthsRemaining = TOTAL_MONTHS_PER_YEAR;
 
-    const MAX_RETRIES = 3;
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-        try {
-            let choice: Choice;
-
-            if (isMetaCommand) {
-                const command = responseText.substring(10).trim();
-                // Fix: Removed apiKey from arguments.
-                choice = await processMetaCommand(character, command, isTurboMode);
-            } else {
-                // Fix: Removed apiKey from arguments.
-                choice = await evaluatePlayerResponse(character, currentEvent.eventText, responseText, currentFocusContext, isTurboMode);
-            }
-
-            if (!choice || !choice.choiceText || !choice.outcomeText) {
-                throw new Error("A resposta da IA para sua ação estava vazia ou malformada.");
-            }
-
-            const isEndOfYear = handleChoice(choice);
-            if (isEndOfYear) {
-                setIsLoading(false);
-            }
-            return; // Success
-        } catch (err) {
-            console.error(`Falha na tentativa ${attempt} ao avaliar a resposta:`, err);
-            const errorString = err instanceof Error ? `${err.name}: ${err.message}\n${err.stack}` : JSON.stringify(err);
-            setLastError(errorString);
-
-            if (attempt === MAX_RETRIES) {
-                if (err instanceof Error && (err.message.includes('429') || err.message.toLowerCase().includes('quota'))) {
-                    setIsQuotaModalOpen(true);
-                    setError(null);
-                } else {
-                    const errorMessage = err instanceof Error
-                        ? err.message
-                        : 'Houve um problema ao processar sua resposta. Por favor, tente uma das opções ou reformule sua ação.';
-                    setError(errorMessage);
+        // Check for death by old age or health conditions
+        const deathChance = (updatedChar.age > 70) ? (updatedChar.age - 70) * 0.01 : 0;
+        const healthModifier = (100 - updatedChar.health) * 0.005;
+        if (updatedChar.health <= 0 || Math.random() < (deathChance + healthModifier)) {
+            shouldEndGame = true;
+        } else {
+            // World Event (once per year)
+            if (apiKey) {
+                try {
+                    const worldEvent = await generateWorldEvent(currentYear + 1, economicClimate, apiKey);
+                    const worldEventChoice = {
+                        choiceText: `O mundo mudou: ${worldEvent.title}`,
+                        outcomeText: worldEvent.description,
+                        statChanges: worldEvent.effects,
+                    };
+                    updatedChar = applyChoiceToCharacter(updatedChar, worldEventChoice, true);
+                    setWorldEventNotification(worldEvent);
+                } catch (e) {
+                    console.error("Failed to generate world event:", e);
                 }
-                setIsLoading(false);
-            } else {
-                await new Promise(res => setTimeout(res, 750));
             }
+
+            // Normal yearly updates
+            updatedChar.relationships = updatedChar.relationships.map(r => ({ ...r, age: (r.age || 0) + 1 }));
+            updatedChar = checkLifeGoals(updatedChar);
+            const { updatedChar: charWithPenalties, penaltiesApplied } = applyCriticalStatPenalties(updatedChar);
+            updatedChar = charWithPenalties;
+            summaryAdditions.push(...penaltiesApplied.map(text => ({ text, isEpic: true })));
+
+            const { updatedChar: charWithHealthCheck, newConditionMessage } = checkForNewHealthConditions(updatedChar);
+            updatedChar = charWithHealthCheck;
+            if (newConditionMessage) {
+                summaryAdditions.push({ text: newConditionMessage, isEpic: true });
+            }
+
+            setLifeSummary(prev => [...prev, ...summaryAdditions, { text: `${updatedChar.name} completou ${updatedChar.age} anos.`, isEpic: false }]);
+            setCurrentYear(prev => prev + 1);
+            setMonthsRemainingInYear(TOTAL_MONTHS_PER_YEAR);
+            setCharacter(updatedChar);
+            setGameState(GameState.ROUTINE_PLANNING);
+            setIsLoading(false);
         }
-    }
-  };
-
-
-  const handleRoutineConfirm = (focuses: WeeklyFocus[]) => {
-      if (!character) return;
-      saveForRollback();
-      let updatedChar = { ...character };
-      
-      const totalCost = focuses.reduce((sum, focus) => {
-          return sum + getDynamicFocusCost(focus, updatedChar);
-      }, 0);
-
-      updatedChar.wealth -= totalCost;
-      setLifeSummary(prev => [...prev, { text: `Investiu um total de $${totalCost.toLocaleString()} em seus focos para o ano.`, isEpic: false }]);
-
-
-      focuses.forEach(focus => {
-          // Apply stat changes
-          for(const key in focus.statChanges) {
-              const stat = key as keyof typeof focus.statChanges;
-              const change = focus.statChanges[stat] || 0;
-
-              // Apply scaling ONLY to core attributes
-              if (['health', 'intelligence', 'charisma', 'creativity', 'discipline'].includes(stat)) {
-                  const currentValue = updatedChar[stat as keyof Character] as number;
-                  (updatedChar[stat] as number) += getScaledStatChange(currentValue, change);
-              } else {
-                  (updatedChar[stat] as number) += change;
-              }
-          }
-
-          // Apply skill changes
-          if (focus.skillName) {
-              let skills = [...updatedChar.skills];
-              const skillIndex = skills.findIndex(s => s.name === focus.skillName);
-
-              if (skillIndex > -1) {
-                  // Skill exists, level it up
-                  const currentLevel = skills[skillIndex].level;
-                  const newLevel = Math.min(100, currentLevel + 5); // +5 level for a year's focus
-                  skills[skillIndex].level = newLevel;
-                  
-                  // Update description based on level
-                  if (newLevel > 70) skills[skillIndex].description = 'Especialista';
-                  else if (newLevel > 40) skills[skillIndex].description = 'Intermediário';
-                  else if (newLevel > 15) skills[skillIndex].description = 'Amador';
-
-              } else {
-                  // Skill doesn't exist, add it
-                  skills.push({
-                      name: focus.skillName,
-                      level: 5,
-                      description: 'Iniciante'
-                  });
-              }
-              updatedChar.skills = skills;
-          }
-      });
-      
-      setCurrentFocusContext(focuses.map(f => f.name).join(', '));
-      const finalChar = applyChoiceToCharacter(updatedChar, {choiceText: '', outcomeText: '', statChanges: {}});
-      setCharacter(finalChar);
-      processNextDecision(finalChar);
-  };
-  
-  const handleMicroAction = (result: MicroActionResult) => {
-      if(!character) return;
-      
-      const choice: Choice = {
-          choiceText: 'Downtime action',
-          outcomeText: result.outcomeText,
-          statChanges: result.statChanges,
-      };
-
-      const updatedChar = applyChoiceToCharacter(character, choice);
-      setCharacter(updatedChar);
-  };
-  
-  const handleContinueGame = () => {
-    loadGame();
-  };
-
-  const handleToggleTurboMode = () => {
-    setIsTurboMode(prev => !prev);
-  };
-  
-  // Fix: Removed handleApiKeySave as API key is now handled by environment variables.
-
-  const handleRetry = () => {
-    setError(null);
-    if (!currentEvent && character) {
-        processNextDecision(character);
-    }
-  };
-  
-  const handleRunAudit = () => {
-    if (!character) return;
-    const report = runCharacterAudit(character);
-    setAuditReport(report);
-    setIsAuditModalOpen(true);
-  };
-
-  const handleApplyAuditFixes = (report: AuditReport) => {
-    if (!character) return;
-    let updatedChar = { ...character };
-
-    // Apply goal fixes
-    const goalsToComplete = report.goals
-        .filter(g => g.status === 'completed_unmarked')
-        .map(g => g.description);
-        
-    if (goalsToComplete.length > 0) {
-        updatedChar.lifeGoals = updatedChar.lifeGoals.map(g =>
-            goalsToComplete.includes(g.description) ? { ...g, completed: true } : g
-        );
+    } else {
+        // Mid-year event progression
+        setMonthsRemainingInYear(finalMonthsRemaining);
+        setCharacter(updatedChar);
+        await fetchNextEvent(updatedChar, currentYear);
     }
     
-    // Apply plot fixes (remove bugged ones)
-    const plotsToRemove = report.plots
-        .filter(p => p.status === 'bugged')
-        .map(p => p.description);
-
-    if (plotsToRemove.length > 0) {
-        if (updatedChar.ongoingPlots) {
-            updatedChar.ongoingPlots = updatedChar.ongoingPlots.filter(p => p.description);
-        }
-    }
-
-    setCharacter(updatedChar);
-    setLifeSummary(prev => [...prev, { text: "Uma verificação de pendências foi realizada, organizando os objetivos e tramas da vida.", isEpic: false }]);
-    setIsAuditModalOpen(false);
-  };
-
-  const handleRequestAuditModification = async (request: string) => {
-    if (!character) return;
-    setIsAuditLoading(true);
-    try {
-        // Fix: Removed apiKey from arguments.
-        const modificationChoice = await processAuditModificationRequest(character, request);
-        
-        // Apply changes
-        let updatedChar = applyChoiceToCharacter(character, modificationChoice);
-        updatedChar = checkLifeGoals(updatedChar);
+    if (shouldEndGame) {
+        updatedChar.causeOfDeath = determineCauseOfDeath(updatedChar);
+        setLifeSummary(prev => [...prev, { text: `A vida de ${updatedChar.name} chegou ao fim aos ${updatedChar.age} anos. Causa: ${updatedChar.causeOfDeath}.`, isEpic: true }]);
         setCharacter(updatedChar);
-
-        // Log the change
-        const logText = `O Mestre do Jogo interveio para ajustar a realidade: ${modificationChoice.outcomeText}`;
-        setLifeSummary(prev => [...prev, { text: logText, isEpic: false }]);
-
-        // Re-run audit to refresh the modal
-        const newReport = runCharacterAudit(updatedChar);
-        setAuditReport(newReport);
-
-    } catch (err) {
-        console.error("Falha ao processar a modificação da auditoria:", err);
-        const errorString = err instanceof Error ? `${err.name}: ${err.message}` : JSON.stringify(err);
-        setError(`Falha ao aplicar a correção. Detalhes: ${errorString}`);
-        setIsAuditModalOpen(false); // Close modal on error
-    } finally {
-        setIsAuditLoading(false);
+        setGameState(GameState.GAME_OVER);
+        setLegacyPoints(prev => prev + calculateLegacyPoints(updatedChar));
+        const updatedLineage = updateLineageTitle(updatedChar, lineage);
+        setLineage(updatedLineage);
+        setIsLoading(false);
     }
+  }, [character, lifeSummary, currentYear, monthsRemainingInYear, economicClimate, fetchNextEvent, saveForRollback, lineage, apiKey, completedChallenges]);
+
+  const handleChoice = useCallback(async (choice: Choice) => {
+    if (!character) return;
+    saveForRollback();
+    
+    const timeCost = choice.timeCostInUnits || currentEvent?.timeCostInUnits || 1;
+
+    let updatedChar = applyChoiceToCharacter(character, choice, currentEvent?.isEpic);
+    setLifeSummary(prev => [...prev, { text: choice.outcomeText, isEpic: currentEvent?.isEpic || false }]);
+    
+    // Update behavior tracker to avoid repetitive events
+    if (currentEvent) {
+        const eventKey = currentEvent.eventText.substring(0, 50);
+        setBehaviorTracker(prev => ({...prev, [eventKey]: (prev[eventKey] || 0) + 1 }));
+    }
+
+    setCurrentEvent(null);
+
+    // This handles special endings immediately
+    if (choice.specialEnding) {
+        updatedChar.causeOfDeath = choice.specialEnding;
+        setCharacter(updatedChar);
+        setGameState(GameState.GAME_OVER);
+        setLegacyPoints(prev => prev + calculateLegacyPoints(updatedChar));
+        const updatedLineage = updateLineageTitle(updatedChar, lineage);
+        setLineage(updatedLineage);
+        return;
+    }
+    
+    await advanceYear(updatedChar, timeCost);
+  }, [character, currentEvent, advanceYear, saveForRollback, lineage]);
+
+  const handleOpenResponseSubmit = useCallback(async (responseText: string) => {
+    if (!character || !currentEvent || !apiKey) return;
+    setIsLoading(true);
+    
+    const isMeta = responseText.toLowerCase().startsWith('meta:');
+    
+    try {
+        const choice = isMeta
+            ? await processMetaCommand(character, responseText.substring(5).trim(), isTurboMode, apiKey)
+            : await evaluatePlayerResponse(character, currentEvent.eventText, responseText, currentFocusContext, isTurboMode, apiKey);
+        
+        await handleChoice(choice);
+    } catch (err) {
+        console.error("Falha ao avaliar resposta:", err);
+        const errorString = err instanceof Error ? `${err.name}: ${err.message}\n${err.stack}` : JSON.stringify(err);
+        setLastError(errorString);
+        if (err instanceof Error) {
+            if (err.message.includes('429') || err.message.toLowerCase().includes('quota')) {
+                setIsQuotaModalOpen(true);
+                setError(null);
+            } else {
+                setError(err.message);
+            }
+        } else {
+            setError("Falha ao processar sua resposta. O universo parece confuso com sua decisão.");
+        }
+    } finally {
+        setIsLoading(false);
+    }
+  }, [character, currentEvent, handleChoice, isTurboMode, apiKey, currentFocusContext]);
+
+  const handleRoutineConfirm = async (focuses: WeeklyFocus[]) => {
+      if (!character) return;
+      saveForRollback();
+      setIsLoading(true);
+
+      let updatedChar = { ...character };
+      let totalCost = 0;
+      let focusDescriptions: string[] = [];
+
+      focuses.forEach(focus => {
+          totalCost += getDynamicFocusCost(focus, updatedChar);
+          focusDescriptions.push(focus.name.toLowerCase());
+          
+          let statChanges: StatChanges = {};
+          // Deep copy to avoid mutation
+          for (const key in focus.statChanges) {
+              const stat = key as keyof StatChanges;
+              statChanges[stat] = focus.statChanges[stat];
+          }
+
+          updatedChar = applyChoiceToCharacter(updatedChar, {
+              choiceText: '',
+              outcomeText: '',
+              statChanges
+          });
+
+          if (focus.skillName) {
+              const skillUpdate: SkillChanges = {
+                  update: [{ name: focus.skillName, levelChange: 2, description: `Praticando ${focus.skillName}` }]
+              };
+               updatedChar = applyChoiceToCharacter(updatedChar, {
+                  choiceText: '',
+                  outcomeText: '',
+                  statChanges: {},
+                  skillChanges: skillUpdate
+              });
+          }
+      });
+
+      updatedChar.wealth -= totalCost;
+      const focusContext = `Focando em ${focusDescriptions.join(', ')}.`;
+      setCurrentFocusContext(focusContext);
+      setLifeSummary(prev => [...prev, {text: `${character.name} decidiu focar em ${focusDescriptions.join(', ')} este ano. Isso custou $${totalCost.toLocaleString()}.`, isEpic: false }]);
+      
+      await fetchNextEvent(updatedChar, currentYear, {});
   };
 
-    const calculateCatastrophicEventChance = (char: Character): number => {
-        let baseChance = 0.01; // 1% base chance per year
+  const handleContinueAsHeir = (heir: Relationship) => {
+    if (!character || !lineage) return;
 
-        // Age factor
-        if (char.age > 50) {
-            baseChance += (char.age - 50) * 0.002; // +0.2% per year after 50
-        }
-        if (char.age > 75) {
-            baseChance += (char.age - 75) * 0.003; // an additional +0.3% per year after 75
-        }
-
-        // Trait factors
-        const riskTraits = ['Impulsivo', 'Índole Criminosa', 'Destino Sombrio', 'Tendência a Vícios'];
-        const protectionTraits = ['Constituição Forte', 'Resiliente', 'Sorte Familiar'];
-
-        riskTraits.forEach(traitName => {
-            if (char.traits.some(t => t.name === traitName)) baseChance += 0.025; // +2.5% per risk trait
-        });
-        protectionTraits.forEach(traitName => {
-            if (char.traits.some(t => t.name === traitName)) baseChance -= 0.01; // -1% per protection trait
-        });
-
-        // Stat-based factors
-        if (char.health < 20) baseChance += 0.04; // +4% if health is critical
-        if (char.stress > 90) baseChance += 0.03; // +3% if stress is extreme
-        if (char.fame < -60) baseChance += 0.02; // +2% for high infamy
-
-        // Risky profession check
-        const riskyProfessions = ['Criminoso', 'Policial', 'Soldado', 'Atleta de Risco'];
-        if (char.profession && riskyProfessions.some(p => char.profession!.includes(p))) {
-             baseChance += 0.02;
-        }
-
-        return Math.max(0, Math.min(baseChance, 0.4)); // Cap at 40%
+    const heirChar = createHeirCharacter(heir, character, lineage, legacyPoints);
+    const newAncestor: Ancestor = {
+        id: `${character.name}-${character.generation}-${Date.now()}`,
+        generation: character.generation,
+        name: character.name,
+        lastName: character.lastName,
+        eraLived: `${character.birthYear} - ${character.birthYear + character.age}`,
+        portraitTraits: character.founderTraits,
+        title: lineage.title,
+        achievements: character.lifeGoals.filter(g => g.completed).map(g => ({ text: g.description, icon: 'CheckCircleIcon' })),
+        definingTraits: character.traits.map(t => t.name),
+        finalStatus: character.causeOfDeath || "Desconhecido",
+        narrative: lifeSummary.map(l => l.text).join(' '),
+        finalStats: {
+            intelligence: character.intelligence, charisma: character.charisma,
+            creativity: character.creativity, discipline: character.discipline,
+            morality: character.morality, fame: character.fame, influence: character.influence,
+        },
+        finalWealth: character.wealth + character.investments,
+        careerSummary: { jobTitle: character.jobTitle, careerLevel: character.careerLevel },
+        keyRelationships: character.relationships.slice(0, 3).map(r => ({ name: r.name, title: r.title, intimacy: r.intimacy })),
     };
-
-    useEffect(() => {
-        if (gameState === GameState.YEAR_END_PROCESSING && character) {
-            const processYearEnd = async () => {
-                let updatedChar = { ...character };
-                
-                // CATASTROPHIC EVENT CHECK
-                const catastropheChance = calculateCatastrophicEventChance(updatedChar);
-                if (Math.random() < catastropheChance) {
-                    try {
-                        const catastrophe = await generateCatastrophicEvent(updatedChar);
-                        setLifeSummary(prev => [...prev, { text: catastrophe.outcomeText, isEpic: true }]);
-
-                        if (catastrophe.specialEnding) {
-                            handleEndOfLife({ ...updatedChar, specialEnding: catastrophe.specialEnding });
-                            return; // Stop processing, game is over.
-                        }
-
-                        // If not fatal, apply consequences.
-                        updatedChar = applyChoiceToCharacter(updatedChar, catastrophe, true);
-                    } catch (err) {
-                        console.error("Failed to generate catastrophic event:", err);
-                        // Fail silently, game continues.
-                    }
-                }
-
-                // World Event Check (25% chance per year)
-                if (Math.random() < 0.25) { 
-                    try {
-                        // Fix: Removed apiKey from arguments.
-                        const worldEvent = await generateWorldEvent(currentYear, economicClimate);
-                        if (worldEvent) {
-                            setWorldEventNotification(worldEvent);
-                            const choiceWithEffects: Choice = {
-                                choiceText: 'World Event',
-                                outcomeText: worldEvent.description,
-                                statChanges: worldEvent.effects,
-                            };
-                            updatedChar = applyChoiceToCharacter(updatedChar, choiceWithEffects);
-                            
-                            setLifeSummary(prev => [...prev, { text: `[EVENTO MUNDIAL] ${worldEvent.title}: ${worldEvent.description}`, isEpic: false }]);
-                        }
-                    } catch (e) {
-                        console.error("Falha ao gerar o evento mundial:", e);
-                    }
-                }
-                
-                setCharacter(updatedChar);
-                setGameState(GameState.ROUTINE_PLANNING);
-            };
-
-            processYearEnd();
-        }
-    }, [gameState, character, currentYear, economicClimate]);
-
-  const renderMainContent = () => {
-    if (isLoading) {
-        return character 
-            ? <DowntimeActivities character={character} onMicroAction={handleMicroAction} onShowDebug={() => setShowDebug(true)} />
-            : <LoadingSpinner onShowDebug={() => setShowDebug(true)} />;
-    }
-    if (error) {
-        return (
-            <div className="w-full max-w-lg text-center p-8 bg-red-900/50 border border-red-700 rounded-2xl shadow-2xl animate-fade-in">
-                <h2 className="text-xl font-bold text-white mb-2">Um Contratempo do Destino</h2>
-                <p className="text-slate-300 mb-6">{error}</p>
-                <button
-                    onClick={handleRetry}
-                    className="px-6 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-500 transition-colors"
-                >
-                    Tentar Novamente
-                </button>
-            </div>
-        );
-    }
-
-    switch (gameState) {
-      case GameState.NOT_STARTED:
-        return <StartScreen onStart={startGame} lineage={lineage} legacyBonuses={legacyBonuses} currentYear={currentYear} hasSaveData={hasSaveData} onContinueGame={handleContinueGame} onStartNewGame={handleStartNewGameFromScratch} onShowDebug={() => setShowDebug(true)} />;
-      case GameState.YEAR_END_PROCESSING:
-        return <LoadingSpinner onShowDebug={() => setShowDebug(true)} />;
-      case GameState.ROUTINE_PLANNING:
-        return character && <RoutineScreen character={character} onConfirm={handleRoutineConfirm} isLoading={isLoading} />;
-      case GameState.IN_PROGRESS:
-        if (currentEvent?.type === 'MINI_GAME') {
-            return character && <MiniGameHost event={currentEvent} character={character} onComplete={handleChoice} />;
-        }
-        return currentEvent ? <EventCard event={currentEvent} onChoice={handleChoice} onOpenResponseSubmit={handleOpenResponseSubmit} /> : <LoadingSpinner onShowDebug={() => setShowDebug(true)} />;
-      case GameState.GAME_OVER:
-        const heirs = character ? character.relationships.filter(r => r.title === 'Filho' || r.title === 'Filha') : [];
-        return character ? <GameOverScreen finalCharacter={character} lifeSummary={lifeSummary} legacyPoints={legacyPoints} completedChallenges={completedChallenges} isMultiplayerCycle={isMultiplayerCycle} onContinueLineage={continueLineage} onStartNewLineage={startNewLineage} lineage={lineage} heirs={heirs} onContinueAsHeir={handleContinueAsHeir} /> : <LoadingSpinner onShowDebug={() => setShowDebug(true)} />;
-      case GameState.LEGACY:
-        return <LegacyScreen points={legacyPoints} onStart={startNextGeneration} finalCharacter={character} lineage={lineage} />;
-      default:
-        return <div>Estado de Jogo Desconhecido</div>;
-    }
+    
+    setAncestors(prev => [...prev, newAncestor]);
+    setLegacyPoints(0); // Reset for new generation
+    startGame(heirChar, isMultiplayerCycle);
   };
   
-  // Fix: Removed ApiKeyModal logic. The app now assumes the API key is available via environment variables.
+  const handleDowntimeAction = (result: MicroActionResult) => {
+    if (!character) return;
+    const updatedChar = applyChoiceToCharacter(character, {
+        choiceText: '',
+        outcomeText: result.outcomeText,
+        statChanges: result.statChanges
+    });
+    setCharacter(updatedChar);
+  };
+  
+  const runAudit = () => {
+      if (!character) return;
+      setIsAuditLoading(true);
+      const report = runCharacterAudit(character);
+      setAuditReport(report);
+      setIsAuditLoading(false);
+      setIsAuditModalOpen(true);
+  };
+
+  const handleApplyAuditFixes = async (report: AuditReport) => {
+      if (!character) return;
+      setIsAuditLoading(true);
+
+      const goalFixes = report.goals.filter(g => g.status === 'completed_unmarked').map(g => g.description);
+      const plotFixes = report.plots.filter(p => p.status === 'bugged').map(p => p.description);
+
+      const fixChoice: Choice = {
+          choiceText: "Aplicou correções automáticas do sistema.",
+          outcomeText: "Os registros da sua vida foram atualizados para refletir conquistas e remover inconsistências.",
+          statChanges: {},
+          goalChanges: { complete: goalFixes },
+          plotChanges: { remove: plotFixes }
+      };
+
+      const updatedChar = applyChoiceToCharacter(character, fixChoice, true);
+      setCharacter(updatedChar);
+      
+      // Re-run audit to show updated state
+      const newReport = runCharacterAudit(updatedChar);
+      setAuditReport(newReport);
+      
+      setIsAuditLoading(false);
+  };
+  
+  const handleRequestAuditModification = async (request: string) => {
+      if (!character || !apiKey) return;
+      setIsAuditLoading(true);
+      try {
+          const fixChoice = await processAuditModificationRequest(character, request, apiKey);
+          const updatedChar = applyChoiceToCharacter(character, fixChoice, true);
+          setLifeSummary(prev => [...prev, { text: fixChoice.outcomeText, isEpic: true }]);
+          setCharacter(updatedChar);
+          const newReport = runCharacterAudit(updatedChar);
+          setAuditReport(newReport);
+      } catch (e) {
+          console.error("Error processing audit modification:", e);
+          setError("Não foi possível aplicar a correção. A IA pode estar sobrecarregada.");
+      } finally {
+        setIsAuditLoading(false);
+      }
+  };
 
   return (
-    <main className="min-h-screen flex flex-col md:flex-row items-start justify-center gap-8 p-4 md:p-8 bg-slate-900 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]">
-        {/* Fix: Resolved file truncation and type error by providing the correct handler to onToggleTurboMode and completing the component. */}
-        {character && (
-          <CharacterSheet
-            character={character}
-            lifeStage={getCurrentLifeStage(character.age)}
+    <div className="bg-slate-900 text-slate-100 min-h-screen font-sans flex flex-col md:flex-row items-start justify-center p-4 gap-4 bg-grid">
+      <style>{`.bg-grid { background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px); background-size: 2rem 2rem; }`}</style>
+      
+      {/* Modals Layer */}
+      {isQuotaModalOpen && <div className="fixed inset-0 bg-black/60 z-40 flex items-center justify-center p-4"><QuotaErrorModal onClose={() => setIsQuotaModalOpen(false)} /></div>}
+      {!apiKey && <div className="fixed inset-0 bg-black/60 z-40 flex items-center justify-center p-4"><ApiKeyModal onSave={(key) => { setApiKey(key); localStorage.setItem(API_KEY_KEY, key); }} /></div>}
+      {isRollbackModalOpen && <EmergencyRollbackModal isOpen={isRollbackModalOpen} onClose={() => setIsRollbackModalOpen(false)} onRestore={handleRestore} checkpoints={history} />}
+      {isFamilyBookOpen && lineage && <FamilyBookModal isOpen={isFamilyBookOpen} onClose={() => setIsFamilyBookOpen(false)} ancestors={ancestors} lastName={lineage.lastName} />}
+      {isJournalOpen && character && <JournalScreen character={character} lifeSummary={lifeSummary} onClose={() => setIsJournalOpen(false)} />}
+      {isAuditModalOpen && <AuditReportModal isOpen={isAuditModalOpen} onClose={() => setIsAuditModalOpen(false)} report={auditReport} onApplyFixes={handleApplyAuditFixes} onRequestModification={handleRequestAuditModification} isLoading={isAuditLoading} />}
+
+
+      {/* Character Sheet (Left Panel) */}
+      {character && gameState !== GameState.NOT_STARTED && gameState !== GameState.LEGACY && (
+        <CharacterSheet 
+            character={character} 
+            lifeStage={getCurrentLifeStage(character.age)} 
             lineage={lineage}
             isTurboMode={isTurboMode}
-            onToggleTurboMode={handleToggleTurboMode}
+            onToggleTurboMode={() => setIsTurboMode(p => !p)}
+            onChangeApiKey={handleChangeApiKey}
             onFullReset={handleFullReset}
             monthsRemainingInYear={monthsRemainingInYear}
             onOpenFamilyBook={() => setIsFamilyBookOpen(true)}
             onRollback={handleOpenRollbackModal}
             canRollback={history.length > 0}
-            onRunAudit={handleRunAudit}
-          />
-        )}
-        <div className="flex-grow flex items-center justify-center min-h-[80vh] w-full max-w-3xl">
-            {renderMainContent()}
-        </div>
-        
-        {isJournalOpen && character && <JournalScreen character={character} lifeSummary={lifeSummary} onClose={() => setIsJournalOpen(false)} />}
-        {isQuotaModalOpen && <QuotaErrorModal onClose={() => setIsQuotaModalOpen(false)} />}
-        {isRollbackModalOpen && <EmergencyRollbackModal isOpen={isRollbackModalOpen} onClose={() => setIsRollbackModalOpen(false)} onRestore={handleRestore} checkpoints={history} />}
-        {isFamilyBookOpen && ancestors && <FamilyBookModal isOpen={isFamilyBookOpen} onClose={() => setIsFamilyBookOpen(false)} ancestors={ancestors} lastName={lineage?.lastName || character?.lastName || ''} />}
-        {worldEventNotification && <WorldEventToast event={worldEventNotification} onClose={() => setWorldEventNotification(null)} />}
-        {isAuditModalOpen && <AuditReportModal isOpen={isAuditModalOpen} onClose={() => setIsAuditModalOpen(false)} report={auditReport} onApplyFixes={handleApplyAuditFixes} onRequestModification={handleRequestAuditModification} isLoading={isAuditLoading} />}
+            onRunAudit={runAudit}
+        />
+      )}
+      
+      {/* Main Content Area (Center) */}
+      <div className="flex-grow flex items-center justify-center w-full md:w-auto p-4">
+        {error && <div className="w-full max-w-2xl bg-red-900/50 border border-red-700 text-red-200 p-6 rounded-lg text-center"><p className="font-bold mb-2">Ocorreu um Erro Cósmico</p><p className="text-sm">{error}</p><button onClick={() => setError(null)} className="mt-4 px-4 py-2 bg-red-600 rounded-md">OK</button></div>}
 
-        {showDebug && lastError && (
-             <div className="fixed bottom-4 right-4 w-1/2 max-w-2xl h-1/2 bg-slate-950/90 border border-slate-700 rounded-lg p-4 z-[100] text-white flex flex-col">
-                <div className="flex justify-between items-center mb-2">
-                    <h3 className="font-bold text-lg text-red-400">Último Erro (Depuração)</h3>
-                    <button onClick={() => setShowDebug(false)} className="text-slate-400 hover:text-white">&times;</button>
-                </div>
-                <pre className="text-xs whitespace-pre-wrap overflow-auto flex-grow text-slate-300">{lastError}</pre>
-            </div>
+        {!error && isLoading && gameState !== GameState.ROUTINE_PLANNING && (
+             (monthsRemainingInYear !== TOTAL_MONTHS_PER_YEAR && character) 
+             ? <DowntimeActivities character={character} onMicroAction={handleDowntimeAction} onShowDebug={() => setShowDebug(true)} />
+             : <LoadingSpinner onShowDebug={() => setShowDebug(true)} />
         )}
-    </main>
+        
+        {!error && !isLoading && (
+          <>
+            {gameState === GameState.NOT_STARTED && <StartScreen onStart={startGame} lineage={lineage} legacyBonuses={legacyBonuses} currentYear={currentYear} hasSaveData={hasSaveData} onContinueGame={loadGame} onStartNewGame={handleStartNewGameFromScratch} onShowDebug={() => setShowDebug(true)} />}
+            {gameState === GameState.IN_PROGRESS && currentEvent && currentEvent.type !== 'MINI_GAME' && <EventCard event={currentEvent} onChoice={handleChoice} onOpenResponseSubmit={handleOpenResponseSubmit} />}
+            {gameState === GameState.IN_PROGRESS && currentEvent && currentEvent.type === 'MINI_GAME' && character && <MiniGameHost event={currentEvent} character={character} onComplete={handleChoice} />}
+            {gameState === GameState.ROUTINE_PLANNING && character && <RoutineScreen character={character} onConfirm={handleRoutineConfirm} isLoading={isLoading} />}
+            {gameState === GameState.GAME_OVER && character && <GameOverScreen finalCharacter={character} lifeSummary={lifeSummary} legacyPoints={legacyPoints} completedChallenges={completedChallenges} isMultiplayerCycle={isMultiplayerCycle} onContinueLineage={continueLineage} onStartNewLineage={startNewLineage} lineage={lineage} heirs={character.relationships.filter(r => (r.title === 'Filho' || r.title === 'Filha') && (r.age || 0) >= 18)} onContinueAsHeir={handleContinueAsHeir} />}
+            {gameState === GameState.LEGACY && <LegacyScreen points={legacyPoints} onStart={startNextGeneration} finalCharacter={character} lineage={lineage} />}
+          </>
+        )}
+      </div>
+
+       {/* Journal Button */}
+      {character && (
+        <button
+          onClick={() => setIsJournalOpen(true)}
+          className="fixed bottom-4 right-4 w-16 h-16 bg-amber-800/80 backdrop-blur-sm border-2 border-amber-600 rounded-full text-amber-200 shadow-lg hover:bg-amber-700 transition-all transform hover:scale-110 z-20"
+          title="Abrir Diário"
+        >
+          <span className="w-8 h-8 mx-auto"><BookOpenIcon /></span>
+        </button>
+      )}
+
+      {/* World Event Toast */}
+      {worldEventNotification && <WorldEventToast event={worldEventNotification} onClose={() => setWorldEventNotification(null)} />}
+    
+      {/* Debug Overlay */}
+      {showDebug && lastError && (
+        <div className="fixed inset-0 bg-black/80 z-50 p-8 overflow-auto">
+          <button onClick={() => setShowDebug(false)} className="absolute top-4 right-4 text-white font-bold">FECHAR</button>
+          <h2 className="text-xl text-red-500 font-bold">Último Erro da API</h2>
+          <pre className="text-sm text-slate-300 whitespace-pre-wrap mt-4">{lastError}</pre>
+        </div>
+      )}
+    </div>
   );
 };
 
-// Fix: Add default export to resolve module import error.
 export default App;
