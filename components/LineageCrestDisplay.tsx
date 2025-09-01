@@ -1,18 +1,11 @@
 
 import React from 'react';
 import { LineageCrest } from '../types';
-import { LionIcon, TreeIcon, BookOpenIcon, SwordIcon } from './Icons';
+import { ICON_MAP } from '../constants';
 
 interface LineageCrestDisplayProps {
   crest: LineageCrest;
 }
-
-const iconMap: Record<string, React.ReactNode> = {
-  lion: <LionIcon />,
-  tree: <TreeIcon />,
-  book: <BookOpenIcon />,
-  sword: <SwordIcon />,
-};
 
 const LineageCrestDisplay: React.FC<LineageCrestDisplayProps> = ({ crest }) => {
   const { icon, color1, color2, shape } = crest;
@@ -35,7 +28,7 @@ const LineageCrestDisplay: React.FC<LineageCrestDisplayProps> = ({ crest }) => {
             style={backgroundStyle}
         >
             <div className="w-8 h-8 text-white drop-shadow-md">
-                {iconMap[icon] || null}
+                {ICON_MAP[icon] || null}
             </div>
         </div>
     </div>

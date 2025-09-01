@@ -1,18 +1,19 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { Character, FamilyBackground, RelationshipType, LegacyBonuses, Trait, Lineage, Mood, Relationship, Skill, FounderTraits } from '../types';
-import { BIRTHPLACES, POSITIVE_TRAITS, NEGATIVE_TRAITS, LIFE_GOALS, LAST_NAMES, FIRST_NAMES, LINEAGE_TITLES, HAIR_COLORS, EYE_COLORS } from '../constants';
+import { Character, FamilyBackground, RelationshipType, LegacyBonuses, Trait, Lineage, Mood, Relationship, Skill, FounderTraits, LineageCrest } from '../types';
+import { BIRTHPLACES, POSITIVE_TRAITS, NEGATIVE_TRAITS, LIFE_GOALS, LAST_NAMES, FIRST_NAMES, LINEAGE_TITLES, HAIR_COLORS, EYE_COLORS, CREST_ICONS, CREST_COLORS, CREST_SHAPES, ICON_MAP } from '../constants';
 import { 
     GENDERS, SKIN_TONES, HAIR_STYLES, ACCESSORIES, PERSONALITY_PROFILES, BACKSTORIES, 
     ATTRIBUTE_POOL, ATTRIBUTE_BASE, ATTRIBUTE_MIN, ATTRIBUTE_MAX, FAMILY_BACKGROUNDS, HEADWEAR 
 } from '../characterCreatorConstants';
 import CustomizableAvatar from './CustomizableAvatar';
-import { UserCircleIcon, SparklesIcon, PlusCircleIcon, MinusCircleIcon, GlobeAltIcon, ClipboardDocumentListIcon } from './Icons';
+import { UserCircleIcon, SparklesIcon, PlusCircleIcon, MinusCircleIcon, GlobeAltIcon, ClipboardDocumentListIcon, CrownIcon } from './Icons';
 import { generateRandomCharacter } from '../services/characterCreationService';
+import LineageCrestDisplay from './LineageCrestDisplay';
 
 interface CharacterCreatorModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onStart: (character: Character) => void;
+    onStart: (character: Character, lineageDetails?: Partial<Lineage>) => void;
     lineage: Lineage | null;
     legacyBonuses: LegacyBonuses | null;
     birthYear: number;
@@ -46,6 +47,16 @@ const AttributeControl: React.FC<{ label: string; value: number; onIncrement: ()
 
 const CharacterCreatorModal: React.FC<CharacterCreatorModalProps> = ({ isOpen, onClose, onStart, lineage, legacyBonuses, birthYear }) => {
     const [character, setCharacter] = useState<Partial<Character> | null>(null);
+    const [lineageDetails, setLineageDetails] = useState<Partial<Lineage> & { crest: LineageCrest }>({
+        motto: 'Per aspera ad astra.',
+        history: 'Uma família de origens humildes com grandes sonhos.',
+        crest: {
+            icon: 'lion',
+            color1: '#6b21a8',
+            color2: '#b45309',
+            shape: 'shield'
+        }
+    });
 
     const randomizeCharacter = useCallback(() => {
         const newChar = generateRandomCharacter(lineage, legacyBonuses, birthYear);
@@ -90,9 +101,31 @@ const CharacterCreatorModal: React.FC<CharacterCreatorModalProps> = ({ isOpen, o
         });
     };
     
+    const handleLineageDetailUpdate = (field: 'motto' | 'history', value: string) => {
+        setLineageDetails(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleCrestUpdate = (field: keyof LineageCrest, value: string) => {
+        setLineageDetails(prev => ({
+            ...prev,
+            crest: {
+                ...prev.crest,
+                [field]: value,
+            }
+        }));
+    };
+
     const handleStartGame = () => {
         if (character && character.name && character.lastName) {
-            onStart(character as Character);
+            if (!lineage) {
+                const finalLineageDetails = {
+                    ...lineageDetails,
+                    definingTraits: character.traits?.map(t => t.name)
+                };
+                onStart(character as Character, finalLineageDetails);
+            } else {
+                onStart(character as Character);
+            }
         }
     };
     
@@ -266,6 +299,51 @@ const CharacterCreatorModal: React.FC<CharacterCreatorModalProps> = ({ isOpen, o
                                 ))}
                              </div>
                         </div>
+
+                        {!lineage && (
+                            <div className="p-4 bg-slate-900/50 rounded-lg border border-slate-700 space-y-4">
+                                <h3 className="text-lg font-semibold text-cyan-400 flex items-center gap-2"><CrownIcon /> Fundar Nova Linhagem</h3>
+                                <div>
+                                    <label className="block text-sm text-slate-300 mb-1">Lema da Família</label>
+                                    <input type="text" value={lineageDetails.motto} onChange={e => handleLineageDetailUpdate('motto', e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm text-slate-300 mb-1">Breve História</label>
+                                    <textarea value={lineageDetails.history} onChange={e => handleLineageDetailUpdate('history', e.target.value)} rows={2} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white resize-none"></textarea>
+                                </div>
+                                <div>
+                                    <label className="block text-sm text-slate-300 mb-2">Brasão da Família</label>
+                                    <div className="flex flex-col md:flex-row items-center gap-4">
+                                        <div className="flex-shrink-0 w-24 h-24">
+                                            <LineageCrestDisplay crest={lineageDetails.crest} />
+                                        </div>
+                                        <div className="flex-grow grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-xs text-slate-400 mb-1">Ícone</label>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {CREST_ICONS.map(icon => <button key={icon} onClick={() => handleCrestUpdate('icon', icon)} className={`w-8 h-8 p-1 rounded-md ${lineageDetails.crest.icon === icon ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>{ICON_MAP[icon]}</button>)}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs text-slate-400 mb-1">Forma</label>
+                                                <div className="flex flex-wrap gap-2">
+                                                     <button onClick={() => handleCrestUpdate('shape', 'shield')} className={`px-3 py-1 text-sm rounded-md ${lineageDetails.crest.shape === 'shield' ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>Escudo</button>
+                                                     <button onClick={() => handleCrestUpdate('shape', 'circle')} className={`px-3 py-1 text-sm rounded-md ${lineageDetails.crest.shape === 'circle' ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>Círculo</button>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs text-slate-400 mb-1">Cor Primária</label>
+                                                <div className="flex flex-wrap gap-2">{CREST_COLORS.map(color => <button key={color} onClick={() => handleCrestUpdate('color1', color)} className={`w-8 h-8 rounded-full border-2 ${lineageDetails.crest.color1 === color ? 'border-white ring-2 ring-white/50' : 'border-transparent hover:border-slate-400'}`} style={{ backgroundColor: color }}></button>)}</div>
+                                            </div>
+                                             <div>
+                                                <label className="block text-xs text-slate-400 mb-1">Cor Secundária</label>
+                                                <div className="flex flex-wrap gap-2">{CREST_COLORS.map(color => <button key={color} onClick={() => handleCrestUpdate('color2', color)} className={`w-8 h-8 rounded-full border-2 ${lineageDetails.crest.color2 === color ? 'border-white ring-2 ring-white/50' : 'border-transparent hover:border-slate-400'}`} style={{ backgroundColor: color }}></button>)}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                          <div className="p-4 bg-slate-900/50 rounded-lg border border-slate-700 space-y-3">
                              <h3 className="text-lg font-semibold text-cyan-400">Origem & Meta</h3>

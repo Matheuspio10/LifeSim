@@ -305,35 +305,42 @@ const App: React.FC = () => {
     await fetchNextEvent(char, currentYear);
   }, [currentYear, fetchNextEvent]);
 
-  const startGame = (newCharacter: Character, isMultiplayer: boolean) => {
+  const startGame = (newCharacter: Character, isMultiplayer: boolean, lineageDetails?: Partial<Lineage>) => {
     const startYear = newCharacter.birthYear;
     setCurrentYear(startYear);
     setIsMultiplayerCycle(isMultiplayer);
     setMonthsRemainingInYear(TOTAL_MONTHS_PER_YEAR);
     setBehaviorTracker({}); 
     if (!lineage) {
-        const color1 = getRandom(CREST_COLORS);
-        const crest: LineageCrest = {
-            icon: getRandom(CREST_ICONS),
-            color1: color1,
-            color2: getRandom(CREST_COLORS.filter(c => c !== color1)),
-            shape: getRandom(CREST_SHAPES),
-        };
+        const finalCrest = lineageDetails?.crest 
+            ? lineageDetails.crest
+            : (() => {
+                const color1 = getRandom(CREST_COLORS);
+                return {
+                    icon: getRandom(CREST_ICONS),
+                    color1: color1,
+                    color2: getRandom(CREST_COLORS.filter(c => c !== color1)),
+                    shape: getRandom(CREST_SHAPES),
+                };
+            })();
+
         const founderTraits: FounderTraits = {
-            hairColor: getRandom(PORTRAIT_COLORS.hair),
-            eyeColor: getRandom(PORTRAIT_COLORS.eyes),
-            skinTone: getRandom(SKIN_TONES),
-            hairstyle: getRandomKey(HAIR_STYLES),
-            accessories: {
-                glasses: getRandomKey(ACCESSORIES),
-            },
+            hairColor: newCharacter.founderTraits.hairColor,
+            eyeColor: newCharacter.founderTraits.eyeColor,
+            skinTone: newCharacter.founderTraits.skinTone,
+            hairstyle: newCharacter.founderTraits.hairstyle,
+            accessories: newCharacter.founderTraits.accessories,
         };
+
         setLineage({
             lastName: newCharacter.lastName,
             generation: 1,
-            crest,
+            crest: finalCrest,
             title: null,
-            founderTraits
+            founderTraits,
+            motto: lineageDetails?.motto || '',
+            history: lineageDetails?.history || '',
+            definingTraits: lineageDetails?.definingTraits || [],
         });
         setAncestors([]); // Reset ancestors for a new lineage
     } else {

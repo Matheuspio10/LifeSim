@@ -341,6 +341,9 @@ export interface Lineage {
     founderTraits: FounderTraits;
     lastKnownLocation?: string;
     lastKnownWealthTier?: FamilyBackground;
+    motto?: string;
+    history?: string;
+    definingTraits?: string[];
 }
 
 export interface WeeklyFocus {

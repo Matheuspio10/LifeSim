@@ -26,7 +26,7 @@ const ERAS: Era[] = [
 ];
 
 interface StartScreenProps {
-    onStart: (character: Character, isMultiplayer: boolean) => void;
+    onStart: (character: Character, isMultiplayer: boolean, lineageDetails?: Partial<Lineage>) => void;
     lineage: Lineage | null;
     legacyBonuses: LegacyBonuses | null;
     currentYear: number;
@@ -154,7 +154,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, lineage, legacyBonus
             <CharacterCreatorModal 
                 isOpen={true}
                 onClose={handleBackToMenu}
-                onStart={(char) => onStart(char, isMultiplayer)}
+                onStart={(char, details) => onStart(char, isMultiplayer, details)}
                 lineage={lineage}
                 legacyBonuses={legacyBonuses}
                 birthYear={birthYear}

@@ -1,5 +1,7 @@
+import React from 'react';
 import { Character, LegacyBonuses } from './types';
 import { POSITIVE_TRAITS, NEGATIVE_TRAITS } from './characterConstants';
+import { LionIcon, TreeIcon, BookOpenIcon, SwordIcon } from '../components/Icons';
 
 export interface LineageTitleInfo {
     name: string;
@@ -29,6 +31,14 @@ export const CREST_ICONS: string[] = [
     'book',
     'sword',
 ];
+
+// Fix: Replaced JSX syntax with React.createElement to resolve errors from using JSX in a .ts file.
+export const ICON_MAP: Record<string, React.ReactNode> = {
+  lion: React.createElement(LionIcon),
+  tree: React.createElement(TreeIcon),
+  book: React.createElement(BookOpenIcon),
+  sword: React.createElement(SwordIcon),
+};
 
 
 // A ordem importa: Títulos mais específicos/difíceis devem vir primeiro.
