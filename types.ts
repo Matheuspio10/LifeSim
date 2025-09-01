@@ -80,6 +80,13 @@ export enum Mood {
     ANGRY = 'Irritado(a)',
 }
 
+export enum NarrativeTone {
+    NORMAL = 'Normal',
+    EPIC_DRAMA = 'Drama Épico',
+    COMEDY_OF_LIFE = 'Comédia da Vida',
+    GRITTY_REALISM = 'Realismo Cru',
+}
+
 export interface Skill {
     name: string;
     level: number; // 0-100
@@ -188,6 +195,12 @@ export interface Character {
   jobTitle: string | null;
   careerLevel: number; // 0-100, represents seniority/progress
   jobSatisfaction: number; // 0-100
+  plotContribution?: string | null; // A summary of their contribution to a global plot
+  activeGlobalPlotContext?: {
+      plotTitle: string;
+      phaseTitle: string;
+      phaseDescription: string;
+  } | null;
 }
 
 export interface StatChanges {
@@ -272,6 +285,7 @@ export interface Choice {
   specialEnding?: string;
   timeCostInUnits?: number; // Representa meses
   locationChange?: string;
+  plotContributionText?: string; // Short summary of character's role in a global plot
 }
 
 export interface GameEvent {
@@ -400,6 +414,10 @@ export interface Ancestor {
     title: string | undefined;
     intimacy: number;
   }[];
+  historicalContext?: { // How this ancestor navigated a major world event
+    plotTitle: string;
+    contribution: string;
+  };
 }
 
 export interface WorldEvent {
@@ -490,4 +508,34 @@ export interface AuditReportModalProps {
   onApplyFixes: (report: AuditReport) => void;
   onRequestModification: (request: string) => void;
   isLoading: boolean;
+}
+
+// --- New Global Plot System Types
+export interface GlobalPlotPhase {
+    id: string;
+    phaseTitle: string;
+    description: string;
+    durationInYears: number;
+}
+
+export interface GlobalPlot {
+    id: string;
+    title: string;
+    description: string;
+    era: string;
+    startYear: number;
+    endYear: number;
+    phases: GlobalPlotPhase[];
+}
+
+export interface ActiveGlobalPlot {
+    plotId: string;
+    currentPhaseIndex: number;
+    yearsInPhase: number;
+}
+
+export interface GlobalPlotBannerProps {
+  title: string;
+  description: string;
+  onClose: () => void;
 }

@@ -2,3 +2,4 @@ export * from './characterConstants';
 export * from './gameplayConstants';
 export * from './worldConstants';
 export * from './characterCreatorConstants';
+export * from './plotConstants';

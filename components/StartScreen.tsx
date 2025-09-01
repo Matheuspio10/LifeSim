@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Character, FamilyBackground, Trait, Lineage, LegacyBonuses } from '../types';
-import { BIRTHPLACES, LIFE_GOALS, LAST_NAMES, WEEKLY_CHALLENGES } from '../constants';
-import { GlobeAltIcon, HomeIcon, PlusCircleIcon, MinusCircleIcon, StarIcon, ClipboardDocumentListIcon, TrophyIcon, UsersIcon } from './Icons';
+import { Character, FamilyBackground, Trait, Lineage, LegacyBonuses, NarrativeTone } from '../types';
+import { BIRTHPLACES, LIFE_GOALS, LAST_NAMES, WEEKLY_CHALLENGES, NARRATIVE_TONE_CONFIG } from '../constants';
+import { GlobeAltIcon, HomeIcon, PlusCircleIcon, MinusCircleIcon, StarIcon, ClipboardDocumentListIcon, TrophyIcon, UsersIcon, CrownIcon, SparklesIcon, ExclamationTriangleIcon, ChartBarIcon } from './Icons';
 import CharacterCreatorModal from './CharacterCreatorModal';
 import { generateRandomCharacter } from '../services/characterCreationService';
 
@@ -25,8 +25,15 @@ const ERAS: Era[] = [
   { name: 'Era Futurista', description: 'Encare um futuro com IA avançada e biotecnologia.', startYear: 2031, endYear: 2050 },
 ];
 
+const iconMap: { [key: string]: React.ReactNode } = {
+    ChartBarIcon: <ChartBarIcon />,
+    CrownIcon: <CrownIcon />,
+    SparklesIcon: <SparklesIcon />,
+    ExclamationTriangleIcon: <ExclamationTriangleIcon />,
+};
+
 interface StartScreenProps {
-    onStart: (character: Character, isMultiplayer: boolean, lineageDetails?: Partial<Lineage>) => void;
+    onStart: (character: Character, isMultiplayer: boolean, narrativeTone: NarrativeTone, lineageDetails?: Partial<Lineage>) => void;
     lineage: Lineage | null;
     legacyBonuses: LegacyBonuses | null;
     currentYear: number;
@@ -43,6 +50,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, lineage, legacyBonus
     const [selectedEra, setSelectedEra] = useState<Era | null>(null);
     const [birthYear, setBirthYear] = useState<number>(currentYear);
     const [isMultiplayer, setIsMultiplayer] = useState(false);
+    const [narrativeTone, setNarrativeTone] = useState<NarrativeTone>(NarrativeTone.NORMAL);
 
     useEffect(() => {
         if (lineage) {
@@ -63,7 +71,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, lineage, legacyBonus
     
     const handleRandomCharacterStart = () => {
         const randomChar = generateRandomCharacter(lineage, legacyBonuses, birthYear);
-        onStart(randomChar, isMultiplayer);
+        onStart(randomChar, isMultiplayer, narrativeTone);
     };
 
     const handleBackToMenu = () => {
@@ -121,26 +129,49 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, lineage, legacyBonus
     
      if (step === 'creation_choice') {
         return (
-            <div className="w-full max-w-md text-center p-8 bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl shadow-2xl animate-fade-in">
+            <div className="w-full max-w-2xl text-center p-8 bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl shadow-2xl animate-fade-in">
                 <h2 className="text-3xl font-bold text-white mb-2">Como deseja começar?</h2>
                 <p className="text-slate-300 mb-8">{lineage ? `A próxima geração da família ${lineage.lastName} está pronta.` : 'Sua nova jornada aguarda.'}</p>
                 
-                <div className="flex flex-col gap-4 mb-6">
+                <div className="flex flex-col sm:flex-row gap-4 mb-6">
                     <button 
                         onClick={() => setStep('creator')}
-                        className="px-8 py-4 bg-indigo-600 text-white font-bold text-lg rounded-lg hover:bg-indigo-500 transition-colors duration-200 transform hover:scale-105 shadow-lg shadow-indigo-600/30"
+                        className="flex-1 px-8 py-4 bg-indigo-600 text-white font-bold text-lg rounded-lg hover:bg-indigo-500 transition-colors duration-200 transform hover:scale-105 shadow-lg shadow-indigo-600/30"
                     >
                         Criar Personagem
                     </button>
                     <button 
                         onClick={handleRandomCharacterStart}
-                        className="px-6 py-3 bg-slate-600 text-white font-semibold rounded-lg hover:bg-slate-500 transition-colors duration-200"
+                        className="flex-1 px-6 py-3 bg-slate-600 text-white font-semibold rounded-lg hover:bg-slate-500 transition-colors duration-200"
                     >
                         Personagem Aleatório
                     </button>
                 </div>
+                
+                 <div className="mt-6">
+                    <h3 className="text-lg font-semibold text-white mb-3">Escolha o Tom da Narrativa</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {Object.entries(NARRATIVE_TONE_CONFIG).map(([toneKey, config]) => {
+                            const tone = toneKey as NarrativeTone;
+                            const isSelected = narrativeTone === tone;
+                            return (
+                                <button
+                                    key={tone}
+                                    onClick={() => setNarrativeTone(tone)}
+                                    className={`p-3 rounded-lg text-left transition-all border-2 ${isSelected ? 'bg-indigo-900/50 border-indigo-500' : 'bg-slate-900/50 border-slate-700 hover:border-slate-500'}`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <span className={`w-6 h-6 ${isSelected ? 'text-indigo-400' : 'text-slate-400'}`}>{iconMap[config.iconName]}</span>
+                                        <h4 className={`font-bold ${isSelected ? 'text-white' : 'text-slate-200'}`}>{config.title}</h4>
+                                    </div>
+                                    <p className="text-xs text-slate-400 mt-1 pl-9">{config.description}</p>
+                                </button>
+                            )
+                        })}
+                    </div>
+                </div>
 
-                <div className="flex items-center gap-2 p-3 bg-slate-900/50 rounded-md border border-slate-700">
+                <div className="flex items-center gap-2 p-3 bg-slate-900/50 rounded-md border border-slate-700 mt-6">
                    <label htmlFor="multiplayer-toggle" className="text-sm font-semibold text-slate-200 flex-grow text-left">Modo de Jogo:</label>
                    <button onClick={() => setIsMultiplayer(false)} className={`px-3 py-1 text-xs rounded-md ${!isMultiplayer ? 'bg-cyan-600 text-white' : 'bg-slate-700'}`}>Solo</button>
                    <button onClick={() => setIsMultiplayer(true)} className={`px-3 py-1 text-xs rounded-md ${isMultiplayer ? 'bg-cyan-600 text-white' : 'bg-slate-700'}`}>Vidas Paralelas</button>
@@ -154,7 +185,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, lineage, legacyBonus
             <CharacterCreatorModal 
                 isOpen={true}
                 onClose={handleBackToMenu}
-                onStart={(char, details) => onStart(char, isMultiplayer, details)}
+                onStart={(char, details) => onStart(char, isMultiplayer, narrativeTone, details)}
                 lineage={lineage}
                 legacyBonuses={legacyBonuses}
                 birthYear={birthYear}

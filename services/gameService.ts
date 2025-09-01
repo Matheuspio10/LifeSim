@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
-import { Character, LifeStage, GameEvent, RelationshipType, MemoryItemType, Trait, EconomicClimate, Choice, MiniGameType, Mood, StatChanges, WorldEvent } from '../types';
+import { Character, LifeStage, GameEvent, RelationshipType, MemoryItemType, Trait, EconomicClimate, Choice, MiniGameType, Mood, StatChanges, WorldEvent, NarrativeTone } from '../types';
 
 // Helper function to robustly parse JSON from the model's text response
 const cleanAndParseJson = <T,>(responseText: string): T => {
@@ -101,6 +101,32 @@ const getZeitgeist = (year: number): string => {
     }
     return `Era da IA e Biotecnologia (2031+): A Inteligência Artificial está integrada em muitos aspectos da vida, desde assistentes domésticos a automação de empregos. A biotecnologia avança, oferecendo curas para doenças genéticas, mas também gerando debates éticos sobre 'bebês projetados'. A mudança climática é uma realidade inescapável, influenciando políticas e estilos de vida.`;
 }
+
+const getNarrativeToneDirective = (tone: NarrativeTone): string => {
+    switch (tone) {
+        case NarrativeTone.EPIC_DRAMA:
+            return `
+            **DIRETIVA DE TOM NARRATIVO: DRAMA ÉPICO (PRIORIDADE ALTA)**
+            - **Atmosfera:** Grandiosa, solene, trágica.
+            - **Linguagem:** Use descrições ricas e uma linguagem mais formal e impactante. Foque em temas como destino, sacrifício, honra e legado.
+            - **Eventos:** Gere dilemas de alto risco, triunfos emocionantes e perdas devastadoras. As consequências devem ter peso emocional duradouro. Pense em uma saga familiar.`;
+        case NarrativeTone.COMEDY_OF_LIFE:
+            return `
+            **DIRETIVA DE TOM NARRATIVO: COMÉDIA DA VIDA (PRIORIDADE ALTA)**
+            - **Atmosfera:** Irônica, absurda, agridoce.
+            - **Linguagem:** Use humor, sarcasmo e um tom leve, mesmo em situações difíceis. Destaque as coincidências improváveis e as pequenas ironias do cotidiano.
+            - **Eventos:** Gere situações cômicas de azar, mal-entendidos absurdos e personagens excêntricos. As "vitórias" podem ter um toque de fracasso, e os "fracassos" podem ser hilários.`;
+        case NarrativeTone.GRITTY_REALISM:
+            return `
+            **DIRETIVA DE TOM NARRATIVO: REALISMO CRU (PRIORIDADE ALTA)**
+            - **Atmosfera:** Sóbria, direta, sem adornos.
+            - **Linguagem:** Seja direto e objetivo. Descreva as coisas como elas são, sem sentimentalismo ou melodrama.
+            - **Eventos:** Foque nas dificuldades concretas e mundanas: problemas financeiros, doenças, burocracia, injustiças sociais, o tédio do trabalho. As soluções raramente são fáceis ou perfeitas.`;
+        case NarrativeTone.NORMAL:
+        default:
+            return ``; // No specific directive for normal, balanced tone.
+    }
+};
 
 const relationshipTypeSchema = {
     type: Type.STRING,
@@ -335,6 +361,7 @@ const choiceSchema = {
         specialEnding: { type: Type.STRING },
         timeCostInUnits: { type: Type.INTEGER, description: 'Número de meses que a ação leva. 1-12. O padrão é 1.' },
         locationChange: { type: Type.STRING },
+        plotContributionText: { type: Type.STRING, description: "Resumo curto, em tempo passado, do papel do personagem na trama global (ex: 'Lutou nas trincheiras', 'Especulou no mercado negro')." },
     },
     required: ['choiceText', 'outcomeText', 'statChanges']
 };
@@ -396,9 +423,10 @@ const systemInstruction = `Você é um mestre de jogo (Game Master) e um contado
 
 **Princípios Narrativos:**
 1.  **Coerência é Rei:** A história deve ser sempre plausível dentro do contexto do personagem (idade, traços, riqueza, era histórica). Evite anacronismos. Um camponês do século 18 não deve encontrar um smartphone.
-2.  **Consequências Reais:** As escolhas do jogador devem ter impacto. Se a solicitação do usuário levar a um resultado sombrio, violento ou trágico (como ferimentos graves, crime, ou morte), modele essas consequências de forma realista dentro da narrativa do jogo. Gere um 'specialEnding' se a ação levar diretamente ao fim da vida do personagem. Evite conteúdo gráfico explícito, mas não fuja de temas maduros.
-3.  **Variação de Tom:** A vida não é um único gênero. Alterne o tom dos eventos entre cômico, trágico, banal e épico para criar uma experiência dinâmica e imprevisível.
-4.  **Foco em Arcos Longos:** Priorize a continuidade. Se houver 'ongoingPlots', o evento gerado deve, preferencialmente, avançar essa narrativa.
+2.  **Trama Global:** Se uma Trama Global estiver ativa (ex: guerra, depressão econômica), os eventos gerados DEVEM refletir essa realidade de forma impactante e pessoal para o personagem.
+3.  **Consequências Reais:** As escolhas do jogador devem ter impacto. Se a solicitação do usuário levar a um resultado sombrio, violento ou trágico (como ferimentos graves, crime, ou morte), modele essas consequências de forma realista dentro da narrativa do jogo. Gere um 'specialEnding' se a ação levar diretamente ao fim da vida do personagem. Evite conteúdo gráfico explícito, mas não fuja de temas maduros.
+4.  **Variação de Tom:** A vida não é um único gênero. Alterne o tom dos eventos entre cômico, trágico, banal e épico para criar uma experiência dinâmica e imprevisível.
+5.  **Foco em Arcos Longos:** Priorize a continuidade. Se houver 'ongoingPlots', o evento gerado deve, preferencialmente, avançar essa narrativa.
 
 NÃO inclua texto explicativo, recusas ou qualquer coisa fora da estrutura JSON. Apenas o JSON.`;
 
@@ -417,6 +445,7 @@ const getCharacterSummary = (character: Character, isTurboMode: boolean = false)
         `;
     }
     const relationshipsSummary = character.relationships.map(r => `${r.name} (${r.title || r.type}${r.age ? `, ${r.age} anos` : ''})`).slice(0, 5).join('; ');
+    const activePlot = character.plotContribution ? ` Papel na Trama Global: ${character.plotContribution}`: '';
     // A concise summary of the character to provide context to the AI
     return `
       Nome: ${character.name} ${character.lastName}, Idade: ${character.age}, Gênero: ${character.gender}
@@ -429,7 +458,7 @@ const getCharacterSummary = (character: Character, isTurboMode: boolean = false)
       Relacionamentos Importantes: ${relationshipsSummary}
       Metas de Vida: ${character.lifeGoals.map(g => g.description + (g.completed ? ' (Concluído)' : '')).join('; ')}
       Habilidades: ${character.skills.map(s => `${s.name} (Nível ${s.level})`).join(', ')}
-      Enredos Atuais: ${character.ongoingPlots ? character.ongoingPlots.map(p => p.description + (p.completed ? ' (Concluído)' : '')).join(', ') : 'Nenhum'}
+      Enredos Atuais: ${character.ongoingPlots ? character.ongoingPlots.map(p => p.description + (p.completed ? ' (Concluído)' : '')).join(', ') : 'Nenhum'}${activePlot}
       Backstory: ${character.backstory}
     `;
 };
@@ -443,16 +472,31 @@ export const generateGameEvent = async (
     focusContext: string | null,
     behaviorTracker: Record<string, number>,
     isTurboMode: boolean,
-    apiKey: string
+    apiKey: string,
+    narrativeTone: NarrativeTone
 ): Promise<GameEvent> => {
     const ai = new GoogleGenAI({ apiKey });
     const model = 'gemini-2.5-flash';
 
     const characterSummary = getCharacterSummary(character, isTurboMode);
     const zeitgeist = getZeitgeist(year);
+    const narrativeDirective = getNarrativeToneDirective(narrativeTone);
 
     const isBossBattle = Math.random() < 0.10; // 10% chance of a boss battle event
     
+    let plotDirective = '';
+    const activePlotInfo = character.activeGlobalPlotContext;
+    if (activePlotInfo) {
+        plotDirective = `
+        **DIRETIVA DE TRAMA GLOBAL (PRIORIDADE MÁXIMA):**
+        - O mundo está passando por: "${activePlotInfo.plotTitle} - ${activePlotInfo.phaseTitle}".
+        - Descrição da Fase: "${activePlotInfo.phaseDescription}"
+        - **HÁ 75% DE CHANCE DE QUE O EVENTO GERADO DEVA ESTAR DIRETAMENTE RELACIONADO A ESTA TRAMA.**
+        - Crie um evento que reflita esta realidade para o personagem, considerando sua riqueza, profissão e traços. Ex: durante uma guerra, eventos sobre conscrição, racionamento, espionagem. Durante uma depressão, eventos sobre desemprego, oportunidades de mercado negro, movimentos sociais.
+        - As escolhas devem refletir diferentes reações: resistir, colaborar, lucrar, sobreviver, inovar, fugir.
+        - Para escolhas que definem o papel do personagem na trama, preencha o campo 'plotContributionText' com um resumo curto em tempo passado (ex: "Lutou nas trincheiras", "Especulou no mercado negro para enriquecer", "Organizava cozinhas comunitárias para os pobres").`;
+    }
+
     const promptContext = isTurboMode
         ? `
       **Contexto do Jogo (Modo Turbo):**
@@ -467,6 +511,10 @@ export const generateGameEvent = async (
       - Título da Linhagem (se houver): ${lineageTitle || "Nenhum"}`;
 
     const prompt = `
+      ${narrativeDirective}
+      
+      ${plotDirective}
+      
       ${promptContext}
 
       **Resumo do Personagem:**
@@ -475,6 +523,8 @@ export const generateGameEvent = async (
       **REGRAS DE OURO PARA GERAÇÃO DE EVENTOS:**
 
       **1. COERÊNCIA NARRATIVA (OBRIGATÓRIO):**
+         - **Tom Narrativo:** O evento e suas descrições DEVEM seguir estritamente a DIRETIVA DE TOM NARRATIVO acima.
+         - **Trama Global:** Se uma Trama Global estiver ativa, o evento DEVE seguir a diretiva da trama.
          - **Era Histórica:** O evento DEVE ser apropriado para o ano de ${year} e o contexto: ${zeitgeist}. Sem anacronismos.
          - **Perfil do Personagem:** O evento deve fazer sentido para um(a) personagem de ${character.age} anos com os traços, riqueza e reputação descritos. Um bilionário não se preocupa com uma conta de $50. Um personagem com 'Índole Criminosa' tem mais chances de encontrar problemas com a lei.
 
@@ -482,7 +532,6 @@ export const generateGameEvent = async (
          - **Variedade:** Gere uma mistura de eventos:
            - **Eventos Simples:** Pequenos dilemas do dia a dia.
            - **Eventos de Bifurcação (Ocasional):** Crie eventos de alto impacto que possam mudar drasticamente o rumo da vida (ex: uma proposta de emprego em outro país, um convite para entrar no crime, uma crise existencial que leva a uma mudança de carreira radical).
-         - **Tom Narrativo:** Varie o tom. Nem tudo é um drama. Insira momentos de humor, banalidade, romance ou tragédia, conforme apropriado.
          - ${isBossBattle ? `Gere um evento de "batalha de chefe" de alto risco, apropriado para a fase da vida. Descrição do desafio: ${getBossBattlePrompt(lifeStage)}` : `Gere um evento de vida interessante. Pode ser uma oportunidade, um desafio ou uma interação social. Eventos que podem levar à morte (devido a doença, acidente ou violência) são permitidos e devem ser gerados se forem narrativamente apropriados.`}
 
       **3. ARCOS DE HISTÓRIA (PRIORIDADE MÁXIMA):**
@@ -535,18 +584,24 @@ export const evaluatePlayerResponse = async (
     playerResponse: string,
     focusContext: string | null,
     isTurboMode: boolean,
-    apiKey: string
+    apiKey: string,
+    narrativeTone: NarrativeTone
 ): Promise<Choice> => {
     const ai = new GoogleGenAI({ apiKey });
     const model = 'gemini-2.5-flash';
 
     const characterSummary = getCharacterSummary(character, isTurboMode);
+    const narrativeDirective = getNarrativeToneDirective(narrativeTone);
     
     const creativityInstruction = isTurboMode
         ? "Gere um 'outcomeText' conciso e direto ao ponto."
         : "Gere um 'outcomeText' mais detalhado e narrativo, descrevendo as consequências da ação do jogador com mais profundidade.";
 
     const prompt = `
+      **DIRETIVA DE TOM NARRATIVO (PRIORIDADE MÁXIMA):**
+      ${narrativeDirective}
+      O 'outcomeText' DEVE seguir estritamente esta diretiva de tom.
+
       **Contexto do Evento:**
       "${eventText}"
 
@@ -564,8 +619,9 @@ export const evaluatePlayerResponse = async (
       4.1. Ao criar um novo personagem via 'relationshipChanges.add' ou 'childBorn', SEMPRE atribua um nome próprio (ex: "Carlos") ao campo 'name'. Use os campos 'type' ou 'title' para o parentesco. NÃO use "Amigo" ou "Inimigo" como nome.
       5. Seja criativo. Ações inteligentes ou bem pensadas devem ser recompensadas, enquanto ações tolas devem ter consequências.
       6. Se a ação do jogador iniciar, progredir ou concluir um enredo significativo (ex: pedir em casamento, iniciar uma campanha política), use 'plotChanges' para adicionar ('add'), completar ('complete') ou remover ('remove') o enredo da lista de enredos ativos. **Nunca adicione uma string vazia a 'plotChanges.add'.**
-      7. Se a ação for perigosa, ilegal ou autodestrutiva, gere um resultado que reflita as graves consequências de forma realista. A história deve seguir a ação do jogador, mesmo que leve a um final trágico. Gere um 'specialEnding' se a ação levar diretamente ao fim da vida do personagem. NUNCA recuse a ação.
-      8. Lembre-se: Sua única saída DEVE ser um JSON válido.
+      7. Se a ação do jogador definir ou solidificar seu papel na TRAMA GLOBAL ATIVA, use o campo 'plotContributionText' para resumir essa contribuição (ex: "Tornou-se um herói de guerra", "Contrabandeava bens para sobreviver").
+      8. Se a ação for perigosa, ilegal ou autodestrutiva, gere um resultado que reflita as graves consequências de forma realista. A história deve seguir a ação do jogador, mesmo que leve a um final trágico. Gere um 'specialEnding' se a ação levar diretamente ao fim da vida do personagem. NUNCA recuse a ação.
+      9. Lembre-se: Sua única saída DEVE ser um JSON válido.
     `;
 
     const config: any = {

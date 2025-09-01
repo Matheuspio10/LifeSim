@@ -112,6 +112,14 @@ const FamilyBookModal: React.FC<FamilyBookModalProps> = ({ isOpen, onClose, ance
                             <p className="text-slate-700 italic">"{selectedAncestor.finalStatus}"</p>
                         </div>
                         
+                        {selectedAncestor.historicalContext && (
+                            <div className="my-4">
+                                <h4 className="font-bold text-amber-900 text-lg border-b border-amber-800/20 mb-2 pb-1">Marco Histórico</h4>
+                                <p className="text-slate-700">Viveu durante o período de <strong>{selectedAncestor.historicalContext.plotTitle}</strong>.</p>
+                                <p className="text-slate-700 mt-1 italic">Sua contribuição registrada foi: "{selectedAncestor.historicalContext.contribution}"</p>
+                            </div>
+                        )}
+
                         <div>
                             <h4 className="font-bold text-amber-900 text-lg border-b border-amber-800/20 mb-2 pb-1">Resumo da Vida</h4>
                             <p className="text-slate-700 leading-relaxed text-justify">{selectedAncestor.narrative}</p>

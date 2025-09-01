@@ -462,6 +462,11 @@ export const applyChoiceToCharacter = (character: Character, choice: Choice, isE
         updatedChar.isPregnant = false;
     }
 
+    // Apply plot contribution text
+    if (choice.plotContributionText) {
+        updatedChar.plotContribution = choice.plotContributionText;
+    }
+
 
     // Final clamping of all primary stats to ensure they are within valid ranges.
     updatedChar.health = clamp(updatedChar.health, 0, 100);

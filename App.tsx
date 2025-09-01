@@ -1,11 +1,11 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Skill, FamilyBackground, Checkpoint, Ancestor, WorldEvent, Relationship, AuditReport, StatChanges, SkillChanges, HiddenGoal } from './types';
+import { GameState, Character, LifeStage, GameEvent, Choice, LegacyBonuses, LifeSummaryEntry, MemoryItem, EconomicClimate, Lineage, LineageCrest, FounderTraits, WeeklyFocus, MiniGameType, Mood, Skill, FamilyBackground, Checkpoint, Ancestor, WorldEvent, Relationship, AuditReport, StatChanges, SkillChanges, HiddenGoal, ActiveGlobalPlot, GlobalPlot, NarrativeTone } from './types';
 import { generateGameEvent, evaluatePlayerResponse, processMetaCommand, generateWorldEvent, processAuditModificationRequest, generateCatastrophicEvent } from './services/gameService';
 import { applyChoiceToCharacter, checkLifeGoals, determineCauseOfDeath, applyCriticalStatPenalties, checkForNewHealthConditions, checkHiddenGoals } from './services/characterService';
 import { getDynamicFocusCost } from './services/economyService';
 import { runCharacterAudit } from './services/auditService';
-import { WEEKLY_CHALLENGES, LAST_NAMES, PORTRAIT_COLORS, HEALTH_CONDITIONS, TOTAL_MONTHS_PER_YEAR, SKIN_TONES, HAIR_STYLES, ACCESSORIES } from './constants';
+import { WEEKLY_CHALLENGES, LAST_NAMES, PORTRAIT_COLORS, HEALTH_CONDITIONS, TOTAL_MONTHS_PER_YEAR, SKIN_TONES, HAIR_STYLES, ACCESSORIES, GLOBAL_PLOTS } from './constants';
 import { createHeirCharacter } from './services/characterCreationService';
 import { CREST_COLORS, CREST_ICONS, CREST_SHAPES, LINEAGE_TITLES } from './lineageConstants';
 import CharacterSheet from './components/CharacterSheet';
@@ -26,6 +26,7 @@ import FamilyBookModal from './components/FamilyBookModal';
 import WorldEventToast from './components/WorldEventToast';
 import AuditReportModal from './components/AuditReportModal';
 import HiddenGoalToast from './components/HiddenGoalToast';
+import GlobalPlotBanner from './components/GlobalPlotBanner';
 
 const getRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const getRandomKey = <T extends object>(obj: T): keyof T => {
@@ -64,6 +65,9 @@ const App: React.FC = () => {
   const [auditReport, setAuditReport] = useState<AuditReport | null>(null);
   const [isAuditLoading, setIsAuditLoading] = useState<boolean>(false);
   const [hiddenGoalToast, setHiddenGoalToast] = useState<HiddenGoal | null>(null);
+  const [activeGlobalPlot, setActiveGlobalPlot] = useState<ActiveGlobalPlot | null>(null);
+  const [plotBanner, setPlotBanner] = useState<{title: string, description: string} | null>(null);
+  const [narrativeTone, setNarrativeTone] = useState<NarrativeTone>(NarrativeTone.NORMAL);
 
 
   // Legacy State
@@ -116,6 +120,18 @@ const App: React.FC = () => {
 
   const recordAncestor = useCallback((char: Character, currentLineage: Lineage | null, summary: LifeSummaryEntry[]) => {
       if (!currentLineage) return;
+      
+      let historicalContext;
+      if (char.plotContribution && activeGlobalPlot) {
+          const plot = GLOBAL_PLOTS.find(p => p.id === activeGlobalPlot.plotId);
+          if (plot) {
+              historicalContext = {
+                  plotTitle: plot.title,
+                  contribution: char.plotContribution,
+              };
+          }
+      }
+
       const newAncestor: Ancestor = {
           id: `${char.name}-${char.generation}-${Date.now()}`,
           generation: char.generation,
@@ -136,16 +152,17 @@ const App: React.FC = () => {
           finalWealth: char.wealth + char.investments,
           careerSummary: { jobTitle: char.jobTitle, careerLevel: char.careerLevel },
           keyRelationships: char.relationships.slice(0, 3).map(r => ({ name: r.name, title: r.title, intimacy: r.intimacy })),
+          historicalContext
       };
       setAncestors(prev => [...prev, newAncestor]);
-  }, []);
+  }, [activeGlobalPlot]);
   
   const saveForRollback = useCallback(() => {
     const stateToSave = {
         gameState, character, currentEvent, lifeSummary, currentYear,
         economicClimate, isMultiplayerCycle, monthsRemainingInYear,
         currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode,
-        ancestors, completedHiddenGoals,
+        ancestors, completedHiddenGoals, activeGlobalPlot, narrativeTone,
     };
 
     let name = `Ponto de Restauração`;
@@ -168,7 +185,7 @@ const App: React.FC = () => {
     };
 
     setHistory(prev => [newCheckpoint, ...prev].slice(0, 10));
-  }, [gameState, character, currentEvent, lifeSummary, currentYear, economicClimate, isMultiplayerCycle, monthsRemainingInYear, currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode, ancestors, completedHiddenGoals]);
+  }, [gameState, character, currentEvent, lifeSummary, currentYear, economicClimate, isMultiplayerCycle, monthsRemainingInYear, currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode, ancestors, completedHiddenGoals, activeGlobalPlot, narrativeTone]);
 
   // --- Save/Load Logic ---
   const loadGame = useCallback(() => {
@@ -192,6 +209,8 @@ const App: React.FC = () => {
             setHistory(parsedData.history ?? []);
             setAncestors(parsedData.ancestors ?? []);
             setCompletedHiddenGoals(parsedData.completedHiddenGoals ?? []);
+            setActiveGlobalPlot(parsedData.activeGlobalPlot ?? null);
+            setNarrativeTone(parsedData.narrativeTone ?? NarrativeTone.NORMAL);
         } catch (e) {
             console.error("Falha ao carregar o jogo salvo", e);
             localStorage.removeItem(SAVE_GAME_KEY);
@@ -216,10 +235,10 @@ const App: React.FC = () => {
         gameState, character, currentEvent, lifeSummary, currentYear,
         economicClimate, isMultiplayerCycle, monthsRemainingInYear,
         currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode, history, ancestors,
-        completedHiddenGoals
+        completedHiddenGoals, activeGlobalPlot, narrativeTone
     };
     localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameToSave));
-  }, [gameState, character, currentEvent, lifeSummary, currentYear, economicClimate, isMultiplayerCycle, monthsRemainingInYear, currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode, history, ancestors, completedHiddenGoals]);
+  }, [gameState, character, currentEvent, lifeSummary, currentYear, economicClimate, isMultiplayerCycle, monthsRemainingInYear, currentFocusContext, behaviorTracker, lineage, legacyPoints, isTurboMode, history, ancestors, completedHiddenGoals, activeGlobalPlot, narrativeTone]);
 
   const resetGameAndClearSave = () => {
     localStorage.removeItem(SAVE_GAME_KEY);
@@ -245,6 +264,9 @@ const App: React.FC = () => {
     setIsTurboMode(true);
     setHistory([]);
     setAncestors([]);
+    setActiveGlobalPlot(null);
+    setPlotBanner(null);
+    setNarrativeTone(NarrativeTone.NORMAL);
   };
 
   const handleStartNewGameFromScratch = () => {
@@ -293,6 +315,8 @@ const App: React.FC = () => {
         setIsTurboMode(stateSnapshot.isTurboMode);
         setAncestors(stateSnapshot.ancestors);
         setCompletedHiddenGoals(stateSnapshot.completedHiddenGoals);
+        setActiveGlobalPlot(stateSnapshot.activeGlobalPlot);
+        setNarrativeTone(stateSnapshot.narrativeTone ?? NarrativeTone.NORMAL);
 
         const checkpointIndex = history.findIndex(h => h.id === checkpoint.id);
         if (checkpointIndex > -1) {
@@ -321,13 +345,28 @@ const App: React.FC = () => {
     }
     setIsLoading(true);
     setError(null);
+    
+    let charWithContext = { ...char };
+    if (activeGlobalPlot) {
+        const plot = GLOBAL_PLOTS.find(p => p.id === activeGlobalPlot.plotId);
+        if (plot) {
+            const phase = plot.phases[activeGlobalPlot.currentPhaseIndex];
+            charWithContext.activeGlobalPlotContext = {
+                plotTitle: plot.title,
+                phaseTitle: phase.phaseTitle,
+                phaseDescription: phase.description,
+            };
+        }
+    } else {
+        charWithContext.activeGlobalPlotContext = null;
+    }
 
     const MAX_RETRIES = 3;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
-            const lifeStage = getCurrentLifeStage(char.age);
+            const lifeStage = getCurrentLifeStage(charWithContext.age);
             const lineageTitle = lineage ? lineage.title : null;
-            const event = await generateGameEvent(char, lifeStage, eventYear, economicClimate, lineageTitle, currentFocusContext, newBehaviorTracker ?? behaviorTracker, isTurboMode, apiKey);
+            const event = await generateGameEvent(charWithContext, lifeStage, eventYear, economicClimate, lineageTitle, currentFocusContext, newBehaviorTracker ?? behaviorTracker, isTurboMode, apiKey, narrativeTone);
             
             if (!event || !event.eventText || !event.type) {
                 throw new Error("A resposta da IA estava vazia ou malformada.");
@@ -359,7 +398,7 @@ const App: React.FC = () => {
             }
         }
     }
-  }, [economicClimate, lineage, currentFocusContext, behaviorTracker, isTurboMode, apiKey]);
+  }, [economicClimate, lineage, currentFocusContext, behaviorTracker, isTurboMode, apiKey, activeGlobalPlot, narrativeTone]);
 
 
   const processNextDecision = useCallback(async (char: Character) => {
@@ -368,12 +407,14 @@ const App: React.FC = () => {
     await fetchNextEvent(char, currentYear);
   }, [currentYear, fetchNextEvent]);
 
-  const startGame = (newCharacter: Character, isMultiplayer: boolean, lineageDetails?: Partial<Lineage>) => {
+  const startGame = (newCharacter: Character, isMultiplayer: boolean, tone: NarrativeTone, lineageDetails?: Partial<Lineage>) => {
     const startYear = newCharacter.birthYear;
     setCurrentYear(startYear);
     setIsMultiplayerCycle(isMultiplayer);
     setMonthsRemainingInYear(TOTAL_MONTHS_PER_YEAR);
     setBehaviorTracker({}); 
+    setNarrativeTone(tone);
+
     if (!lineage) {
         const finalCrest = lineageDetails?.crest 
             ? lineageDetails.crest
@@ -500,6 +541,38 @@ const App: React.FC = () => {
         // End of year processing
         updatedChar.age += 1;
         finalMonthsRemaining = TOTAL_MONTHS_PER_YEAR;
+        const newYear = currentYear + 1;
+
+        // --- GLOBAL PLOT SYSTEM ---
+        let newActivePlot = activeGlobalPlot;
+        const potentialPlot = GLOBAL_PLOTS.find(p => p.startYear === newYear);
+        if (potentialPlot && !newActivePlot) {
+            newActivePlot = { plotId: potentialPlot.id, currentPhaseIndex: 0, yearsInPhase: 0 };
+            const plotPhase = potentialPlot.phases[0];
+            setPlotBanner({ title: `${potentialPlot.title}: ${plotPhase.phaseTitle}`, description: plotPhase.description });
+        } else if (newActivePlot) {
+            const plot = GLOBAL_PLOTS.find(p => p.id === newActivePlot.plotId);
+            if (plot) {
+                const currentPhase = plot.phases[newActivePlot.currentPhaseIndex];
+                const newYearsInPhase = newActivePlot.yearsInPhase + 1;
+
+                if (newYearsInPhase >= currentPhase.durationInYears) {
+                    if (newActivePlot.currentPhaseIndex + 1 < plot.phases.length) {
+                        newActivePlot = { ...newActivePlot, currentPhaseIndex: newActivePlot.currentPhaseIndex + 1, yearsInPhase: 0 };
+                        const nextPhase = plot.phases[newActivePlot.currentPhaseIndex];
+                        setPlotBanner({ title: `${plot.title}: ${nextPhase.phaseTitle}`, description: nextPhase.description });
+                    } else {
+                        newActivePlot = null; // Plot ends
+                        setPlotBanner({ title: `Fim de uma Era: ${plot.title}`, description: 'O mundo agora lida com as consequências...' });
+                        updatedChar.plotContribution = null;
+                    }
+                } else {
+                    newActivePlot = { ...newActivePlot, yearsInPhase: newYearsInPhase };
+                }
+            }
+        }
+        setActiveGlobalPlot(newActivePlot);
+        // --- END GLOBAL PLOT SYSTEM ---
 
         // Check for death by old age or health conditions
         const deathChance = (updatedChar.age > 70) ? (updatedChar.age - 70) * 0.01 : 0;
@@ -510,7 +583,7 @@ const App: React.FC = () => {
             // World Event (once per year)
             if (apiKey) {
                 try {
-                    const worldEvent = await generateWorldEvent(currentYear + 1, economicClimate, apiKey);
+                    const worldEvent = await generateWorldEvent(newYear, economicClimate, apiKey);
                     const worldEventChoice = {
                         choiceText: `O mundo mudou: ${worldEvent.title}`,
                         outcomeText: worldEvent.description,
@@ -537,7 +610,7 @@ const App: React.FC = () => {
             }
 
             setLifeSummary(prev => [...prev, ...summaryAdditions, { text: `${updatedChar.name} completou ${updatedChar.age} anos.`, isEpic: false }]);
-            setCurrentYear(prev => prev + 1);
+            setCurrentYear(newYear);
             setMonthsRemainingInYear(TOTAL_MONTHS_PER_YEAR);
             setCharacter(updatedChar);
             setGameState(GameState.ROUTINE_PLANNING);
@@ -566,7 +639,7 @@ const App: React.FC = () => {
         setLineage(updatedLineage);
         setIsLoading(false);
     }
-  }, [character, lifeSummary, currentYear, monthsRemainingInYear, economicClimate, fetchNextEvent, saveForRollback, lineage, apiKey, completedChallenges, recordAncestor, updateLineageTitle]);
+  }, [character, lifeSummary, currentYear, monthsRemainingInYear, economicClimate, fetchNextEvent, saveForRollback, lineage, apiKey, completedChallenges, recordAncestor, updateLineageTitle, activeGlobalPlot]);
 
   const handleChoice = useCallback(async (choice: Choice) => {
     if (!character) return;
@@ -614,7 +687,7 @@ const App: React.FC = () => {
     try {
         const choice = isMeta
             ? await processMetaCommand(character, responseText.substring(5).trim(), isTurboMode, apiKey)
-            : await evaluatePlayerResponse(character, currentEvent.eventText, responseText, currentFocusContext, isTurboMode, apiKey);
+            : await evaluatePlayerResponse(character, currentEvent.eventText, responseText, currentFocusContext, isTurboMode, apiKey, narrativeTone);
         
         await handleChoice(choice);
     } catch (err) {
@@ -634,7 +707,7 @@ const App: React.FC = () => {
     } finally {
         setIsLoading(false);
     }
-  }, [character, currentEvent, handleChoice, isTurboMode, apiKey, currentFocusContext]);
+  }, [character, currentEvent, handleChoice, isTurboMode, apiKey, currentFocusContext, narrativeTone]);
 
   const handleRoutineConfirm = async (focuses: WeeklyFocus[]) => {
       if (!character) return;
@@ -692,7 +765,7 @@ const App: React.FC = () => {
     // No need to create another one here.
     
     setLegacyPoints(0); // Reset for new generation
-    startGame(heirChar, isMultiplayerCycle);
+    startGame(heirChar, isMultiplayerCycle, narrativeTone);
   };
   
   const handleDowntimeAction = (result: MicroActionResult) => {
@@ -826,6 +899,9 @@ const App: React.FC = () => {
     
       {/* Hidden Goal Toast */}
       {hiddenGoalToast && <HiddenGoalToast goal={hiddenGoalToast} onClose={() => setHiddenGoalToast(null)} />}
+
+      {/* Global Plot Banner */}
+      {plotBanner && <GlobalPlotBanner title={plotBanner.title} description={plotBanner.description} onClose={() => setPlotBanner(null)} />}
 
       {/* Debug Overlay */}
       {showDebug && lastError && (

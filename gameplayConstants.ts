@@ -1,7 +1,30 @@
-import { LifeStage, WeeklyChallenge, Character, RelationshipType, WeeklyFocus, FamilyBackground, HiddenGoal } from './types';
+import { LifeStage, WeeklyChallenge, Character, RelationshipType, WeeklyFocus, FamilyBackground, HiddenGoal, NarrativeTone } from './types';
 
 export const MAX_FOCUS_POINTS = 3;
 export const TOTAL_MONTHS_PER_YEAR = 12;
+
+export const NARRATIVE_TONE_CONFIG: Record<NarrativeTone, { title: string; description: string; iconName: string }> = {
+    [NarrativeTone.NORMAL]: {
+        title: 'Normal',
+        description: 'Uma mistura equilibrada de drama, humor e eventos do dia a dia.',
+        iconName: 'ChartBarIcon',
+    },
+    [NarrativeTone.EPIC_DRAMA]: {
+        title: 'Drama Épico',
+        description: 'Uma vida de grandes tragédias, sacrifícios e triunfos. Pense em uma saga familiar.',
+        iconName: 'CrownIcon',
+    },
+    [NarrativeTone.COMEDY_OF_LIFE]: {
+        title: 'Comédia da Vida',
+        description: 'Uma jornada marcada por ironia, azar absurdo e coincidências hilárias.',
+        iconName: 'SparklesIcon',
+    },
+    [NarrativeTone.GRITTY_REALISM]: {
+        title: 'Realismo Cru',
+        description: 'Foco nas dificuldades concretas: finanças, saúde e injustiças. A vida sem filtros.',
+        iconName: 'ExclamationTriangleIcon',
+    },
+};
 
 export const LIFE_GOALS: string[] = [
     'Viver uma vida simples e pacífica no campo.',
