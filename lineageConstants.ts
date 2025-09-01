@@ -1,7 +1,7 @@
 import React from 'react';
 import { Character, LegacyBonuses } from './types';
 import { POSITIVE_TRAITS, NEGATIVE_TRAITS } from './characterConstants';
-import { LionIcon, TreeIcon, BookOpenIcon, SwordIcon } from '../components/Icons';
+import { LionIcon, TreeIcon, BookOpenIcon, SwordIcon } from './components/Icons';
 
 export interface LineageTitleInfo {
     name: string;
