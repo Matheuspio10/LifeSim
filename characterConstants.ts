@@ -73,7 +73,10 @@ export const NEGATIVE_TRAITS: Trait[] = [
     { name: 'Destino Sombrio', description: 'Uma sombra paira sobre seu futuro, prometendo um fim prematuro e trágico.', type: 'negative' },
 ];
 
+export const HAIR_COLORS = ['#1e1e1e', '#4a3f35', '#9a6a42', '#e6c86e', '#f0e4a4', '#c44228', '#f2f2f2', '#3e84c2'];
+export const EYE_COLORS = ['#7b4c32', '#348043', '#5b89a8', '#a1a1a1', '#333333', '#c4a24f'];
+// Fix: Add PORTRAIT_COLORS export to resolve import error in App.tsx.
 export const PORTRAIT_COLORS = {
-    hair: ['#422e37', '#75463b', '#222034', '#a36e44', '#f2d47e'],
-    eyes: ['#222034', '#346524', '#663931', '#445a67', '#3c96cf']
+    hair: HAIR_COLORS,
+    eyes: EYE_COLORS,
 };

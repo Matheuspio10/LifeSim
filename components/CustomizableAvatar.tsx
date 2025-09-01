@@ -5,27 +5,33 @@ interface CustomizableAvatarProps {
   hairColor: string;
   eyeColor: string;
   hairstyle: string;
-  accessory: string;
+  glasses: string;
+  headwear: string;
 }
 
 const hairstylePaths: Record<string, JSX.Element> = {
     'curto': <path d="M4,8 h16 v-4 h-2 v-1 h-12 v1 h-2 z" />,
-    'medio': <>
-        <path d="M4,8 h16 v-4 h-2 v-1 h-12 v1 h-2 z" />
-        <path d="M4,9 h2 v2 h-2 z M18,9 h2 v2 h-2 z" />
+    'medio': <><path d="M4,8 h16 v-4 h-2 v-1 h-12 v1 h-2 z" /><path d="M4,9 h2 v2 h-2 z M18,9 h2 v2 h-2 z" /></>,
+    'longo': <><path d="M4,8 h16 v-4 h-2 v-1 h-12 v1 h-2 z" /><path d="M4,9 h2 v6 h-2 z M18,9 h2 v6 h-2 z" /></>,
+    'coque': <><path d="M4,8 h16 v-2 h-16 z" /><path d="M9,2 h6 v4 h-6 z" /></>,
+    'careca': <></>,
+    'crespo-curto': <path d="M6,8 C4,4 8,3 12,3 C16,3 20,4 18,8 Z" />,
+    'afro-volumoso': <path d="M4,8 Q4,2 12,2 T20,8 V12 H4 Z" />,
+    'trancas': <>
+      <rect x="4" y="4" width="16" height="4" />
+      <rect x="4" y="8" width="2" height="10" />
+      <rect x="7" y="8" width="2" height="10" />
+      <rect x="10" y="8" width="2" height="10" />
+      <rect x="13" y="8" width="2" height="10" />
+      <rect x="16" y="8" width="2" height="10" />
+      <rect x="19" y="8" width="1" height="10" />
     </>,
-    'longo': <>
-        <path d="M4,8 h16 v-4 h-2 v-1 h-12 v1 h-2 z" />
-        <path d="M4,9 h2 v6 h-2 z M18,9 h2 v6 h-2 z" />
-    </>,
-    'coque': <>
-        <path d="M4,8 h16 v-2 h-16 z" />
-        <path d="M9,2 h6 v4 h-6 z" />
-    </>,
-    'careca': <></>
+    'rabo-de-cavalo': <><path d="M4,8 h16 v-4 h-2 v-1 h-12 v1 h-2 z" /><path d="M18,9 h2 v8 h-2 z" /></>,
+    'sidecut': <><path d="M10,8 h10 v-4 h-2 v-1 h-8 z" /><path d="M4,8 h4 v8 h-4z" /></>,
+    'topete': <path d="M9,4 C9,1 15,1 15,4 L18,8 H6 Z" />,
 };
 
-const accessoryPaths: Record<string, JSX.Element> = {
+const glassesPaths: Record<string, JSX.Element> = {
     'none': <></>,
     'oculos-redondo': <>
         <path d="M7,12 h4 v2 h-4 z" fill="#111827" />
@@ -39,12 +45,20 @@ const accessoryPaths: Record<string, JSX.Element> = {
     </>,
 };
 
+const headwearPaths: Record<string, JSX.Element> = {
+    'none': <></>,
+    'bandana': <rect x="6" y="8" width="12" height="2" fill="#b91c1c" />,
+    'beanie': <path d="M5,8 Q12,4 19,8 V6 Q12,2 5,6 Z" fill="#1d4ed8" />,
+    'bow': <path d="M16,4 L18,6 L20,4 L18,2 Z" fill="#be185d" />,
+};
+
 const CustomizableAvatar: React.FC<CustomizableAvatarProps> = ({
   skinTone,
   hairColor,
   eyeColor,
   hairstyle,
-  accessory,
+  glasses,
+  headwear,
 }) => {
   return (
     <svg 
@@ -70,9 +84,14 @@ const CustomizableAvatar: React.FC<CustomizableAvatarProps> = ({
       {/* Mouth */}
       <rect x="10" y="15" width="4" height="1" fill="#4a2a2a" />
       
-      {/* Accessories */}
+      {/* Headwear */}
       <g>
-        {accessoryPaths[accessory]}
+        {headwearPaths[headwear]}
+      </g>
+
+      {/* Glasses */}
+      <g>
+        {glassesPaths[glasses]}
       </g>
 
     </svg>

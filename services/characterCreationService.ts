@@ -1,8 +1,8 @@
 
 
 import { Character, FamilyBackground, RelationshipType, LegacyBonuses, Trait, Lineage, Mood, FounderTraits, Relationship } from '../types';
-import { BIRTHPLACES, LIFE_GOALS, LAST_NAMES, FIRST_NAMES, LINEAGE_TITLES } from '../constants';
-import { GENDERS, SKIN_TONES, HAIR_STYLES, ACCESSORIES, PERSONALITY_PROFILES, BACKSTORIES } from '../characterCreatorConstants';
+import { BIRTHPLACES, LIFE_GOALS, LAST_NAMES, FIRST_NAMES, LINEAGE_TITLES, HAIR_COLORS, EYE_COLORS } from '../constants';
+import { GENDERS, SKIN_TONES, HAIR_STYLES, ACCESSORIES, PERSONALITY_PROFILES, BACKSTORIES, HEADWEAR } from '../characterCreatorConstants';
 
 const getRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const getRandomKey = <T extends object>(obj: T): keyof T => getRandom(Object.keys(obj) as (keyof T)[]);
@@ -174,10 +174,13 @@ export const generateRandomCharacter = (lineage: Lineage | null, legacyBonuses: 
         ? lineage.founderTraits
         : { 
             skinTone: getRandom(SKIN_TONES),
-            hairColor: getRandom(LAST_NAMES), // Using last names for more color variety
-            eyeColor: getRandom(LAST_NAMES),
+            hairColor: getRandom(HAIR_COLORS),
+            eyeColor: getRandom(EYE_COLORS),
             hairstyle: getRandomKey(HAIR_STYLES),
-            accessories: { glasses: getRandomKey(ACCESSORIES) }
+            accessories: { 
+                glasses: getRandomKey(ACCESSORIES),
+                headwear: getRandomKey(HEADWEAR),
+            }
           };
     
     const pointPool = 40;

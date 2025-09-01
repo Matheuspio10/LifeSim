@@ -1,9 +1,9 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Character, FamilyBackground, RelationshipType, LegacyBonuses, Trait, Lineage, Mood, Relationship, Skill, FounderTraits } from '../types';
-import { BIRTHPLACES, POSITIVE_TRAITS, NEGATIVE_TRAITS, LIFE_GOALS, LAST_NAMES, FIRST_NAMES, LINEAGE_TITLES, PORTRAIT_COLORS } from '../constants';
+import { BIRTHPLACES, POSITIVE_TRAITS, NEGATIVE_TRAITS, LIFE_GOALS, LAST_NAMES, FIRST_NAMES, LINEAGE_TITLES, HAIR_COLORS, EYE_COLORS } from '../constants';
 import { 
     GENDERS, SKIN_TONES, HAIR_STYLES, ACCESSORIES, PERSONALITY_PROFILES, BACKSTORIES, 
-    ATTRIBUTE_POOL, ATTRIBUTE_BASE, ATTRIBUTE_MIN, ATTRIBUTE_MAX, FAMILY_BACKGROUNDS 
+    ATTRIBUTE_POOL, ATTRIBUTE_BASE, ATTRIBUTE_MIN, ATTRIBUTE_MAX, FAMILY_BACKGROUNDS, HEADWEAR 
 } from '../characterCreatorConstants';
 import CustomizableAvatar from './CustomizableAvatar';
 import { UserCircleIcon, SparklesIcon, PlusCircleIcon, MinusCircleIcon, GlobeAltIcon, ClipboardDocumentListIcon } from './Icons';
@@ -17,6 +17,20 @@ interface CharacterCreatorModalProps {
     legacyBonuses: LegacyBonuses | null;
     birthYear: number;
 }
+
+const HAIR_COLOR_MAP: Record<string, string> = {
+    '#1e1e1e': 'Preto Intenso', '#4a3f35': 'Castanho Escuro', '#9a6a42': 'Castanho Claro',
+    '#e6c86e': 'Loiro Mel', '#f0e4a4': 'Loiro Platinado', '#c44228': 'Ruivo Acobreado',
+    '#f2f2f2': 'Branco/Grisalho', '#3e84c2': 'Azul Fantasia'
+};
+const EYE_COLOR_MAP: Record<string, string> = {
+    '#7b4c32': 'Castanho', '#348043': 'Verde', '#5b89a8': 'Azul',
+    '#a1a1a1': 'Cinza', '#333333': 'Preto', '#c4a24f': 'Mel'
+};
+const SKIN_TONE_MAP: Record<string, string> = {
+    '#fdece0': 'Porcelana', '#f5d8c3': 'Marfim', '#e0ac69': 'Pêssego', '#d7935c': 'Oliva', '#c68642': 'Caramelo',
+    '#a86e4b': 'Bronze', '#8d5524': 'Cobre', '#654321': 'Café', '#4a2e2a': 'Ébano'
+};
 
 const AttributeControl: React.FC<{ label: string; value: number; onIncrement: () => void; onDecrement: () => void; canIncrement: boolean; canDecrement: boolean; }> = 
 ({ label, value, onIncrement, onDecrement, canIncrement, canDecrement }) => (
@@ -32,8 +46,6 @@ const AttributeControl: React.FC<{ label: string; value: number; onIncrement: ()
 
 const CharacterCreatorModal: React.FC<CharacterCreatorModalProps> = ({ isOpen, onClose, onStart, lineage, legacyBonuses, birthYear }) => {
     const [character, setCharacter] = useState<Partial<Character> | null>(null);
-    const [showCustomBirthplace, setShowCustomBirthplace] = useState(false);
-    const [showCustomLifeGoal, setShowCustomLifeGoal] = useState(false);
 
     const randomizeCharacter = useCallback(() => {
         const newChar = generateRandomCharacter(lineage, legacyBonuses, birthYear);
@@ -46,39 +58,33 @@ const CharacterCreatorModal: React.FC<CharacterCreatorModalProps> = ({ isOpen, o
         }
     }, [isOpen, randomizeCharacter]);
     
-    useEffect(() => {
-        if (isOpen && character) {
-            const isCustomBirthplace = character.birthplace ? !BIRTHPLACES.includes(character.birthplace) : false;
-            setShowCustomBirthplace(isCustomBirthplace);
-
-            const currentGoal = character.lifeGoals?.[0]?.description;
-            const isCustomGoal = currentGoal ? !LIFE_GOALS.includes(currentGoal) : false;
-            setShowCustomLifeGoal(isCustomGoal);
-        }
-    }, [isOpen, character]);
-
-
-    const handleUpdate = (field: keyof Character | `founderTraits.${keyof FounderTraits}` | 'founderTraits.accessories', value: any) => {
+    const handleUpdate = (field: keyof Character | `founderTraits.${keyof FounderTraits}` | 'founderTraits.accessories.glasses' | 'founderTraits.accessories.headwear', value: any) => {
         setCharacter(prev => {
             if (!prev) return null;
             if (field.startsWith('founderTraits.')) {
-                const subField = field.split('.')[1] as keyof FounderTraits;
-                if (subField === 'accessories') {
-                     return {
+                const parts = field.split('.');
+                if (parts.length === 3) { // accessories
+                    const subField = parts[2] as 'glasses' | 'headwear';
+                    return {
                         ...prev,
                         founderTraits: {
                             ...(prev.founderTraits!),
-                            accessories: value
+                            accessories: {
+                                ...(prev.founderTraits?.accessories || {}),
+                                [subField]: value
+                            }
+                        }
+                    };
+                } else {
+                    const subField = parts[1] as keyof FounderTraits;
+                    return {
+                        ...prev,
+                        founderTraits: {
+                            ...(prev.founderTraits!),
+                            [subField]: value
                         }
                     };
                 }
-                return {
-                    ...prev,
-                    founderTraits: {
-                        ...(prev.founderTraits!),
-                        [subField]: value
-                    }
-                };
             }
             return { ...prev, [field]: value };
         });
@@ -127,10 +133,8 @@ const CharacterCreatorModal: React.FC<CharacterCreatorModalProps> = ({ isOpen, o
     const handleBirthplaceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const value = e.target.value;
         if (value === 'CUSTOM') {
-            setShowCustomBirthplace(true);
-            handleUpdate('birthplace', '');
+            handleUpdate('birthplace', ''); // Set to empty string to trigger custom input
         } else {
-            setShowCustomBirthplace(false);
             handleUpdate('birthplace', value);
         }
     };
@@ -138,30 +142,33 @@ const CharacterCreatorModal: React.FC<CharacterCreatorModalProps> = ({ isOpen, o
     const handleLifeGoalChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const value = e.target.value;
         if (value === 'CUSTOM') {
-            setShowCustomLifeGoal(true);
             handleUpdate('lifeGoals', [{ description: '', completed: false }]);
         } else {
-            setShowCustomLifeGoal(false);
             handleUpdate('lifeGoals', [{ description: value, completed: false }]);
         }
     };
 
-
     if (!isOpen || !character || !character.founderTraits) return null;
+
+    // Derived state for custom inputs, which fixes the typing bug.
+    const isCustomBirthplace = character.birthplace !== undefined && !BIRTHPLACES.includes(character.birthplace);
+    const currentGoalDescription = character.lifeGoals?.[0]?.description;
+    const isCustomLifeGoal = currentGoalDescription !== undefined && !LIFE_GOALS.includes(currentGoalDescription);
 
     return (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
             <div className="w-full max-w-6xl h-[95vh] bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl flex flex-col md:flex-row animate-fade-in" onClick={e => e.stopPropagation()}>
                 {/* Left Panel: Appearance & Identity */}
-                <div className="w-full md:w-2/5 p-6 bg-slate-900/50 flex flex-col space-y-6">
+                <div className="w-full md:w-2/5 p-6 bg-slate-900/50 flex flex-col space-y-6 overflow-y-auto">
                     <div className="flex-grow flex flex-col items-center justify-center text-center">
-                        <div className="w-48 h-48 bg-slate-700 rounded-lg mb-4 border-4 border-slate-600 group">
+                        <div className="w-48 h-48 bg-slate-700 rounded-lg mb-4 border-4 border-slate-600 group flex-shrink-0">
                              <CustomizableAvatar
                                 skinTone={character.founderTraits.skinTone}
                                 hairColor={character.founderTraits.hairColor}
                                 eyeColor={character.founderTraits.eyeColor}
                                 hairstyle={character.founderTraits.hairstyle}
-                                accessory={character.founderTraits.accessories?.glasses || 'none'}
+                                glasses={character.founderTraits.accessories?.glasses || 'none'}
+                                headwear={character.founderTraits.accessories?.headwear || 'none'}
                             />
                         </div>
                     </div>
@@ -188,14 +195,18 @@ const CharacterCreatorModal: React.FC<CharacterCreatorModalProps> = ({ isOpen, o
 
                     <div className="p-4 bg-slate-700/30 rounded-lg border border-slate-600">
                          <h3 className="text-lg font-semibold text-cyan-400 mb-3">Aparência</h3>
-                         <div className="space-y-3">
+                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm text-slate-300 mb-1">Tom de Pele</label>
-                                <div className="flex flex-wrap gap-2">{SKIN_TONES.map(color => <button key={color} onClick={() => handleUpdate('founderTraits.skinTone', color)} className={`w-8 h-8 rounded-full border-2 ${character.founderTraits?.skinTone === color ? 'border-white' : 'border-transparent'}`} style={{ backgroundColor: color }}></button>)}</div>
+                                <label className="block text-sm text-slate-300 mb-2">Tom de Pele</label>
+                                <div className="flex flex-wrap gap-2">{SKIN_TONES.map(color => <button key={color} onClick={() => handleUpdate('founderTraits.skinTone', color)} title={SKIN_TONE_MAP[color]} className={`w-8 h-8 rounded-full border-2 ${character.founderTraits?.skinTone === color ? 'border-white ring-2 ring-white/50' : 'border-transparent hover:border-slate-400'}`} style={{ backgroundColor: color }}></button>)}</div>
+                            </div>
+                             <div>
+                                <label className="block text-sm text-slate-300 mb-2">Cor dos Olhos</label>
+                                <div className="flex flex-wrap gap-2">{EYE_COLORS.map(color => <button key={color} onClick={() => handleUpdate('founderTraits.eyeColor', color)} title={EYE_COLOR_MAP[color]} className={`w-8 h-8 rounded-full border-2 ${character.founderTraits?.eyeColor === color ? 'border-white ring-2 ring-white/50' : 'border-transparent hover:border-slate-400'}`} style={{ backgroundColor: color }}></button>)}</div>
                             </div>
                             <div>
-                                <label className="block text-sm text-slate-300 mb-1">Cor do Cabelo</label>
-                                <div className="flex flex-wrap gap-2">{PORTRAIT_COLORS.hair.map(color => <button key={color} onClick={() => handleUpdate('founderTraits.hairColor', color)} className={`w-8 h-8 rounded-full border-2 ${character.founderTraits?.hairColor === color ? 'border-white' : 'border-transparent'}`} style={{ backgroundColor: color }}></button>)}</div>
+                                <label className="block text-sm text-slate-300 mb-2">Cor do Cabelo</label>
+                                <div className="flex flex-wrap gap-2">{HAIR_COLORS.map(color => <button key={color} onClick={() => handleUpdate('founderTraits.hairColor', color)} title={HAIR_COLOR_MAP[color]} className={`w-8 h-8 rounded-full border-2 ${character.founderTraits?.hairColor === color ? 'border-white ring-2 ring-white/50' : 'border-transparent hover:border-slate-400'}`} style={{ backgroundColor: color }}></button>)}</div>
                             </div>
                              <div className="grid grid-cols-2 gap-4">
                                 <div>
@@ -205,9 +216,15 @@ const CharacterCreatorModal: React.FC<CharacterCreatorModalProps> = ({ isOpen, o
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-slate-300 mb-1">Acessórios</label>
-                                    <select value={character.founderTraits?.accessories?.glasses} onChange={e => handleUpdate('founderTraits.accessories', { glasses: e.target.value })} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
+                                    <label className="block text-sm text-slate-300 mb-1">Óculos</label>
+                                    <select value={character.founderTraits?.accessories?.glasses} onChange={e => handleUpdate('founderTraits.accessories.glasses', e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
                                         {Object.entries(ACCESSORIES).map(([key, name]) => <option key={key} value={key}>{name}</option>)}
+                                    </select>
+                                </div>
+                                 <div>
+                                    <label className="block text-sm text-slate-300 mb-1">Adereço de Cabeça</label>
+                                    <select value={character.founderTraits?.accessories?.headwear} onChange={e => handleUpdate('founderTraits.accessories.headwear', e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white">
+                                        {Object.entries(HEADWEAR).map(([key, name]) => <option key={key} value={key}>{name}</option>)}
                                     </select>
                                 </div>
                             </div>
@@ -221,7 +238,7 @@ const CharacterCreatorModal: React.FC<CharacterCreatorModalProps> = ({ isOpen, o
 
                 {/* Right Panel: Story & Attributes */}
                 <div className="w-full md:w-3/5 p-6 flex flex-col">
-                    <div className="overflow-y-auto pr-4 -mr-4 space-y-4 flex-grow">
+                    <div className="overflow-y-auto pr-4 -mr-4 space-y-4 flex-grow min-h-0">
                          <div className="p-4 bg-slate-900/50 rounded-lg border border-slate-700">
                              <div className="flex justify-between items-center mb-3">
                                  <h3 className="text-lg font-semibold text-cyan-400">Atributos</h3>
@@ -254,11 +271,11 @@ const CharacterCreatorModal: React.FC<CharacterCreatorModalProps> = ({ isOpen, o
                              <h3 className="text-lg font-semibold text-cyan-400">Origem & Meta</h3>
                              <div>
                                  <label className="block text-sm text-slate-300 mb-1">Local de Nascimento</label>
-                                 <select value={showCustomBirthplace ? 'CUSTOM' : character.birthplace || ''} onChange={handleBirthplaceChange} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white mb-2">
+                                 <select value={isCustomBirthplace ? 'CUSTOM' : character.birthplace || ''} onChange={handleBirthplaceChange} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white mb-2">
                                      {BIRTHPLACES.map(place => <option key={place} value={place}>{place}</option>)}
                                      <option value="CUSTOM">Outro (digitar)...</option>
                                  </select>
-                                 {showCustomBirthplace && (
+                                 {isCustomBirthplace && (
                                      <input 
                                         type="text" 
                                         value={character.birthplace || ''} 
@@ -271,17 +288,17 @@ const CharacterCreatorModal: React.FC<CharacterCreatorModalProps> = ({ isOpen, o
                              <div>
                                  <label className="block text-sm text-slate-300 mb-1">Meta de Vida Inicial</label>
                                   <select 
-                                    value={showCustomLifeGoal ? 'CUSTOM' : character.lifeGoals?.[0]?.description || ''} 
+                                    value={isCustomLifeGoal ? 'CUSTOM' : currentGoalDescription || ''} 
                                     onChange={handleLifeGoalChange} 
                                     className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white mb-2"
                                 >
                                      {LIFE_GOALS.map(goal => <option key={goal} value={goal}>{goal}</option>)}
                                      <option value="CUSTOM">Outro (digitar)...</option>
                                  </select>
-                                 {showCustomLifeGoal && (
+                                 {isCustomLifeGoal && (
                                      <input 
                                         type="text" 
-                                        value={character.lifeGoals?.[0]?.description || ''} 
+                                        value={currentGoalDescription || ''} 
                                         onChange={e => handleUpdate('lifeGoals', [{ description: e.target.value, completed: false }])}
                                         placeholder="Digite sua meta de vida"
                                         className="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded-md text-white animate-fade-in" 
@@ -292,7 +309,7 @@ const CharacterCreatorModal: React.FC<CharacterCreatorModalProps> = ({ isOpen, o
 
                     </div>
                     
-                    <div className="mt-6 pt-6 border-t border-slate-700 flex items-center justify-between">
+                    <div className="mt-6 pt-6 border-t border-slate-700 flex items-center justify-between flex-shrink-0">
                         <button onClick={onClose} className="text-center text-sm text-slate-400 py-2 px-4 hover:text-white transition-colors">Voltar</button>
                         <button onClick={handleStartGame} disabled={pointsRemaining < 0} className="py-3 px-8 bg-green-600 text-white font-bold text-lg rounded-lg hover:bg-green-500 transition-colors disabled:bg-slate-600 disabled:cursor-not-allowed">
                             {pointsRemaining < 0 ? `${Math.abs(pointsRemaining)} pontos acima!` : 'Salvar e Iniciar Jogo'}

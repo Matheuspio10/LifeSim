@@ -3,20 +3,33 @@ import { POSITIVE_TRAITS, NEGATIVE_TRAITS } from './characterConstants';
 
 export const GENDERS = ['Masculino', 'Feminino', 'Não-binário'];
 
-export const SKIN_TONES = ['#f2d47e', '#e0ac69', '#c68642', '#8d5524', '#654321', '#3c2e28'];
+export const SKIN_TONES = ['#fdece0', '#f5d8c3', '#e0ac69', '#d7935c', '#c68642', '#a86e4b', '#8d5524', '#654321', '#4a2e2a'];
 
 export const HAIR_STYLES = {
-    'curto': 'Curto e Prático',
-    'medio': 'Médio Ondulado',
-    'longo': 'Longo e Liso',
     'careca': 'Careca',
+    'curto': 'Curto e Prático',
+    'crespo-curto': 'Crespo Curto',
+    'topete': 'Topete',
+    'sidecut': 'Sidecut',
+    'medio': 'Médio Ondulado',
+    'rabo-de-cavalo': 'Rabo de Cavalo',
+    'longo': 'Longo e Liso',
+    'trancas': 'Tranças',
     'coque': 'Coque Alto',
+    'afro-volumoso': 'Afro Volumoso',
 };
 
 export const ACCESSORIES = {
     'none': 'Nenhum',
     'oculos-redondo': 'Óculos Redondos',
     'oculos-quadrado': 'Óculos Quadrados',
+};
+
+export const HEADWEAR = {
+    'none': 'Nenhum',
+    'bandana': 'Bandana',
+    'beanie': 'Gorro',
+    'bow': 'Laço',
 };
 
 export const ATTRIBUTE_POOL = 60;

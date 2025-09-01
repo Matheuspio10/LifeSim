@@ -126,6 +126,7 @@ export interface FounderTraits {
     hairstyle: string;
     accessories: {
         glasses?: string;
+        headwear?: string;
     }
 }
 
