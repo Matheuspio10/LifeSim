@@ -95,6 +95,32 @@ const App: React.FC = () => {
         setApiKey(savedKey);
     }
   }, []);
+
+  const recordAncestor = useCallback((char: Character, currentLineage: Lineage | null, summary: LifeSummaryEntry[]) => {
+      if (!currentLineage) return;
+      const newAncestor: Ancestor = {
+          id: `${char.name}-${char.generation}-${Date.now()}`,
+          generation: char.generation,
+          name: char.name,
+          lastName: char.lastName,
+          eraLived: `${char.birthYear} - ${char.birthYear + char.age}`,
+          portraitTraits: char.founderTraits,
+          title: currentLineage.title,
+          achievements: char.lifeGoals.filter(g => g.completed).map(g => ({ text: g.description, icon: 'CheckCircleIcon' })),
+          definingTraits: char.traits.map(t => t.name),
+          finalStatus: char.causeOfDeath || "Desconhecido",
+          narrative: summary.map(l => l.text).filter(Boolean).join(' '),
+          finalStats: {
+              intelligence: char.intelligence, charisma: char.charisma,
+              creativity: char.creativity, discipline: char.discipline,
+              morality: char.morality, fame: char.fame, influence: char.influence,
+          },
+          finalWealth: char.wealth + char.investments,
+          careerSummary: { jobTitle: char.jobTitle, careerLevel: char.careerLevel },
+          keyRelationships: char.relationships.slice(0, 3).map(r => ({ name: r.name, title: r.title, intimacy: r.intimacy })),
+      };
+      setAncestors(prev => [...prev, newAncestor]);
+  }, []);
   
   const saveForRollback = useCallback(() => {
     const stateToSave = {
@@ -420,7 +446,7 @@ const App: React.FC = () => {
     setGameState(GameState.NOT_STARTED);
   }
   
-  const updateLineageTitle = (char: Character, currentLineage: Lineage | null): Lineage | null => {
+  const updateLineageTitle = useCallback((char: Character, currentLineage: Lineage | null): Lineage | null => {
     if (!currentLineage) return null;
     const existingTitleInfo = LINEAGE_TITLES.find(t => t.name === currentLineage.title);
     
@@ -436,7 +462,7 @@ const App: React.FC = () => {
     }
     
     return currentLineage;
-  };
+  }, []);
 
   const advanceYear = useCallback(async (char: Character, monthsToAdvance: number = 1) => {
     saveForRollback();
@@ -502,15 +528,21 @@ const App: React.FC = () => {
     
     if (shouldEndGame) {
         updatedChar.causeOfDeath = determineCauseOfDeath(updatedChar);
-        setLifeSummary(prev => [...prev, { text: `A vida de ${updatedChar.name} chegou ao fim aos ${updatedChar.age} anos. Causa: ${updatedChar.causeOfDeath}.`, isEpic: true }]);
+        const finalSummaryEntry = { text: `A vida de ${updatedChar.name} chegou ao fim aos ${updatedChar.age} anos. Causa: ${updatedChar.causeOfDeath}.`, isEpic: true };
+        const finalSummary = [...lifeSummary, finalSummaryEntry];
+        setLifeSummary(finalSummary);
+        
+        const updatedLineage = updateLineageTitle(updatedChar, lineage);
+        
+        recordAncestor(updatedChar, updatedLineage, finalSummary);
+
         setCharacter(updatedChar);
         setGameState(GameState.GAME_OVER);
         setLegacyPoints(prev => prev + calculateLegacyPoints(updatedChar));
-        const updatedLineage = updateLineageTitle(updatedChar, lineage);
         setLineage(updatedLineage);
         setIsLoading(false);
     }
-  }, [character, lifeSummary, currentYear, monthsRemainingInYear, economicClimate, fetchNextEvent, saveForRollback, lineage, apiKey, completedChallenges]);
+  }, [character, lifeSummary, currentYear, monthsRemainingInYear, economicClimate, fetchNextEvent, saveForRollback, lineage, apiKey, completedChallenges, recordAncestor, updateLineageTitle]);
 
   const handleChoice = useCallback(async (choice: Choice) => {
     if (!character) return;
@@ -519,7 +551,9 @@ const App: React.FC = () => {
     const timeCost = choice.timeCostInUnits || currentEvent?.timeCostInUnits || 1;
 
     let updatedChar = applyChoiceToCharacter(character, choice, currentEvent?.isEpic);
-    setLifeSummary(prev => [...prev, { text: choice.outcomeText, isEpic: currentEvent?.isEpic || false }]);
+    const newSummaryEntry = { text: choice.outcomeText, isEpic: currentEvent?.isEpic || false };
+    const newLifeSummary = [...lifeSummary, newSummaryEntry];
+    setLifeSummary(newLifeSummary);
     
     // Update behavior tracker to avoid repetitive events
     if (currentEvent) {
@@ -532,16 +566,20 @@ const App: React.FC = () => {
     // This handles special endings immediately
     if (choice.specialEnding) {
         updatedChar.causeOfDeath = choice.specialEnding;
+        
+        const updatedLineage = updateLineageTitle(updatedChar, lineage);
+        
+        recordAncestor(updatedChar, updatedLineage, newLifeSummary);
+
         setCharacter(updatedChar);
         setGameState(GameState.GAME_OVER);
         setLegacyPoints(prev => prev + calculateLegacyPoints(updatedChar));
-        const updatedLineage = updateLineageTitle(updatedChar, lineage);
         setLineage(updatedLineage);
         return;
     }
     
     await advanceYear(updatedChar, timeCost);
-  }, [character, currentEvent, advanceYear, saveForRollback, lineage]);
+  }, [character, currentEvent, advanceYear, saveForRollback, lineage, lifeSummary, recordAncestor, updateLineageTitle]);
 
   const handleOpenResponseSubmit = useCallback(async (responseText: string) => {
     if (!character || !currentEvent || !apiKey) return;
@@ -625,29 +663,10 @@ const App: React.FC = () => {
     if (!character || !lineage) return;
 
     const heirChar = createHeirCharacter(heir, character, lineage, legacyPoints);
-    const newAncestor: Ancestor = {
-        id: `${character.name}-${character.generation}-${Date.now()}`,
-        generation: character.generation,
-        name: character.name,
-        lastName: character.lastName,
-        eraLived: `${character.birthYear} - ${character.birthYear + character.age}`,
-        portraitTraits: character.founderTraits,
-        title: lineage.title,
-        achievements: character.lifeGoals.filter(g => g.completed).map(g => ({ text: g.description, icon: 'CheckCircleIcon' })),
-        definingTraits: character.traits.map(t => t.name),
-        finalStatus: character.causeOfDeath || "Desconhecido",
-        narrative: lifeSummary.map(l => l.text).join(' '),
-        finalStats: {
-            intelligence: character.intelligence, charisma: character.charisma,
-            creativity: character.creativity, discipline: character.discipline,
-            morality: character.morality, fame: character.fame, influence: character.influence,
-        },
-        finalWealth: character.wealth + character.investments,
-        careerSummary: { jobTitle: character.jobTitle, careerLevel: character.careerLevel },
-        keyRelationships: character.relationships.slice(0, 3).map(r => ({ name: r.name, title: r.title, intimacy: r.intimacy })),
-    };
     
-    setAncestors(prev => [...prev, newAncestor]);
+    // Ancestor is now recorded at the moment of death.
+    // No need to create another one here.
+    
     setLegacyPoints(0); // Reset for new generation
     startGame(heirChar, isMultiplayerCycle);
   };
@@ -750,7 +769,7 @@ const App: React.FC = () => {
         {error && <div className="w-full max-w-2xl bg-red-900/50 border border-red-700 text-red-200 p-6 rounded-lg text-center"><p className="font-bold mb-2">Ocorreu um Erro Cósmico</p><p className="text-sm">{error}</p><button onClick={() => setError(null)} className="mt-4 px-4 py-2 bg-red-600 rounded-md">OK</button></div>}
 
         {!error && isLoading && gameState !== GameState.ROUTINE_PLANNING && (
-             (monthsRemainingInYear !== TOTAL_MONTHS_PER_YEAR && character) 
+             character 
              ? <DowntimeActivities character={character} onMicroAction={handleDowntimeAction} onShowDebug={() => setShowDebug(true)} />
              : <LoadingSpinner onShowDebug={() => setShowDebug(true)} />
         )}
