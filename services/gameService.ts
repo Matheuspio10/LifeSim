@@ -864,3 +864,60 @@ export const generateCatastrophicEvent = async (
 
     return cleanAndParseJson<Choice>(response.text);
 };
+
+export const generateDailyAction = async (
+    character: Character,
+    year: number,
+    apiKey: string,
+    narrativeTone: NarrativeTone
+): Promise<Choice> => {
+    const ai = new GoogleGenAI({ apiKey });
+    const model = 'gemini-2.5-flash';
+
+    const characterSummary = getCharacterSummary(character, true); // Use turbo summary for speed
+    const zeitgeist = getZeitgeist(year);
+    const narrativeDirective = getNarrativeToneDirective(narrativeTone);
+
+    const prompt = `
+      ${narrativeDirective}
+
+      **Contexto do Jogo:**
+      - Ano Atual: ${year} (${zeitgeist})
+      - Resumo do Personagem:
+      ${characterSummary}
+
+      **Tarefa: Gerar uma Pequena Ação Diária**
+
+      **REGRAS:**
+      1.  **Gere um evento MUITO PEQUENO e cotidiano.** NÃO é um grande evento de vida. Pense em algo que acontece entre os momentos importantes.
+      2.  **Exemplos:** Encontrar uma moeda na rua, ter uma breve conversa com um vizinho, ler uma notícia interessante no jornal, sentir uma súbita onda de nostalgia, ter um pequeno momento de sorte ou azar, um pequeno contratempo.
+      3.  **Impacto Mínimo:** As mudanças de stats ('statChanges') devem ser mínimas (geralmente entre -2 e +2). O foco é no sabor narrativo, não na grande progressão.
+      4.  **Formato de Saída:** Sua única saída DEVE ser um único objeto JSON no formato 'Choice'.
+          - 'choiceText' deve descrever a pequena ação/evento (ex: "Parou para observar os pássaros no parque.").
+          - 'outcomeText' deve descrever o resultado ou sentimento decorrente (ex: "A cena trouxe um momento de paz inesperado.").
+      5.  **Coerência:** O evento deve ser coerente com a idade do personagem, a era e seus traços.
+
+      Sua única saída DEVE ser um JSON válido que siga o schema.
+    `;
+
+    const timeout = 60000; // 60 seconds
+    const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`A solicitação para a IA demorou mais de ${timeout / 1000} segundos para responder.`)), timeout)
+    );
+    
+    const response = await Promise.race([
+        ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: choiceSchema,
+                systemInstruction,
+                thinkingConfig: { thinkingBudget: 0 } // Always fast
+            }
+        }),
+        timeoutPromise
+    ]);
+
+    return cleanAndParseJson<Choice>(response.text);
+};
