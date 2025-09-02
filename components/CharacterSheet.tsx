@@ -81,6 +81,58 @@ const SkillBar: React.FC<{ level: number, color: string }> = ({ level, color }) 
     );
 }
 
+const getFameLabel = (value: number, lifeStage: LifeStage): string => {
+    switch (lifeStage) {
+        case LifeStage.CHILDHOOD:
+            if (value > 80) return 'Lenda do Parquinho';
+            if (value > 50) return 'Super Popular';
+            if (value > 20) return 'Conhecido na Vizinhança';
+            if (value > -20) return 'Criança Comum';
+            if (value > -50) return 'Encrenqueiro(a)';
+            return 'O Pestinha';
+        case LifeStage.ADOLESCENCE:
+            if (value > 80) return 'Rei/Rainha da Escola';
+            if (value > 50) return 'Muito Popular';
+            if (value > 20) return 'Conhecido(a) na Escola';
+            if (value > -20) return 'Anônimo(a)';
+            if (value > -50) return 'Má Fama';
+            return 'O(A) Esquisito(a)';
+        default: // YOUNG_ADULTHOOD, ADULTHOOD, OLD_AGE
+            if (value > 80) return 'Lenda Global';
+            if (value > 50) return 'Celebridade';
+            if (value > 20) return 'Conhecido(a)';
+            if (value > -20) return 'Anônimo(a)';
+            if (value > -50) return 'Controverso(a)';
+            return 'Infame';
+    }
+};
+
+const getInfluenceLabel = (value: number, lifeStage: LifeStage): string => {
+    switch (lifeStage) {
+        case LifeStage.CHILDHOOD:
+            if (value > 80) return 'Chefe da Turma';
+            if (value > 50) return 'Decide a Brincadeira';
+            if (value > 20) return 'Influente entre Amigos';
+            if (value > -20) return 'Criança Comum';
+            if (value > -50) return 'O(A) Dedo-duro';
+            return 'O(A) Excluído(a)';
+        case LifeStage.ADOLESCENCE:
+            if (value > 80) return 'Formador(a) de Opinião';
+            if (value > 50) return 'Líder de Galera';
+            if (value > 20) return 'Influente';
+            if (value > -20) return 'Um(a) na Multidão';
+            if (value > -50) return 'O(A) Rejeitado(a)';
+            return 'O(A) Marginalizado(a)';
+        default: // YOUNG_ADULTHOOD, ADULTHOOD, OLD_AGE
+            if (value > 80) return 'Ícone Global';
+            if (value > 50) return 'Figura Nacional';
+            if (value > 20) return 'Líder Comunitário';
+            if (value > -20) return 'Cidadão Comum';
+            if (value > -50) return 'Figura Polêmica';
+            return 'Inimigo Público';
+    }
+};
+
 
 const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, lineage, isTurboMode, onToggleTurboMode, onChangeApiKey, onFullReset, monthsRemainingInYear, onOpenFamilyBook, onRollback, canRollback, onRunAudit }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -252,28 +304,14 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ character, lifeStage, l
             value={character.fame}
             icon={<StarIcon />}
             gradient="from-purple-600 via-slate-500 to-amber-400"
-            getLabel={(value) => {
-                if (value > 80) return 'Lenda Global';
-                if (value > 50) return 'Celebridade';
-                if (value > 20) return 'Conhecido(a)';
-                if (value > -20) return 'Anônimo(a)';
-                if (value > -50) return 'Controverso(a)';
-                return 'Infame';
-            }}
+            getLabel={(value) => getFameLabel(value, lifeStage)}
         />
         <SpectrumDisplay
             label="Influência"
             value={character.influence}
             icon={<SpeakerWaveIcon />}
             gradient="from-red-600 via-slate-500 to-cyan-400"
-            getLabel={(value) => {
-                if (value > 80) return 'Ícone Global';
-                if (value > 50) return 'Figura Nacional';
-                if (value > 20) return 'Líder Comunitário';
-                if (value > -20) return 'Cidadão Comum';
-                if (value > -50) return 'Figura Polêmica';
-                return 'Inimigo Público';
-            }}
+            getLabel={(value) => getInfluenceLabel(value, lifeStage)}
         />
       </div>
 

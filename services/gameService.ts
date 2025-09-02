@@ -528,24 +528,34 @@ export const generateGameEvent = async (
          - **Era Histórica:** O evento DEVE ser apropriado para o ano de ${year} e o contexto: ${zeitgeist}. Sem anacronismos.
          - **Perfil do Personagem:** O evento deve fazer sentido para um(a) personagem de ${character.age} anos com os traços, riqueza e reputação descritos. Um bilionário não se preocupa com uma conta de $50. Um personagem com 'Índole Criminosa' tem mais chances de encontrar problemas com a lei.
 
-      **2. TIPO E TOM DO EVENTO:**
+      **2. DIVERSIFICAÇÃO DE EVENTOS (PRIORIDADE MÁXIMA):**
+         - A vida de uma pessoa é multifacetada, especialmente a de uma criança. **NÃO GERE APENAS EVENTOS RELACIONADOS AO TRAÇO MAIS ÓBVIO OU AO ENREDO ATUAL DO PERSONAGEM (ex: ser líder de gangue).**
+         - **É ESSENCIAL** que você explore outros aspectos da vida de uma criança de ${character.age} anos. Gere eventos de uma das seguintes categorias, variando o máximo possível a cada chamada:
+           - **Família:** Interações com pais, irmãos, avós (ex: um jantar de família tenso, uma briga boba com um irmão, um conselho importante de um dos pais, um segredo de família revelado).
+           - **Escola/Educação:** Desafios acadêmicos, relacionamento com professores, amizades ou rivalidades com colegas, bullying, um projeto escolar interessante, uma peça de teatro.
+           - **Amizades:** Fazer um novo amigo fora do círculo atual, ir a uma festa de aniversário, ter um desentendimento com um melhor amigo, formar um clube secreto.
+           - **Desenvolvimento Pessoal:** Descobrir um novo hobby (desenho, música, esportes), aprender algo novo sozinho (como andar de bicicleta), enfrentar um medo (escuro, altura), ter uma crise de identidade.
+           - **Aventuras Infantis:** Explorar um lugar "assombrado" no bairro, construir um forte, encontrar um objeto misterioso, participar de uma competição local.
+
+      **3. TIPO E ESTRUTURA DO EVENTO:**
          - **Variedade:** Gere uma mistura de eventos:
            - **Eventos Simples:** Pequenos dilemas do dia a dia.
            - **Eventos de Bifurcação (Ocasional):** Crie eventos de alto impacto que possam mudar drasticamente o rumo da vida (ex: uma proposta de emprego em outro país, um convite para entrar no crime, uma crise existencial que leva a uma mudança de carreira radical).
          - ${isBossBattle ? `Gere um evento de "batalha de chefe" de alto risco, apropriado para a fase da vida. Descrição do desafio: ${getBossBattlePrompt(lifeStage)}` : `Gere um evento de vida interessante. Pode ser uma oportunidade, um desafio ou uma interação social. Eventos que podem levar à morte (devido a doença, acidente ou violência) são permitidos e devem ser gerados se forem narrativamente apropriados.`}
 
-      **3. ARCOS DE HISTÓRIA (PRIORIDADE MÁXIMA):**
-         - **Enredos Ativos:** ${character.ongoingPlots && character.ongoingPlots.filter(p => !p.completed).length > 0 ? `O personagem tem os seguintes enredos ativos: ${character.ongoingPlots.filter(p => !p.completed).map(p => `"${p.description}"`).join(', ')}. **É CRUCIAL que o evento gerado avance ou conclua um desses enredos.**` : "Não há enredos de longo prazo ativos. Você pode criar um evento que inicie um novo arco narrativo interessante usando 'plotChanges.add'."}
+      **4. ARCOS DE HISTÓRIA (ALTA PRIORIDADE):**
+         - **Enredos Ativos:** ${character.ongoingPlots && character.ongoingPlots.filter(p => !p.completed).length > 0 ? `O personagem tem os seguintes enredos ativos: ${character.ongoingPlots.filter(p => !p.completed).map(p => `"${p.description}"`).join(', ')}. Se possível, conecte sutilmente o evento a um desses enredos, mas **NÃO à custa da regra de DIVERSIFICAÇÃO**. Um evento familiar pode, por exemplo, revelar algo que afeta um enredo de mistério.` : "Não há enredos de longo prazo ativos. Você pode criar um evento que inicie um novo arco narrativo interessante usando 'plotChanges.add'."}
          - **Continuidade:** Se um evento concluir um enredo, use 'plotChanges.complete'. Se iniciar um novo, use 'plotChanges.add'. **NUNCA adicione uma string vazia a 'plotChanges.add'.**
 
-      **4. REGRAS DE ESCOLHA E CONSEQUÊNCIA:**
+      **5. REGRAS DE ESCOLHA E CONSEQUÊNCIA:**
          - **Sem Escolhas Vazias:** Cada escolha deve ter consequências claras, interessantes e distintas.
          - **Novos Personagens:** Ao criar QUALQUER NOVO PERSONAGEM (em 'relationshipChanges.add' ou 'childBorn'), ele DEVE receber um nome próprio (ex: "João") no campo 'name'. O parentesco (ex: "Filho", "Amigo") deve ser colocado no campo 'title' ou 'type'.
          - **Progressão de Stats:** A progressão de atributos (Inteligência, etc.) acima de 85 é DIFÍCIL e exige eventos significativos. Um ganho acima de 95 DEVE ser de um evento 'isEpic: true'.
          - **Coerência Financeira:** Custos e recompensas financeiras devem ser proporcionais à riqueza do personagem.
 
-      **5. EVITAR REPETIÇÃO:**
-         - Use o 'behaviorTracker' para evitar eventos repetidos: ${JSON.stringify(behaviorTracker)}.
+      **6. EVITAR REPETIÇÃO (OBRIGATÓRIO):**
+         - O jogador reclamou de eventos repetitivos. **É CRÍTICO EVITAR TEMAS SEMELHANTES CONSECUTIVAMENTE.**
+         - Use o 'behaviorTracker' para ver eventos recentes e **ESCOLHER UM TEMA DIFERENTE**: ${JSON.stringify(behaviorTracker)}.
 
       Sua única saída DEVE ser um JSON válido que siga o schema.
     `;
