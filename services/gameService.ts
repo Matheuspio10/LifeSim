@@ -570,7 +570,7 @@ export const generateGameEvent = async (
         config.thinkingConfig = { thinkingBudget: 0 };
     }
 
-    const timeout = 180000; // 180 seconds (3 minutes)
+    const timeout = 300000; // 300 seconds (5 minutes)
     const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error(`A solicitação para a IA demorou mais de ${timeout/1000} segundos para responder.`)), timeout)
     );
@@ -644,7 +644,7 @@ export const evaluatePlayerResponse = async (
         config.thinkingConfig = { thinkingBudget: 0 };
     }
 
-    const timeout = 180000; // 180 seconds (3 minutes)
+    const timeout = 300000; // 300 seconds (5 minutes)
     const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error(`A solicitação para a IA demorou mais de ${timeout/1000} segundos para responder.`)), timeout)
     );
@@ -705,7 +705,7 @@ export const processMetaCommand = async (
         config.thinkingConfig = { thinkingBudget: 0 };
     }
 
-    const timeout = 180000; // 180 seconds (3 minutes)
+    const timeout = 300000; // 300 seconds (5 minutes)
     const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error(`A solicitação para a IA demorou mais de ${timeout/1000} segundos para responder.`)), timeout)
     );
@@ -745,7 +745,7 @@ export const generateWorldEvent = async (
       5. Lembre-se: Sua única saída DEVE ser um JSON válido.
     `;
 
-    const timeout = 180000; // 180 seconds (3 minutes)
+    const timeout = 300000; // 300 seconds (5 minutes)
     const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error(`A solicitação para a IA demorou mais de ${timeout/1000} segundos para responder.`)), timeout)
     );
@@ -794,7 +794,7 @@ export const processAuditModificationRequest = async (
       8. Lembre-se: Sua única saída DEVE ser um JSON válido que siga o schema 'choiceSchema'.
     `;
     
-    const timeout = 180000; // 180 seconds (3 minutes)
+    const timeout = 300000; // 300 seconds (5 minutes)
     const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error(`A solicitação para a IA demorou mais de ${timeout/1000} segundos para responder.`)), timeout)
     );
@@ -844,7 +844,7 @@ export const generateCatastrophicEvent = async (
       8.  Sua única saída DEVE ser um JSON válido.
     `;
 
-    const timeout = 180000; // 180 seconds (3 minutes)
+    const timeout = 300000; // 300 seconds (5 minutes)
     const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error(`A solicitação para a IA demorou mais de ${timeout/1000} segundos para responder.`)), timeout)
     );
@@ -900,7 +900,7 @@ export const generateDailyAction = async (
       Sua única saída DEVE ser um JSON válido que siga o schema.
     `;
 
-    const timeout = 60000; // 60 seconds
+    const timeout = 300000; // 300 seconds (5 minutes)
     const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error(`A solicitação para a IA demorou mais de ${timeout / 1000} segundos para responder.`)), timeout)
     );
